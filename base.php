@@ -923,25 +923,26 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function lexicon($path) {
 		$lex=array();
-		foreach ($this->languages?:explode(',',$this->fallback) as $lang) {
-			if ((is_file($file=($base=$path.$lang).'.php') ||
-				is_file($file=$base.'.php')) &&
-				is_array($dict=require($file)))
-				$lex+=$dict;
-			elseif (is_file($file=$base.'.ini')) {
-				preg_match_all(
-					'/(?<=^|\n)(?:'.
-					'(.+?)\h*=\h*'.
-					'((?:\\\\\h*\r?\n|.+?)*)'.
-					')(?=\r?\n|$)/',
-					$this->read($file),$matches,PREG_SET_ORDER);
-				if ($matches)
-					foreach ($matches as $match)
-						if (isset($match[1]) &&
-							!array_key_exists($match[1],$lex))
-							$lex[$match[1]]=trim(preg_replace(
-								'/\\\\\h*\r?\n/','',$match[2]));
-			}
+		foreach ($this->languages?:explode(',',$this->fallback) as $lang)
+			foreach ($this->split($path) as $dir) {
+				if ((is_file($file=($base=$dir.$lang).'.php') ||
+					is_file($file=$base.'.php')) &&
+					is_array($dict=require($file)))
+					$lex+=$dict;
+				elseif (is_file($file=$base.'.ini')) {
+					preg_match_all(
+						'/(?<=^|\n)(?:'.
+						'(.+?)\h*=\h*'.
+						'((?:\\\\\h*\r?\n|.+?)*)'.
+						')(?=\r?\n|$)/',
+						$this->read($file),$matches,PREG_SET_ORDER);
+					if ($matches)
+						foreach ($matches as $match)
+							if (isset($match[1]) &&
+								!array_key_exists($match[1],$lex))
+								$lex[$match[1]]=trim(preg_replace(
+									'/\\\\\h*\r?\n/','',$match[2]));
+				}
 		}
 		return $lex;
 	}
@@ -1325,8 +1326,8 @@ final class Base extends Prefab implements ArrayAccess {
 		$paths=array();
 		foreach ($keys=array_keys($this->hive['ROUTES']) as $key)
 			$paths[]=str_replace('@',"\x00".'@',$key);
-		array_multisort($paths,SORT_DESC,$keys,
-			$vals=array_values($this->hive['ROUTES']));
+		$vals=array_values($this->hive['ROUTES']);
+		array_multisort($paths,SORT_DESC,$keys,$vals);
 		$this->hive['ROUTES']=array_combine($keys,$vals);
 		// Convert to BASE-relative URL
 		$req=preg_replace(
