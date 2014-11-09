@@ -924,7 +924,7 @@ final class Base extends Prefab implements ArrayAccess {
 	function lexicon($path) {
 		$lex=array();
 		foreach ($this->languages?:explode(',',$this->fallback) as $lang)
-			foreach ($this->split($path) as $dir) {
+			foreach ($this->split($path) as $dir)
 				if ((is_file($file=($base=$dir.$lang).'.php') ||
 					is_file($file=$base.'.php')) &&
 					is_array($dict=require($file)))
@@ -942,13 +942,12 @@ final class Base extends Prefab implements ArrayAccess {
 						foreach ($matches as $match)
 							if ($match['prefix'])
 								$prefix=$match['prefix'];
-							elseif (!array_key_exists($match['lval'],$lex))
-								$lex[$prefix.'.'.$match['lval']]=trim(
-									preg_replace('/\\\\\h*\r?\n/','',
-										$match['rval']));
+							elseif (!array_key_exists(
+								$key=$prefix.'.'.$match['lval'],$lex))
+								$lex[$key]=trim(preg_replace(
+									'/\\\\\h*\r?\n/','',$match['rval']));
 					}
 				}
-		}
 		return $lex;
 	}
 
