@@ -2821,7 +2821,7 @@ class ISO extends Prefab {
 		foreach (preg_grep('/^'.$prefix.'/',array_keys($ref->getconstants()))
 			as $val) {
 			$out[$key=substr($val,strlen($prefix))]=
-				constant('self::'.$prefix.$key);
+				constant('static::'.$prefix.$key);
 		}
 		unset($ref);
 		return $out;
