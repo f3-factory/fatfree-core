@@ -1575,8 +1575,12 @@ final class Base extends Prefab implements ArrayAccess {
 						str_getcsv(preg_replace('/(?<!\\\\)(")(.*?)\1/',
 							"\\1\x00\\2\\1",$match['rval']))
 					);
-					$custom=$this->hive['CONFIG'] && $sec!='globals';//custom section
-					call_user_func_array($custom?$this->hive['CONFIG']:array($this,'set'),
+					// Custom section?
+					$custom=$this->hive['CONFIG'] && $sec!='globals';
+					call_user_func_array(
+						$custom?
+							$this->hive['CONFIG']:
+							array($this,'set'),
 						array_merge(
 							$custom?array($sec):array(),
 							array($match['lval']),
@@ -1856,7 +1860,6 @@ final class Base extends Prefab implements ArrayAccess {
 			$headers['X-Forwarded-Proto']=='https'?'https':'http';
 		// Create hive early on to expose header methods
 		$this->hive=array('HEADERS'=>$headers);
-		$port_suffix = isset($_SERVER["SERVER_PORT"]) && $_SERVER["SERVER_PORT"] != ($scheme == "https" ? "443" : "80") ? ":{$_SERVER["SERVER_PORT"]}" : "";
 		if (function_exists('apache_setenv')) {
 			// Work around Apache pre-2.4 VirtualDocumentRoot bug
 			$_SERVER['DOCUMENT_ROOT']=str_replace($_SERVER['SCRIPT_NAME'],'',
@@ -1881,6 +1884,9 @@ final class Base extends Prefab implements ArrayAccess {
 				'httponly'=>TRUE
 			)
 		);
+		$port=0;
+		if (isset($_SERVER['SERVER_PORT']))
+			$port=$_SERVER['SERVER_PORT'];
 		// Default configuration
 		$this->hive+=array(
 			'AGENT'=>$this->agent(),
@@ -1920,14 +1926,14 @@ final class Base extends Prefab implements ArrayAccess {
 			'PATH'=>$path,
 			'PATTERN'=>NULL,
 			'PLUGINS'=>$this->fixslashes(__DIR__).'/',
-			'PORT'=>isset($_SERVER['SERVER_PORT'])?
-				$_SERVER['SERVER_PORT']:NULL,
+			'PORT'=>$port,
 			'PREFIX'=>NULL,
 			'QUERY'=>isset($uri['query'])?$uri['query']:'',
 			'QUIET'=>FALSE,
 			'RAW'=>FALSE,
-			'REALM'=>$scheme.'://'.
-				$_SERVER['SERVER_NAME'].$port_suffix.$_SERVER['REQUEST_URI'],
+			'REALM'=>$scheme.'://'.$_SERVER['SERVER_NAME'].
+				($port && $port!=80 && $port!=443?
+					(':'.$port):'').$_SERVER['REQUEST_URI'],
 			'RESPONSE'=>'',
 			'ROOT'=>$_SERVER['DOCUMENT_ROOT'],
 			'ROUTES'=>array(),
