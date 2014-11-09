@@ -1579,16 +1579,22 @@ final class Base extends Prefab implements ArrayAccess {
 						str_getcsv(preg_replace('/(?<!\\\\)(")(.*?)\1/',
 							"\\1\x00\\2\\1",$match['rval']))
 					);
-					// Custom section?
-					$custom=$this->hive['CONFIG'] && $sec!='globals';
+					$custom=($sec!='globals');
 					call_user_func_array(
-						$custom?
+						// Custom section?
+						$custom && $this->hive['CONFIG']?
 							$this->hive['CONFIG']:
 							array($this,'set'),
 						array_merge(
-							$custom?array($sec):array(),
-							array($match['lval']),
-							count($args)>1?array($args):$args));
+							$custom && $this->hive['CONFIG']?
+								array($sec):
+								array(),
+							array(($custom && !$this->hive['CONFIG']?
+								($sec.'.'):'').$match['lval']),
+							count($args)>1?array($args):$args
+						)
+							
+					);
 				}
 			}
 		}
