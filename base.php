@@ -932,16 +932,21 @@ final class Base extends Prefab implements ArrayAccess {
 				elseif (is_file($file=$base.'.ini')) {
 					preg_match_all(
 						'/(?<=^|\n)(?:'.
-						'(.+?)\h*=\h*'.
-						'((?:\\\\\h*\r?\n|.+?)*)'.
+							'\[(?<prefix>.+?)\]|'.
+							'(?<lval>[^\h\r\n;].*?)\h*=\h*'.
+							'(?<rval>(?:\\\\\h*\r?\n|.+?)*)'.
 						')(?=\r?\n|$)/',
 						$this->read($file),$matches,PREG_SET_ORDER);
-					if ($matches)
+					if ($matches) {
+						$prefix='';
 						foreach ($matches as $match)
-							if (isset($match[1]) &&
-								!array_key_exists($match[1],$lex))
-								$lex[$match[1]]=trim(preg_replace(
-									'/\\\\\h*\r?\n/','',$match[2]));
+							if ($match['prefix'])
+								$prefix=$match['prefix'];
+							elseif (!array_key_exists($match['lval'],$lex))
+								$lex[$prefix.'.'.$match['lval']]=trim(
+									preg_replace('/\\\\\h*\r?\n/','',
+										$match['rval']));
+					}
 				}
 		}
 		return $lex;
