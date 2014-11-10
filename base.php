@@ -1584,7 +1584,7 @@ final class Base extends Prefab implements ArrayAccess {
 					$func=isset($parts['func'])?$parts['func']:NULL;
 					$custom=($parts['section']!='globals');
 					if ($func)
-						$args=array(call_user_func_array($func,
+						$args=array($this->call($func,
 							count($args)>1?array($args):$args));
 					call_user_func_array(
 						array($this,'set'),
