@@ -1836,6 +1836,7 @@ final class Base extends Prefab implements ArrayAccess {
 		$fw=$this;
 		set_exception_handler(
 			function($obj) use($fw) {
+				$fw->hive['EXCEPTION']=$obj;
 				$fw->error(500,$obj->getmessage(),$obj->gettrace());
 			}
 		);
@@ -1917,6 +1918,7 @@ final class Base extends Prefab implements ArrayAccess {
 			'ENCODING'=>$charset,
 			'ERROR'=>NULL,
 			'ESCAPE'=>TRUE,
+			'EXCEPTION'=>NULL,
 			'EXEMPT'=>NULL,
 			'FALLBACK'=>$this->fallback,
 			'FRAGMENT'=>isset($uri['fragment'])?$uri['fragment']:'',
