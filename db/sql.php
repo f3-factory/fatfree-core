@@ -127,13 +127,16 @@ class SQL {
 			}
 		}
 		else {
+			$count=1;
 			$cmds=array($cmds);
 			$args=array($args);
 		}
 		$fw=\Base::instance();
 		$cache=\Cache::instance();
 		$result=FALSE;
-		foreach (array_combine($cmds,$args) as $cmd=>$arg) {
+		for ($i=0;$i<$count;$i++) {
+			$cmd=$cmds[$i];
+			$arg=$args[$i];
 			if (!preg_replace('/(^\s+|[\s;]+$)/','',$cmd))
 				continue;
 			$now=microtime(TRUE);
