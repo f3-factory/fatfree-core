@@ -667,7 +667,7 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function hash($str) {
 		return str_pad(base_convert(
-			hexdec(substr(sha1($str),-16)),10,36),11,'0',STR_PAD_LEFT);
+			substr(sha1($str),-16),16,36),11,'0',STR_PAD_LEFT);
 	}
 
 	/**
@@ -1543,8 +1543,9 @@ final class Base extends Prefab implements ArrayAccess {
 	*	Configure framework according to .ini-style file settings
 	*	@return NULL
 	*	@param $file string
+	*	@param $handler callback
 	**/
-	function config($file) {
+	function config($file,$handler=NULL) {
 		preg_match_all(
 			'/(?<=^|\n)(?:'.
 				'\[(?<section>.+?)\]|'.
