@@ -121,13 +121,14 @@ class Web extends Prefab {
 	function send($file,$mime=NULL,$kbps=0,$force=TRUE) {
 		if (!is_file($file))
 			return FALSE;
+		$size=filesize($file);
 		if (PHP_SAPI!='cli') {
 			header('Content-Type: '.($mime?:$this->mime($file)));
 			if ($force)
 				header('Content-Disposition: attachment; '.
 					'filename='.basename($file));
 			header('Accept-Ranges: bytes');
-			header('Content-Length: '.$size=filesize($file));
+			header('Content-Length: '.$size);
 			header('X-Powered-By: '.Base::instance()->get('PACKAGE'));
 		}
 		$ctr=0;
