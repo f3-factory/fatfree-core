@@ -1904,6 +1904,7 @@ final class Base extends Prefab implements ArrayAccess {
 		$this->hive+=array(
 			'AGENT'=>$this->agent(),
 			'AJAX'=>$this->ajax(),
+			'ALIAS'=>NULL,
 			'ALIASES'=>array(),
 			'AUTOLOAD'=>'./',
 			'BASE'=>$base,
