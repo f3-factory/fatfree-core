@@ -1543,9 +1543,8 @@ final class Base extends Prefab implements ArrayAccess {
 	*	Configure framework according to .ini-style file settings
 	*	@return NULL
 	*	@param $file string
-	*	@param $handler callback
 	**/
-	function config($file,$handler=NULL) {
+	function config($file) {
 		preg_match_all(
 			'/(?<=^|\n)(?:'.
 				'\[(?<section>.+?)\]|'.
