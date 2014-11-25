@@ -304,6 +304,37 @@ abstract class Cursor extends \Magic implements \IteratorAggregate {
 	}
 
 	/**
+	*	Define beforesave trigger
+	*	@return callback
+	*	@param $func callback
+	**/
+	function beforesave($func) {
+		$this->trigger['beforeinsert']=$func;
+		$this->trigger['beforeupdate']=$func;
+		return $func;
+	}
+
+	/**
+	*	Define aftersave trigger
+	*	@return callback
+	*	@param $func callback
+	**/
+	function aftersave($func) {
+		$this->trigger['afterinsert']=$func;
+		$this->trigger['afterupdate']=$func;
+		return $func;
+	}
+
+	/**
+	*	Define onsave trigger
+	*	@return callback
+	*	@param $func callback
+	**/
+	function onsave($func) {
+		return $this->aftersave($func);
+	}
+
+	/**
 	*	Define beforeerase trigger
 	*	@return callback
 	*	@param $func callback
