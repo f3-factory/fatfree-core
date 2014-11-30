@@ -155,11 +155,14 @@ final class Base extends Prefab implements ArrayAccess {
 				$var=$this->build($var,$params);
 				unset($var);
 			}
-		elseif (preg_match_all('/@(\w+)/',$url,$matches,PREG_SET_ORDER))
-			foreach ($matches as $match)
-				if (array_key_exists($match[1],$params))
-					$url=str_replace($match[0],
-						$params[$match[1]],$url);
+		else {
+			$w=0;
+			$url=preg_replace_callback('/@(\w+)|\*/',function($m)use(&$w,$params){
+				if (!isset($m[1]))
+					$m[1]=++$w;
+				return array_key_exists($m[1],$params)?$params[$m[1]]:$m[0];
+			},$url);
+		}
 		return $url;
 	}
 
