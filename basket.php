@@ -74,13 +74,13 @@ class Basket {
 	/**
 	*	Return items that match key/value pair;
 	*	If no key/value pair specified, return all items
-	*	@return array|FALSE
+	*	@return array
 	*	@param $key string
 	*	@param $val mixed
 	**/
 	function find($key=NULL,$val=NULL) {
+		$out=array();
 		if (isset($_SESSION[$this->key])) {
-			$out=array();
 			foreach ($_SESSION[$this->key] as $id=>$item)
 				if (!isset($key) ||
 					array_key_exists($key,$item) && $item[$key]==$val) {
@@ -89,9 +89,8 @@ class Basket {
 					$obj->item=$item;
 					$out[]=$obj;
 				}
-			return $out;
 		}
-		return FALSE;
+		return $out;
 	}
 
 	/**
