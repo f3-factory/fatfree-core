@@ -155,11 +155,14 @@ final class Base extends Prefab implements ArrayAccess {
 				$var=$this->build($var,$params);
 				unset($var);
 			}
-		elseif (preg_match_all('/@(\w+)/',$url,$matches,PREG_SET_ORDER))
-			foreach ($matches as $match)
-				if (array_key_exists($match[1],$params))
-					$url=str_replace($match[0],
-						$params[$match[1]],$url);
+		else {
+			$w=0;
+			$url=preg_replace_callback('/@(\w+)|\*/',function($m)use(&$w,$params){
+				if (!isset($m[1]))
+					$m[1]=++$w;
+				return array_key_exists($m[1],$params)?$params[$m[1]]:$m[0];
+			},$url);
+		}
 		return $url;
 	}
 
@@ -885,7 +888,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $code string
 	**/
 	function language($code) {
-		$code=preg_replace('/;q=.+?(?=,|$)/','',$code);
+		$code=preg_replace('/\h+|;q=[0-9.]+/','',$code);
 		$code.=($code?',':'').$this->fallback;
 		$this->languages=array();
 		foreach (array_reverse(explode(',',$code)) as $lang) {
@@ -1204,7 +1207,7 @@ final class Base extends Prefab implements ArrayAccess {
 				$this->route($item,$handler,$ttl,$kbps);
 			return;
 		}
-		preg_match('/([\|\w]+)\h+(?:(?:@(\w+)\h*:\h*)?([^\h]+)|@(\w+))'.
+		preg_match('/([\|\w]+)\h+(?:(?:@(\w+)\h*:\h*)?(@(\w+)|[^\h]+))'.
 			'(?:\h+\[('.implode('|',$types).')\])?/',$pattern,$parts);
 		if (isset($parts[2]) && $parts[2])
 			$this->hive['ALIASES'][$alias=$parts[2]]=$parts[3];
