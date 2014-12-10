@@ -14,7 +14,7 @@
 */
 
 //! Session-based pseudo-mapper
-class Basket {
+class Basket extends Magic {
 
 	//@{ Error messages
 	const
@@ -53,7 +53,7 @@ class Basket {
 	*	@return scalar|FALSE
 	*	@param $key string
 	**/
-	function get($key) {
+	function &get($key) {
 		if ($key=='_id')
 			return $this->id;
 		if (array_key_exists($key,$this->item))
