@@ -230,6 +230,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $add bool
 	**/
 	function &ref($key,$add=TRUE) {
+		$null=NULL;
 		$parts=$this->cut($key);
 		if ($parts[0]=='SESSION') {
 			@session_start();
@@ -252,7 +253,7 @@ final class Base extends Prefab implements ArrayAccess {
 				if ($add || property_exists($var,$part))
 					$var=&$var->$part;
 				else {
-					$var=&$this->null;
+					$var=&$null;
 					break;
 				}
 			}
@@ -262,7 +263,7 @@ final class Base extends Prefab implements ArrayAccess {
 				if ($add || array_key_exists($part,$var))
 					$var=&$var[$part];
 				else {
-					$var=&$this->null;
+					$var=&$null;
 					break;
 				}
 			}
