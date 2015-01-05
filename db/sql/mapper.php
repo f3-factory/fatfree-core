@@ -200,26 +200,33 @@ class Mapper extends \DB\Cursor {
 			if ($field['pkey'])
 				$pkeys[]=$key;
 		if ($options['group']) {
-			$group=array_unique(array_merge($pkeys,
-				$spec=explode(',',$options['group'])));
-			foreach ($group as &$field) {
-				$field=$db->quotekey($field);
-				unset($field);
+			$spec=explode(',',$options['group']);
+			if ($strict=!preg_match('/mysql|sqlite/',$this->engine) &&
+				$pkeys) {
+				$group=array_unique(array_merge($pkeys,$spec));
+				foreach ($group as &$field) {
+					$field=$db->quotekey($field);
+					unset($field);
+				}
+				$sql.=' JOIN (SELECT '.implode(',',$group).' FROM '.
+					$this->table;
 			}
-			$sql.=' JOIN (SELECT '.implode(',',$group).' FROM '.
-				$this->table.' GROUP BY '.implode(',',array_map(
+			$sql.=' GROUP BY '.implode(',',array_map(
 				function($str) use($db) {
 					return preg_match('/^(\w+)(?:\h+HAVING|\h*(?:,|$))/i',
 						$str,$parts)?
 						($db->quotekey($parts[1]).
 						(isset($parts[2])?(' '.$parts[2]):'')):$str;
 				},
-				$spec)).') AS '.$db->quotekey('sub').' ON ';
+				$spec));
+			if ($strict) {
+				$sql.=') AS '.$db->quotekey('sub');
 				$flag='';
 				foreach ($pkeys as $pkey)
-					$sql.=($flag?' AND ':'').$this->table.'.'.
+					$sql.=($flag?' AND ':' ON ').$this->table.'.'.
 						$db->quotekey($pkey).'='.
 						$db->quotekey('sub').'.'.$db->quotekey($pkey);
+			}
 		}
 		if ($options['order']) {
 			$sql.=' ORDER BY '.implode(',',array_map(
@@ -441,14 +448,13 @@ class Mapper extends \DB\Cursor {
 			}
 		foreach ($this->fields as $key=>$field)
 			if ($field['pkey']) {
-				$filter.=($filter?' AND ':'').$this->db->quotekey($key).'=?';
+				$filter.=($filter?' AND ':' WHERE ').
+					$this->db->quotekey($key).'=?';
 				$args[$ctr+1]=array($field['previous'],$field['pdo_type']);
 				$ctr++;
 			}
 		if ($pairs) {
-			$sql='UPDATE '.$this->table.' SET '.$pairs;
-			if ($filter)
-				$sql.=' WHERE '.$filter;
+			$sql='UPDATE '.$this->table.' SET '.$pairs.$filter;
 			$this->db->exec($sql,$args);
 			if (isset($this->trigger['afterupdate']))
 				\Base::instance()->call($this->trigger['afterupdate'],
