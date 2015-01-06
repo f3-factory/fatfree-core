@@ -10,7 +10,13 @@
 	terms of the GNU General Public License as published by the Free Software
 	Foundation, either version 3 of the License, or later.
 
-	Please see the LICENSE file for more information.
+	Fat-Free Framework is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	General Public License for more details.
+
+	You should have received a copy of the GNU General Public License along
+	with Fat-Free Framework.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
@@ -39,7 +45,7 @@ final class Base extends Prefab implements ArrayAccess {
 	//@{ Framework details
 	const
 		PACKAGE='Fat-Free Framework',
-		VERSION='3.4.0-Release';
+		VERSION='3.4.1-Dev';
 	//@}
 
 	//@{ HTTP status codes (RFC 2616)
@@ -1126,7 +1132,7 @@ final class Base extends Prefab implements ArrayAccess {
 		$handler=$this->hive['ONERROR'];
 		$this->hive['ONERROR']=NULL;
 		if ((!$handler ||
-			$this->call($handler,array($this,$this->get('PARAMS')),
+			$this->call($handler,array($this,$this->hive['PARAMS']),
 				'beforeroute,afterroute')===FALSE) &&
 			!$prior && PHP_SAPI!='cli' && !$this->hive['QUIET'])
 			echo $this->hive['AJAX']?
@@ -1372,6 +1378,11 @@ final class Base extends Prefab implements ArrayAccess {
 					foreach (array_keys($args) as $key)
 						if (is_numeric($key) && $key)
 							unset($args[$key]);
+				// Capture values of route pattern tokens
+				$this->hive['PARAMS']=$args=array_map('urldecode',$args);
+				// Save matching route
+				$this->hive['ALIAS']=$alias;
+				$this->hive['PATTERN']=$url;
 				if (is_string($handler)) {
 					// Replace route pattern tokens in handler if any
 					$handler=preg_replace_callback('/@(\w+\b)/',
@@ -1384,11 +1395,6 @@ final class Base extends Prefab implements ArrayAccess {
 						!class_exists($match[1]))
 						$this->error(404);
 				}
-				// Capture values of route pattern tokens
-				$this->hive['PARAMS']=$args=array_map('urldecode',$args);
-				// Save matching route
-				$this->hive['ALIAS']=$alias;
-				$this->hive['PATTERN']=$url;
 				// Process request
 				$result=NULL;
 				$body='';
