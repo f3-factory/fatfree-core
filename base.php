@@ -2143,10 +2143,8 @@ class Cache extends Prefab {
 		$parts=explode('=',$this->dsn,2);
 		switch ($parts[0]) {
 			case 'apc':
-				$key='info';
 			case 'apcu':
-				if (empty($key))
-					$key='key';
+				$key='info';
 				$info=apc_cache_info('user');
 				foreach ($info['cache_list'] as $item)
 					if (preg_match($regex,$item[$key]) &&
