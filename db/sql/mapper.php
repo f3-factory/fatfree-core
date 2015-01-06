@@ -208,7 +208,7 @@ class Mapper extends \DB\Cursor {
 						(isset($parts[2])?(' '.$parts[2]):'')):$str;
 				},
 				explode(',',$options['group'])));
-
+		}
 		if ($options['order']) {
 			$sql.=' ORDER BY '.implode(',',array_map(
 				function($str) use($db) {
