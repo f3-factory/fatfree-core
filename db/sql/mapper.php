@@ -185,9 +185,7 @@ class Mapper extends \DB\Cursor {
 			'offset'=>0
 		);
 		$db=$this->db;
-		$sql='SELECT '.
-			($options['group'] && !preg_match('/mysql|sqlite/',$this->engine)?
-				$options['group']:$fields).' FROM '.$this->table;
+		$sql='SELECT '.$fields.' FROM '.$this->table;
 		$args=array();
 		if ($filter) {
 			if (is_array($filter)) {
@@ -288,9 +286,11 @@ class Mapper extends \DB\Cursor {
 		$adhoc='';
 		foreach ($this->adhoc as $key=>$field)
 			$adhoc.=','.$field['expr'].' AS '.$this->db->quotekey($key);
-		return $this->select(implode(',',
-			array_map(array($this->db,'quotekey'),array_keys($this->fields))).
-			$adhoc,$filter,$options,$ttl);
+		return $this->select(
+			$options['group'] && !preg_match('/mysql|sqlite/',$this->engine)?
+				$options['group']:
+				implode(',',array_map(array($this->db,'quotekey'),
+					array_keys($this->fields))).$adhoc,$filter,$options,$ttl);
 	}
 
 	/**
