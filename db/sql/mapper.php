@@ -287,10 +287,10 @@ class Mapper extends \DB\Cursor {
 		foreach ($this->adhoc as $key=>$field)
 			$adhoc.=','.$field['expr'].' AS '.$this->db->quotekey($key);
 		return $this->select(
-			$options['group'] && !preg_match('/mysql|sqlite/',$this->engine)?
+			($options['group'] && !preg_match('/mysql|sqlite/',$this->engine)?
 				$options['group']:
 				implode(',',array_map(array($this->db,'quotekey'),
-					array_keys($this->fields))).$adhoc,$filter,$options,$ttl);
+					array_keys($this->fields)))).$adhoc,$filter,$options,$ttl);
 	}
 
 	/**
