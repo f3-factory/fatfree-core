@@ -524,7 +524,7 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function push($key,$val) {
 		$ref=&$this->ref($key);
-		array_push($ref,$val);
+		$ref[] = $val;
 		return $val;
 	}
 
