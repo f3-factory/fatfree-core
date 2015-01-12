@@ -1021,11 +1021,6 @@ final class Base extends Prefab implements ArrayAccess {
 				header('Cache-Control: max-age='.$secs);
 				header('Last-Modified: '.gmdate('r'));
 				$headers=$this->hive['HEADERS'];
-				if (isset($headers['If-Modified-Since']) &&
-					strtotime($headers['If-Modified-Since'])+$secs>$time) {
-					$this->status(304);
-					die;
-				}
 			}
 			else
 				header('Cache-Control: no-cache, no-store, must-revalidate');
@@ -1407,6 +1402,11 @@ final class Base extends Prefab implements ArrayAccess {
 						$hash=$this->hash($this->hive['VERB'].' '.
 							$this->hive['URI']).'.url',$data);
 					if ($cached && $cached[0]+$ttl>$now) {
+						if (isset($headers['If-Modified-Since']) &&
+							strtotime($headers['If-Modified-Since'])+$ttl>$now) {
+							$this->status(304);
+							die;
+						}
 						// Retrieve from cache backend
 						list($headers,$body,$result)=$data;
 						if (PHP_SAPI!='cli')
