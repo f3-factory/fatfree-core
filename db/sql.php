@@ -157,6 +157,12 @@ class SQL {
 					$keys[]='/'.preg_quote(is_numeric($key)?chr(0).'?':$key).
 						'/';
 				}
+				if ($log)
+					$this->log.=date('r').' ('.
+						sprintf('%.1f',1e3*(microtime(TRUE)-$now)).'ms) '.
+						'[CACHED] '.
+						preg_replace($keys,$vals,
+							str_replace('?',chr(0).'?',$cmd),1).PHP_EOL;
 			}
 			elseif (is_object($query=$this->pdo->prepare($cmd))) {
 				foreach ($arg as $key=>$val) {
@@ -174,6 +180,11 @@ class SQL {
 					$keys[]='/'.preg_quote(is_numeric($key)?chr(0).'?':$key).
 						'/';
 				}
+				if ($log)
+					$this->log.=date('r').' ('.
+						sprintf('%.1f',1e3*(microtime(TRUE)-$now)).'ms) '.
+						preg_replace($keys,$vals,
+							str_replace('?',chr(0).'?',$cmd),1).PHP_EOL;
 				$query->execute();
 				$error=$query->errorinfo();
 				if ($error[0]!=\PDO::ERR_NONE) {
@@ -213,12 +224,6 @@ class SQL {
 					user_error('PDO: '.$error[2]);
 				}
 			}
-			if ($log)
-				$this->log.=date('r').' ('.
-					sprintf('%.1f',1e3*(microtime(TRUE)-$now)).'ms) '.
-					(empty($cached)?'':'[CACHED] ').
-					preg_replace($keys,$vals,
-						str_replace('?',chr(0).'?',$cmd),1).PHP_EOL;
 		}
 		if ($this->trans && $auto)
 			$this->commit();
