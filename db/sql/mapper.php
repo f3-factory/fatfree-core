@@ -348,7 +348,8 @@ class Mapper extends \DB\Cursor {
 	**/
 	function insert() {
 		$args=array();
-		$ctr=0;
+		$actr=0;
+		$nctr=0;
 		$fields='';
 		$values='';
 		$filter='';
@@ -369,13 +370,14 @@ class Mapper extends \DB\Cursor {
 					empty($field['value']) && !$field['nullable'])
 					$inc=$key;
 				$filter.=($filter?' AND ':'').$this->db->quotekey($key).'=?';
-				$nkeys[$ctr+1]=array($field['value'],$field['pdo_type']);
+				$nkeys[$nctr+1]=array($field['value'],$field['pdo_type']);
+				$nctr++;
 			}
 			if ($field['changed'] && $key!=$inc) {
-				$fields.=($ctr?',':'').$this->db->quotekey($key);
-				$values.=($ctr?',':'').'?';
-				$args[$ctr+1]=array($field['value'],$field['pdo_type']);
-				$ctr++;
+				$fields.=($actr?',':'').$this->db->quotekey($key);
+				$values.=($actr?',':'').'?';
+				$args[$actr+1]=array($field['value'],$field['pdo_type']);
+				$actr++;
 				$ckeys[]=$key;
 			}
 			$field['changed']=FALSE;
