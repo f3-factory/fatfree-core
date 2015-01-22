@@ -1844,7 +1844,7 @@ final class Base extends Prefab implements ArrayAccess {
 		@ini_set('magic_quotes_gpc',0);
 		@ini_set('register_globals',0);
 		// Intercept errors/exceptions; PHP5.3-compatible
-		error_reporting((E_ALL|E_STRICT)&~E_NOTICE);
+		error_reporting((E_ALL|E_STRICT)&~(E_NOTICE|E_USER_NOTICE));
 		$fw=$this;
 		set_exception_handler(
 			function($obj) use($fw) {
@@ -1854,7 +1854,7 @@ final class Base extends Prefab implements ArrayAccess {
 		);
 		set_error_handler(
 			function($code,$text) use($fw) {
-				if (error_reporting())
+				if ($code & error_reporting())
 					$fw->error(500,$text);
 			}
 		);
