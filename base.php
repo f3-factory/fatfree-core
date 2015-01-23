@@ -1294,8 +1294,8 @@ final class Base extends Prefab implements ArrayAccess {
 				$this->redirect($item,$url);
 			return;
 		}
-		$this->route($pattern,function($this) use($url) {
-			$this->reroute($url);
+		$this->route($pattern,function($fw) use($url) {
+			$fw->reroute($url);
 		});
 	}
 
