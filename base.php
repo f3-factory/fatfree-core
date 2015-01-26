@@ -1238,7 +1238,9 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $url string
 	*	@param $permanent bool
 	**/
-	function reroute($url,$permanent=FALSE) {
+	function reroute($url=NULL,$permanent=FALSE) {
+		if (!$url)
+			$url=$this->hive['REALM'];
 		if (($handler=$this->hive['ONREROUTE']) &&
 			$this->call($handler,array($url,$permanent))!==FALSE)
 			return;
@@ -1250,12 +1252,12 @@ final class Base extends Prefab implements ArrayAccess {
 						user_error(sprintf(self::E_Named,$parts[1]));
 					$url=$this->hive['BASE'].
 						$this->hive['ALIASES'][$parts[1]];
-					$url=$this->build($url,
-						isset($parts[2])?$this->parse($parts[2]):array());
 				}
 			}
 			else
 				$url=$this->hive['BASE'].$url;
+			$url=$this->build($url,
+				isset($parts[2])?$this->parse($parts[2]):array());
 			header('Location: '.$url);
 			$this->status($permanent?301:302);
 			die;
@@ -1287,15 +1289,16 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@return NULL
 	*	@param $pattern string|array
 	*	@param $url string
+	*	@param $permanent bool
 	*/
-	function redirect($pattern,$url) {
+	function redirect($pattern,$url,$permanent=TRUE) {
 		if (is_array($pattern)) {
 			foreach ($pattern as $item)
-				$this->redirect($item,$url);
+				$this->redirect($item,$url,$permanent);
 			return;
 		}
-		$this->route($pattern,function($fw) use($url) {
-			$fw->reroute($url);
+		$this->route($pattern,function($fw) use($url,$permanent) {
+			$fw->reroute($url,$permanent);
 		});
 	}
 
