@@ -55,6 +55,14 @@ class Mapper extends \DB\Cursor {
 	}
 
 	/**
+	*	Return mapped table
+	*	@return string
+	**/
+	function table() {
+		return $this->source;
+	}
+
+	/**
 	*	Return TRUE if field is defined
 	*	@return bool
 	*	@param $key string
