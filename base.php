@@ -1355,8 +1355,9 @@ final class Base extends Prefab implements ArrayAccess {
 				continue;
 			ksort($args);
 			$route=NULL;
-			if (isset($routes[$this->hive['AJAX']+1]))
-				$route=$routes[$this->hive['AJAX']+1];
+			if (isset(
+				$routes[$ptr=$this->hive['AJAX']+1][$this->hive['VERB']]))
+				$route=$routes[$ptr];
 			elseif (isset($routes[self::REQ_SYNC|self::REQ_AJAX]))
 				$route=$routes[self::REQ_SYNC|self::REQ_AJAX];
 			if (!$route)
