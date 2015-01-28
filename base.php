@@ -178,10 +178,11 @@ final class Base extends Prefab implements ArrayAccess {
 	*	assemble url from alias name
 	*	@return NULL
 	*	@param $name string
-	*	@param $params string
+	*	@param $params array|string
 	**/
-	function alias($name,$params=null) {
-		$params=$params?$this->parse($params):array();
+	function alias($name,$params=array()) {
+		if (!is_array($params))
+			$params=$this->parse($params);
 		if (empty($this->hive['ALIASES'][$name]))
 			user_error(sprintf(self::E_Named,$name));
 		$url=$this->build($this->hive['ALIASES'][$name],$params);
