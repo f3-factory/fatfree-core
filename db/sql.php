@@ -321,11 +321,11 @@ class SQL {
 						$rows[$row[$val[1]]]=array(
 							'type'=>$row[$val[2]],
 							'pdo_type'=>
-								preg_match('/int\b|int(?=eger)|bool/i',
-									$row[$val[2]],$parts)?
-								constant('\PDO::PARAM_'.
-									strtoupper($parts[0])):
-								\PDO::PARAM_STR,
+								preg_match('/int(?=eger)?\b/i',$row[$val[2]])?
+										\PDO::PARAM_INT:
+									(preg_match('/bool/i',$row[$val[2]])?
+										\PDO::PARAM_BOOL:
+										\PDO::PARAM_STR),
 							'default'=>is_string($row[$val[3]])?
 								preg_replace('/^\s*([\'"])(.*)\1\s*/','\2',
 								$row[$val[3]]):$row[$val[3]],
