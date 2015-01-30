@@ -321,8 +321,8 @@ class SQL {
 						$rows[$row[$val[1]]]=array(
 							'type'=>$row[$val[2]],
 							'pdo_type'=>
-								preg_match('/int(?=eger)?\b/i',$row[$val[2]])?
-										\PDO::PARAM_INT:
+								preg_match('/int\b|integer/i',$row[$val[2]])?
+									\PDO::PARAM_INT:
 									(preg_match('/bool/i',$row[$val[2]])?
 										\PDO::PARAM_BOOL:
 										\PDO::PARAM_STR),
