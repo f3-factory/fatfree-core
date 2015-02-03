@@ -189,10 +189,12 @@ class Basket extends Magic {
 	/**
 	*	Hydrate item using hive array variable
 	*	@return NULL
-	*	@param $key string
+	*	@param $var array|string
 	**/
-	function copyfrom($key) {
-		foreach (\Base::instance()->get($key) as $key=>$val)
+	function copyfrom($var) {
+		if (is_string($var))
+			$var=\Base::instance()->get($var);
+		foreach ($var as $key=>$val)
 			$this->item[$key]=$val;
 	}
 
