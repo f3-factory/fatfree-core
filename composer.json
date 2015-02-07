@@ -6,12 +6,6 @@
 	"require": {
 		"php": ">=5.3.6"
 	},
-	"repositories": [
-		{
-			"type": "vcs",
-			"url": "https://github.com/bcosca/fatfree-core"
-		}
-	],
 	"autoload": {
 		"files": ["base.php"]
 	}
