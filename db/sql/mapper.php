@@ -1,16 +1,23 @@
 <?php
 
 /*
-	Copyright (c) 2009-2014 F3::Factory/Bong Cosca, All rights reserved.
 
-	This file is part of the Fat-Free Framework (http://fatfree.sf.net).
+	Copyright (c) 2009-2015 F3::Factory/Bong Cosca, All rights reserved.
 
-	THE SOFTWARE AND DOCUMENTATION ARE PROVIDED "AS IS" WITHOUT WARRANTY OF
-	ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
-	IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR
-	PURPOSE.
+	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
 
-	Please see the license.txt file for more information.
+	This is free software: you can redistribute it and/or modify it under the
+	terms of the GNU General Public License as published by the Free Software
+	Foundation, either version 3 of the License, or later.
+
+	Fat-Free Framework is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+	General Public License for more details.
+
+	You should have received a copy of the GNU General Public License along
+	with Fat-Free Framework.  If not, see <http://www.gnu.org/licenses/>.
+
 */
 
 namespace DB\SQL;
@@ -45,6 +52,14 @@ class Mapper extends \DB\Cursor {
 	**/
 	function dbtype() {
 		return 'SQL';
+	}
+
+	/**
+	*	Return mapped table
+	*	@return string
+	**/
+	function table() {
+		return $this->source;
 	}
 
 	/**
@@ -177,6 +192,7 @@ class Mapper extends \DB\Cursor {
 			'limit'=>0,
 			'offset'=>0
 		);
+		$db=$this->db;
 		$sql='SELECT '.$fields.' FROM '.$this->table;
 		$args=array();
 		if ($filter) {
@@ -189,7 +205,6 @@ class Mapper extends \DB\Cursor {
 			}
 			$sql.=' WHERE '.$filter;
 		}
-		$db=$this->db;
 		if ($options['group'])
 			$sql.=' GROUP BY '.implode(',',array_map(
 				function($str) use($db) {
@@ -279,9 +294,11 @@ class Mapper extends \DB\Cursor {
 		$adhoc='';
 		foreach ($this->adhoc as $key=>$field)
 			$adhoc.=','.$field['expr'].' AS '.$this->db->quotekey($key);
-		return $this->select(($options['group']?:implode(',',
-			array_map(array($this->db,'quotekey'),array_keys($this->fields)))).
-			$adhoc,$filter,$options,$ttl);
+		return $this->select(
+			($options['group'] && !preg_match('/mysql|sqlite/',$this->engine)?
+				$options['group']:
+				implode(',',array_map(array($this->db,'quotekey'),
+					array_keys($this->fields)))).$adhoc,$filter,$options,$ttl);
 	}
 
 	/**
@@ -339,7 +356,8 @@ class Mapper extends \DB\Cursor {
 	**/
 	function insert() {
 		$args=array();
-		$ctr=0;
+		$actr=0;
+		$nctr=0;
 		$fields='';
 		$values='';
 		$filter='';
@@ -360,13 +378,14 @@ class Mapper extends \DB\Cursor {
 					empty($field['value']) && !$field['nullable'])
 					$inc=$key;
 				$filter.=($filter?' AND ':'').$this->db->quotekey($key).'=?';
-				$nkeys[$ctr+1]=array($field['value'],$field['pdo_type']);
+				$nkeys[$nctr+1]=array($field['value'],$field['pdo_type']);
+				$nctr++;
 			}
 			if ($field['changed'] && $key!=$inc) {
-				$fields.=($ctr?',':'').$this->db->quotekey($key);
-				$values.=($ctr?',':'').'?';
-				$args[$ctr+1]=array($field['value'],$field['pdo_type']);
-				$ctr++;
+				$fields.=($actr?',':'').$this->db->quotekey($key);
+				$values.=($actr?',':'').'?';
+				$args[$actr+1]=array($field['value'],$field['pdo_type']);
+				$actr++;
 				$ckeys[]=$key;
 			}
 			$field['changed']=FALSE;
@@ -423,14 +442,13 @@ class Mapper extends \DB\Cursor {
 			}
 		foreach ($this->fields as $key=>$field)
 			if ($field['pkey']) {
-				$filter.=($filter?' AND ':'').$this->db->quotekey($key).'=?';
+				$filter.=($filter?' AND ':' WHERE ').
+					$this->db->quotekey($key).'=?';
 				$args[$ctr+1]=array($field['previous'],$field['pdo_type']);
 				$ctr++;
 			}
 		if ($pairs) {
-			$sql='UPDATE '.$this->table.' SET '.$pairs;
-			if ($filter)
-				$sql.=' WHERE '.$filter;
+			$sql='UPDATE '.$this->table.' SET '.$pairs.$filter;
 			$this->db->exec($sql,$args);
 			if (isset($this->trigger['afterupdate']))
 				\Base::instance()->call($this->trigger['afterupdate'],
@@ -513,11 +531,12 @@ class Mapper extends \DB\Cursor {
 	/**
 	*	Hydrate mapper object using hive array variable
 	*	@return NULL
-	*	@param $key string
+	*	@param $var array|string
 	*	@param $func callback
 	**/
-	function copyfrom($key,$func=NULL) {
-		$var=\Base::instance()->get($key);
+	function copyfrom($var,$func=NULL) {
+		if (is_string($var))
+			$var=\Base::instance()->get($var);
 		if ($func)
 			$var=call_user_func($func,$var);
 		foreach ($var as $key=>$val)
