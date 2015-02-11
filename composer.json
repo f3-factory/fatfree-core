@@ -7,6 +7,6 @@
 		"php": ">=5.3.6"
 	},
 	"autoload": {
-		"files": ["base.php"]
+		"autoload": ["lib/"]
 	}
 }
