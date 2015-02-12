@@ -1719,6 +1719,7 @@ final class Base extends Prefab implements ArrayAccess {
 	protected function autoload($class) {
 		$class=$this->fixslashes(ltrim($class,'\\'));
 		$func=NULL;
+		$glob_class = glob($this->reg_case("{$class}.php"));
 		if (is_array($path=$this->hive['AUTOLOAD']) &&
 			isset($path[1]) && is_callable($path[1]))
 			list($path,$func)=$path;
@@ -1726,10 +1727,24 @@ final class Base extends Prefab implements ArrayAccess {
 			if ($func && is_file($file=$func($auto.$class).'.php') ||
 				is_file($file=$auto.$class.'.php') ||
 				is_file($file=$auto.strtolower($class).'.php') ||
-				is_file($file=strtolower($auto.$class).'.php'))
+				is_file($file=strtolower($auto.$class).'.php') ||
+				(count($glob_class)>0 && is_file($file=$auto.$glob_class[0])))
 				return require($file);
 	}
-
+	
+	/**
+	* 	Performs the same operation as sql_regcase (DEPRECIATED)
+	* 	@return string
+	* 	@param $input string
+	**/
+	function reg_case($str){
+		$chars = str_split($str);
+		array_walk($chars, function(&$char) {
+			$char = (preg_match("/[A-Za-z]/", $char))?"[".mb_strtoupper($char, 'UTF-8').mb_strtolower($char, 'UTF-8')."]":$char;
+		});
+		return implode('',$chars);
+	} 
+	 
 	/**
 	*	Execute framework/application shutdown sequence
 	*	@return NULL
