@@ -674,6 +674,24 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
+	*	Convert class constants to array
+	*	@return array
+	*	@param $class object|string
+	*	@param $prefix string
+	**/
+	function constants($class,$prefix='') {
+		$ref=new ReflectionClass($class);
+		$out=array();
+		foreach (preg_grep('/^'.$prefix.'/',array_keys($ref->getconstants()))
+			as $val) {
+			$out[$key=substr($val,strlen($prefix))]=
+				constant((is_object($class)?get_class($class):$class).'::'.$prefix.$key);
+		}
+		unset($ref);
+		return $out;
+	}
+
+	/**
 	*	Generate 64bit/base36 hash
 	*	@return string
 	*	@param $str
@@ -2839,28 +2857,11 @@ class ISO extends Prefab {
 	//@}
 
 	/**
-	*	Convert class constants to array
-	*	@return array
-	*	@param $prefix string
-	**/
-	protected function constants($prefix) {
-		$ref=new ReflectionClass($this);
-		$out=array();
-		foreach (preg_grep('/^'.$prefix.'/',array_keys($ref->getconstants()))
-			as $val) {
-			$out[$key=substr($val,strlen($prefix))]=
-				constant('static::'.$prefix.$key);
-		}
-		unset($ref);
-		return $out;
-	}
-
-	/**
 	*	Return list of languages indexed by ISO 639-1 language code
 	*	@return array
 	**/
 	function languages() {
-		return $this->constants('LC_');
+		return \Base::instance()->constants($this,'LC_');
 	}
 
 	/**
@@ -2868,7 +2869,7 @@ class ISO extends Prefab {
 	*	@return array
 	**/
 	function countries() {
-		return $this->constants('CC_');
+		return \Base::instance()->constants($this,'CC_');
 	}
 
 }
