@@ -72,6 +72,15 @@ class Mapper extends \DB\Cursor {
 	}
 
 	/**
+	*	Return TRUE if field value has changed
+	*	@return bool
+	*	@param $key string
+	**/
+	function changed($key) {
+		return $this->fields[$key]['changed'];
+	}
+
+	/**
 	*	Assign value to field
 	*	@return scalar
 	*	@param $key string
