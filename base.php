@@ -1450,10 +1450,16 @@ final class Base extends Prefab implements ArrayAccess {
 					$result=$this->call($handler,array($this,$args),
 						'beforeroute,afterroute');
 					$body=ob_get_clean();
-					if (isset($cache) && !error_get_last())
+					if (isset($cache) && !error_get_last()) {
+						$headers = headers_list();
+						foreach ($headers as $key => $value) {
+								// Remove cookies from header
+								if (strrpos($value, 'Set-Cookie', -strlen($value)) !== FALSE)
+										unset($headers[$key]);
+						}
 						// Save to cache backend
-						$cache->set($hash,
-							array(headers_list(),$body,$result),$ttl);
+						$cache->set($hash, array($headers,$body,$result),$ttl);
+					}
 				}
 				$this->hive['RESPONSE']=$body;
 				if (!$this->hive['QUIET']) {
