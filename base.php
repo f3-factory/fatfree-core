@@ -1510,7 +1510,9 @@ final class Base extends Prefab implements ArrayAccess {
 					$parts[1]=call_user_func($parts[1].'::instance');
 				else {
 					$ref=new ReflectionClass($parts[1]);
-					$parts[1]=$ref->newinstanceargs($args);
+					$parts[1]=method_exists($parts[1],'__construct')?
+						$ref->newinstanceargs($args):
+						$ref->newinstance();
 				}
 			}
 			$func=array($parts[1],$parts[3]);
