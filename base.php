@@ -1021,7 +1021,6 @@ final class Base extends Prefab implements ArrayAccess {
 				header('Expires: '.gmdate('r',$time+$secs));
 				header('Cache-Control: max-age='.$secs);
 				header('Last-Modified: '.gmdate('r'));
-				$headers=$this->hive['HEADERS'];
 			}
 			else
 				header('Cache-Control: no-cache, no-store, must-revalidate');
@@ -1434,8 +1433,10 @@ final class Base extends Prefab implements ArrayAccess {
 					$body=ob_get_clean();
 					if (isset($cache) && !error_get_last())
 						// Save to cache backend
-						$cache->set($hash,
-							array(headers_list(),$body,$result),$ttl);
+						$cache->set($hash,array(
+							// Remove cookies
+							preg_grep('/Set-Cookie\:/',headers_list(),
+							PREG_GREP_INVERT),$body,$result),$ttl);
 				}
 				$this->hive['RESPONSE']=$body;
 				if (!$this->hive['QUIET']) {
@@ -1486,10 +1487,14 @@ final class Base extends Prefab implements ArrayAccess {
 			// Convert string to executable PHP callback
 			if (!class_exists($parts[1]))
 				user_error(sprintf(self::E_Class,$parts[1]));
-			if ($parts[2]=='->')
-				$parts[1]=is_subclass_of($parts[1],'Prefab')?
-					call_user_func($parts[1].'::instance'):
-					new $parts[1]($this);
+			if ($parts[2]=='->') {
+				if (is_subclass_of($parts[1],'Prefab'))
+					$parts[1]=call_user_func($parts[1].'::instance');
+				else {
+					$ref=new ReflectionClass($parts[1]);
+					$parts[1]=$ref->newinstanceargs($args);
+				}
+			}
 			$func=array($parts[1],$parts[3]);
 		}
 		if (!is_callable($func))
@@ -1557,11 +1562,13 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
-	*	Configure framework according to .ini-style file settings
-	*	@return NULL
+	*	Configure framework according to .ini-style file settings;
+	*	If optional 2nd arg is provided, template strings are interpreted
+	*	@return object
 	*	@param $file string
+	*	@param $allow bool
 	**/
-	function config($file) {
+	function config($file,$allow=FALSE) {
 		preg_match_all(
 			'/(?<=^|\n)(?:'.
 				'\[(?<section>.+?)\]|'.
@@ -1574,48 +1581,54 @@ final class Base extends Prefab implements ArrayAccess {
 			foreach ($matches as $match) {
 				if ($match['section'])
 					$sec=$match['section'];
-				elseif (in_array($sec,array('routes','maps','redirects'))) {
-					call_user_func_array(
-						array($this,rtrim($sec,'s')),
-						array_merge(array($match['lval']),
-							str_getcsv($match['rval'])));
-				}
 				else {
-					$args=array_map(
-						function($val) {
-							if (is_numeric($val))
-								return $val+0;
-							$val=ltrim($val);
-							if (preg_match('/^\w+$/i',$val) && defined($val))
-								return constant($val);
-							return preg_replace(
-								array('/\\\\"/','/\\\\\h*(\r?\n)/'),
-								array('"','\1'),$val);
-						},
-						// Mark quoted strings with 0x00 whitespace
-						str_getcsv(preg_replace('/(?<!\\\\)(")(.*?)\1/',
-							"\\1\x00\\2\\1",$match['rval']))
-					);
-					preg_match('/^(?<section>[^:]+)(?:\:(?<func>.+))?/',
-						$sec,$parts);
-					$func=isset($parts['func'])?$parts['func']:NULL;
-					$custom=($parts['section']!='globals');
-					if ($func)
-						$args=array($this->call($func,
-							count($args)>1?array($args):$args));
-					call_user_func_array(
-						array($this,'set'),
-						array_merge(
-							array(
-								($custom?($parts['section'].'.'):'').
-								$match['lval']
-							),
-							count($args)>1?array($args):$args
-						)
-					);
+					if (in_array($sec,array('routes','maps','redirects'))) {
+						call_user_func_array(
+							array($this,rtrim($sec,'s')),
+							array_merge(array($match['lval']),
+								str_getcsv($match['rval'])));
+					}
+					else {
+						if ($allow)
+							$match['rval']=Preview::instance()->
+								resolve($match['rval']);
+						$args=array_map(
+							function($val) {
+								if (is_numeric($val))
+									return $val+0;
+								$val=ltrim($val);
+								if (preg_match('/^\w+$/i',$val) && defined($val))
+									return constant($val);
+								return preg_replace(
+									array('/\\\\"/','/\\\\\h*(\r?\n)/'),
+									array('"','\1'),$val);
+							},
+							// Mark quoted strings with 0x00 whitespace
+							str_getcsv(preg_replace('/(?<!\\\\)(")(.*?)\1/',
+								"\\1\x00\\2\\1",$match['rval']))
+						);
+						preg_match('/^(?<section>[^:]+)(?:\:(?<func>.+))?/',
+							$sec,$parts);
+						$func=isset($parts['func'])?$parts['func']:NULL;
+						$custom=($parts['section']!='globals');
+						if ($func)
+							$args=array($this->call($func,
+								count($args)>1?array($args):$args));
+						call_user_func_array(
+							array($this,'set'),
+							array_merge(
+								array(
+									($custom?($parts['section'].'.'):'').
+									$match['lval']
+								),
+								count($args)>1?array($args):$args
+							)
+						);
+					}
 				}
 			}
 		}
+		return $this;
 	}
 
 	/**
