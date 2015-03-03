@@ -1083,22 +1083,7 @@ final class Base extends Prefab implements ArrayAccess {
 					$_SERVER['REMOTE_ADDR']:''));
 	}
 
-	/**
-	*	Log error; Execute ONERROR handler if defined, else display
-	*	default error page (HTML for synchronous requests, JSON string
-	*	for AJAX requests)
-	*	@return NULL
-	*	@param $code int
-	*	@param $text string
-	*	@param $trace array
-	**/
-	function error($code,$text='',array $trace=NULL) {
-		$prior=$this->hive['ERROR'];
-		$header=$this->status($code);
-		$req=$this->hive['VERB'].' '.$this->hive['PATH'];
-		if (!$text)
-			$text='HTTP '.$code.' ('.$req.')';
-		error_log($text);
+	function trace(array $trace=NULL) {
 		if (!$trace) {
 			$trace=debug_backtrace(FALSE);
 			$frame=$trace[0];
@@ -1116,8 +1101,6 @@ final class Base extends Prefab implements ArrayAccess {
 						'__call|call_user_func)/',$frame['function']));
 			}
 		);
-		$highlight=PHP_SAPI!='cli' &&
-			$this->hive['HIGHLIGHT'] && is_file($css=__DIR__.'/'.self::CSS);
 		$out='';
 		$eol="\n";
 		// Analyze stack trace
@@ -1130,12 +1113,33 @@ final class Base extends Prefab implements ArrayAccess {
 					($debug>2 && isset($frame['args'])?
 						$this->csv($frame['args']):'').')';
 			$src=$this->fixslashes(str_replace($_SERVER['DOCUMENT_ROOT'].
-				'/','',$frame['file'])).':'.$frame['line'].' ';
-			error_log('- '.$src.$line);
-			$out.='• '.($highlight?
-				($this->highlight($src).' '.$this->highlight($line)):
-				($src.$line)).$eol;
+				'/','',$frame['file'])).':'.$frame['line'];
+			$out.='['.$src.'] '.$line.$eol;
 		}
+		return $out;
+	}
+
+	/**
+	*	Log error; Execute ONERROR handler if defined, else display
+	*	default error page (HTML for synchronous requests, JSON string
+	*	for AJAX requests)
+	*	@return NULL
+	*	@param $code int
+	*	@param $text string
+	*	@param $trace array
+	**/
+	function error($code,$text='',array $trace=NULL) {
+		$prior=$this->hive['ERROR'];
+		$header=$this->status($code);
+		$req=$this->hive['VERB'].' '.$this->hive['PATH'];
+		if (!$text)
+			$text='HTTP '.$code.' ('.$req.')';
+		error_log($text);
+		$trace=$this->trace($trace);
+		error_log($trace);
+		if ($highlight=PHP_SAPI!='cli' &&
+			$this->hive['HIGHLIGHT'] && is_file($css=__DIR__.'/'.self::CSS))
+			$trace=nl2br($this->highlight($trace));
 		$this->hive['ERROR']=array(
 			'status'=>$header,
 			'code'=>$code,
@@ -1425,7 +1429,8 @@ final class Base extends Prefab implements ArrayAccess {
 							$this->hive['URI']).'.url',$data);
 					if ($cached && $cached[0]+$ttl>$now) {
 						if (isset($headers['If-Modified-Since']) &&
-							strtotime($headers['If-Modified-Since'])+$ttl>$now) {
+							strtotime($headers['If-Modified-Since'])+
+								$ttl>$now) {
 							$this->status(304);
 							die;
 						}
@@ -1454,7 +1459,7 @@ final class Base extends Prefab implements ArrayAccess {
 						$cache->set($hash,array(
 							// Remove cookies
 							preg_grep('/Set-Cookie\:/',headers_list(),
-							PREG_GREP_INVERT),$body,$result),$ttl);
+								PREG_GREP_INVERT),$body,$result),$ttl);
 				}
 				$this->hive['RESPONSE']=$body;
 				if (!$this->hive['QUIET']) {
@@ -1602,7 +1607,8 @@ final class Base extends Prefab implements ArrayAccess {
 				if ($match['section'])
 					$sec=$match['section'];
 				else {
-					if (in_array($sec,array('routes','maps','redirects'))) {
+					if (in_array($sec,array(
+						'configs','routes','maps','redirects'))) {
 						call_user_func_array(
 							array($this,rtrim($sec,'s')),
 							array_merge(array($match['lval']),
@@ -1617,11 +1623,12 @@ final class Base extends Prefab implements ArrayAccess {
 								if (is_numeric($val))
 									return $val+0;
 								$val=ltrim($val);
-								if (preg_match('/^\w+$/i',$val) && defined($val))
+								if (preg_match('/^\w+$/i',$val) &&
+									defined($val))
 									return constant($val);
-								return preg_replace(
+								return trim(preg_replace(
 									array('/\\\\"/','/\\\\\h*(\r?\n)/'),
-									array('"','\1'),$val);
+									array('"','\1'),$val));
 							},
 							// Mark quoted strings with 0x00 whitespace
 							str_getcsv(preg_replace('/(?<!\\\\)(")(.*?)\1/',
