@@ -219,15 +219,17 @@ class Mapper extends \DB\Cursor {
 			}
 			$sql.=' WHERE '.$filter;
 		}
-		if ($options['group'])
+		if ($options['group']) {
 			$sql.=' GROUP BY '.implode(',',array_map(
 				function($str) use($db) {
-					return preg_match('/^(\w+)(?:\h+HAVING|\h*(?:,|$))/i',
+					return preg_match('/^(\w+)((?:\h+HAVING|\h*).+?)(?:,|$)/i',
 						$str,$parts)?
-						($db->quotekey($parts[1]).
-						(isset($parts[2])?(' '.$parts[2]):'')):$str;
+							($db->quotekey($parts[1]).
+								(isset($parts[2])?(' '.$parts[2]):'')):
+							$str;
 				},
 				explode(',',$options['group'])));
+		}
 		if ($options['order']) {
 			$sql.=' ORDER BY '.implode(',',array_map(
 				function($str) use($db) {
