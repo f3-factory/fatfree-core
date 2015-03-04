@@ -227,11 +227,12 @@ class Image {
 	function resize($width,$height,$crop=TRUE,$enlarge=TRUE) {
 		// Adjust dimensions; retain aspect ratio
 		$ratio=($origw=imagesx($this->data))/($origh=imagesy($this->data));
-		if (!$crop)
+		if (!$crop) {
 			if ($width/$ratio<=$height)
 				$height=$width/$ratio;
 			else
 				$width=$height*$ratio;
+		}
 		if (!$enlarge) {
 			$width=min($origw,$width);
 			$height=min($origh,$height);
