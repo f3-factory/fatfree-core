@@ -432,7 +432,7 @@ class Web extends Prefab {
 			$new=array($new);
 		foreach ($new as $hdr) {
 			$old=preg_grep('/'.preg_quote(strstr($hdr,':',TRUE),'/').':.+/',
-					$old,PREG_GREP_INVERT);
+				$old,PREG_GREP_INVERT);
 			array_push($old,$hdr);
 		}
 	}
