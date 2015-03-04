@@ -1525,7 +1525,7 @@ final class Base extends Prefab implements ArrayAccess {
 		if (!is_callable($func))
 			// No route handler
 			if ($hooks=='beforeroute,afterroute') {
-				$allowed='';
+				$allowed=array();
 				if (isset($parts[1]))
 					$allowed=array_intersect(
 						array_map('strtoupper',get_class_methods($parts[1])),
