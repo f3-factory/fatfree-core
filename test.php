@@ -32,7 +32,9 @@ class Test {
 
 	protected
 		//! Test results
-		$data=array();
+		$data=array(),
+		//! Success indicator
+		$passed=TRUE;
 
 	/**
 	*	Return test results
@@ -40,6 +42,14 @@ class Test {
 	**/
 	function results() {
 		return $this->data;
+	}
+
+	/**
+	*	Return FALSE if at least one test case fails
+	*	@return bool
+	**/
+	function passed() {
+		return $this->passed;
 	}
 
 	/**
@@ -60,6 +70,8 @@ class Test {
 				}
 			$this->data[]=$data;
 		}
+		if (!$out && $this->passed)
+			$this->passed=FALSE;
 		return $this;
 	}
 
