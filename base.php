@@ -1348,6 +1348,23 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
+	*	Applies the specified URL mask and returns parameterized matches
+	*	@return $args array
+	*	@param $pattern string
+	*	@param $url string|NULL
+	**/
+	function mask($pattern,$url=NULL) {
+		if (!$url)
+			$url=$this->rel($this->hive['URI']);
+		$case=$this->hive['CASELESS']?'i':'';
+		preg_match('/^'.
+			preg_replace('/@(\w+\b)/','(?P<\1>[^\/\?]+)',
+			str_replace('\*','([^\?]*)',preg_quote($pattern,'/'))).
+				'\/?(?:\?.*)?$/'.$case.'um',$url,$args);
+		return $args;
+	}
+
+	/**
 	*	Match routes against incoming URI
 	*	@return mixed
 	**/
@@ -1366,17 +1383,10 @@ final class Base extends Prefab implements ArrayAccess {
 		array_multisort($paths,SORT_DESC,$keys,$vals);
 		$this->hive['ROUTES']=array_combine($keys,$vals);
 		// Convert to BASE-relative URL
-		$req=preg_replace(
-			'/^'.preg_quote($this->hive['BASE'],'/').'(\/.*|$)/','\1',
-			$this->hive['URI']
-		);
+		$req=$this->rel($this->hive['URI']);
 		$allowed=array();
-		$case=$this->hive['CASELESS']?'i':'';
-		foreach ($this->hive['ROUTES'] as $url=>$routes) {
-			if (!preg_match('/^'.
-				preg_replace('/@(\w+\b)/','(?P<\1>[^\/\?]+)',
-				str_replace('\*','([^\?]*)',preg_quote($url,'/'))).
-				'\/?(?:\?.*)?$/'.$case.'um',$req,$args))
+		foreach ($this->hive['ROUTES'] as $pattern=>$routes) {
+			if (!$args=$this->mask($pattern,$req))
 				continue;
 			ksort($args);
 			$route=NULL;
@@ -1395,7 +1405,7 @@ final class Base extends Prefab implements ArrayAccess {
 					$this->reroute(substr($parts['path'],0,-1).
 						(isset($parts['query'])?('?'.$parts['query']):''));
 				list($handler,$ttl,$kbps,$alias)=$route[$this->hive['VERB']];
-				if (is_bool(strpos($url,'/*')))
+				if (is_bool(strpos($pattern,'/*')))
 					foreach (array_keys($args) as $key)
 						if (is_numeric($key) && $key)
 							unset($args[$key]);
@@ -1403,7 +1413,7 @@ final class Base extends Prefab implements ArrayAccess {
 				$this->hive['PARAMS']=$args=array_map('urldecode',$args);
 				// Save matching route
 				$this->hive['ALIAS']=$alias;
-				$this->hive['PATTERN']=$url;
+				$this->hive['PATTERN']=$pattern;
 				if (is_string($handler)) {
 					// Replace route pattern tokens in handler if any
 					$handler=preg_replace_callback('/@(\w+\b)/',
@@ -1426,7 +1436,7 @@ final class Base extends Prefab implements ArrayAccess {
 					$cache=Cache::instance();
 					$cached=$cache->exists(
 						$hash=$this->hash($this->hive['VERB'].' '.
-							$this->hive['URI']).'.url',$data);
+							$this->hive['URI']).'.pattern',$data);
 					if ($cached && $cached[0]+$ttl>$now) {
 						if (isset($headers['If-Modified-Since']) &&
 							strtotime($headers['If-Modified-Since'])+
@@ -1495,18 +1505,13 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
-	*	Execute callback/hooks (supports 'class->method' format)
-	*	@return mixed|FALSE
-	*	@param $func callback
+	*	Grab the real route handler behind the string expression
+	*	@return object
+	*	@param $func string
 	*	@param $args mixed
-	*	@param $hooks string
 	**/
-	function call($func,$args=NULL,$hooks='') {
-		if (!is_array($args))
-			$args=array($args);
-		// Execute function; abort if callback/hook returns FALSE
-		if (is_string($func) &&
-			preg_match('/(.+)\h*(->|::)\h*(.+)/s',$func,$parts)) {
+	function grab($func,$args) {
+		if (preg_match('/(.+)\h*(->|::)\h*(.+)/s',$func,$parts)) {
 			// Convert string to executable PHP callback
 			if (!class_exists($parts[1]))
 				user_error(sprintf(self::E_Class,$parts[1]));
@@ -1518,6 +1523,7 @@ final class Base extends Prefab implements ArrayAccess {
 				method_exists($parts[1],$parts[3])) {
 				// ReST implementation for non-capable HTTP clients
 				$this->hive['BODY']=http_build_query($_POST);
+				$this->hive['VERB']=$parts[3];
 				$parts[3]=$hook[1];
 			}
 			if ($parts[2]=='->') {
@@ -1532,6 +1538,23 @@ final class Base extends Prefab implements ArrayAccess {
 			}
 			$func=array($parts[1],$parts[3]);
 		}
+		return $func;
+	}
+
+	/**
+	*	Execute callback/hooks (supports 'class->method' format)
+	*	@return mixed|FALSE
+	*	@param $func callback
+	*	@param $args mixed
+	*	@param $hooks string
+	**/
+	function call($func,$args=NULL,$hooks='') {
+		if (!is_array($args))
+			$args=array($args);
+		// Grab the real handler behind the string representation
+		if (is_string($func))
+			$func=$this->grab($func,$args);
+		// Execute function; abort if callback/hook returns FALSE
 		if (!is_callable($func))
 			// No route handler
 			if ($hooks=='beforeroute,afterroute') {
@@ -1617,17 +1640,20 @@ final class Base extends Prefab implements ArrayAccess {
 				if ($match['section'])
 					$sec=$match['section'];
 				else {
-					if (in_array($sec,array(
-						'configs','routes','maps','redirects'))) {
+					if ($allow) {
+						$match['lval']=Preview::instance()->
+							resolve($match['lval']);
+						$match['rval']=Preview::instance()->
+							resolve($match['rval']);
+					}
+					if (preg_match('/^(config|route|map|redirect)s\b/i',
+						$sec,$cmd)) {
 						call_user_func_array(
-							array($this,rtrim($sec,'s')),
+							array($this,$cmd[1]),
 							array_merge(array($match['lval']),
 								str_getcsv($match['rval'])));
 					}
 					else {
-						if ($allow)
-							$match['rval']=Preview::instance()->
-								resolve($match['rval']);
 						$args=array_map(
 							function($val) {
 								if (is_numeric($val))
@@ -1647,7 +1673,7 @@ final class Base extends Prefab implements ArrayAccess {
 						preg_match('/^(?<section>[^:]+)(?:\:(?<func>.+))?/',
 							$sec,$parts);
 						$func=isset($parts['func'])?$parts['func']:NULL;
-						$custom=($parts['section']!='globals');
+						$custom=(strtolower($parts['section'])!='globals');
 						if ($func)
 							$args=array($this->call($func,
 								count($args)>1?array($args):$args));
@@ -1752,13 +1778,13 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
-	*	Return path relative to the base directory
+	*	Return path (and query parameters) relative to the base directory
 	*	@return string
 	*	@param $url string
 	**/
 	function rel($url) {
-		return preg_replace('/(?:https?:\/\/)?'.
-			preg_quote($this->hive['BASE'],'/').'/','',rtrim($url,'/'));
+		return preg_replace('/^(?:https?:\/\/)?'.
+			preg_quote($this->hive['BASE'],'/').'(\/.*|$)/','\1',$url);
 	}
 
 	/**
