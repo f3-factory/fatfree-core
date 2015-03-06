@@ -26,6 +26,7 @@ class Image {
 	//@{ Messages
 	const
 		E_Color='Invalid color specified: %s',
+		E_File='File not found',
 		E_Font='CAPTCHA font not found',
 		E_Length='Invalid CAPTCHA length: %s';
 	//@}
@@ -566,9 +567,10 @@ class Image {
 			$fw=Base::instance();
 			// Create image from file
 			$this->file=$file;
-			foreach ($fw->split($path?:$fw->get('UI').';./') as $dir)
+			foreach ($file[0]=='/'?array(''):$fw->split($path?:$fw->get('UI').';./') as $dir)
 				if (is_file($dir.$file))
 					return $this->load($fw->read($dir.$file));
+			user_error(self::E_File,E_USER_ERROR);
 		}
 	}
 
