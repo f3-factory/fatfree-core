@@ -537,7 +537,7 @@ class Web extends Prefab {
 	*	@param $header bool
 	*	@param $path string
 	**/
-	function minify($files,$mime=NULL,$header=TRUE,$path='') {
+	function minify($files,$mime=NULL,$header=TRUE,$path=NULL) {
 		$fw=Base::instance();
 		if (is_string($files))
 			$files=$fw->split($files);
@@ -546,7 +546,9 @@ class Web extends Prefab {
 		preg_match('/\w+$/',$files[0],$ext);
 		$cache=Cache::instance();
 		$dst='';
-		foreach ($fw->split($path?:$fw->get('UI').';./') as $dir)
+		if (!isset($path))
+			$path=$fw->get('UI').';./';
+		foreach ($fw->split($path,FALSE) as $dir)
 			foreach ($files as $file)
 				if (is_file($save=$fw->fixslashes($dir.$file))) {
 					if ($fw->get('CACHE') &&
