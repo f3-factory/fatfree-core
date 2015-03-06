@@ -93,15 +93,15 @@ class Geo extends \Prefab {
 		$web=\Web::instance();
 		$query=array(
 			'lat'=>$latitude,
-			'lng'=>$longitude,
-			'username'=>$fw->hash($fw->get('IP'))
+			'lon'=>$longitude
 		);
+		$req=$web->request(
+			'http://api.openweathermap.org/data/2.5/weather?'.
+				http_build_query($query));
 		return ($req=$web->request(
-			'http://ws.geonames.org/findNearByWeatherJSON?'.
-				http_build_query($query))) &&
-			($data=json_decode($req['body'],TRUE)) &&
-			isset($data['weatherObservation'])?
-			$data['weatherObservation']:
+			'http://api.openweathermap.org/data/2.5/weather?'.
+				http_build_query($query)))?
+			json_decode($req['body'],TRUE):
 			FALSE;
 	}
 
