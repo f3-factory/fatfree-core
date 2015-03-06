@@ -570,7 +570,7 @@ class Image {
 			foreach ($file[0]=='/'?array(''):$fw->split($path?:$fw->get('UI').';./') as $dir)
 				if (is_file($dir.$file))
 					return $this->load($fw->read($dir.$file));
-			user_error(self::E_File);
+			user_error(self::E_File,E_USER_ERROR);
 		}
 	}
 
