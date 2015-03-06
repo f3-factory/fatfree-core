@@ -1626,8 +1626,6 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $allow bool
 	**/
 	function config($file,$allow=FALSE) {
-		file_put_contents('x',preg_replace('/\\\\\h*\r?\n/',"\n",$this->read($file)));
-		echo '<code><br>';
 		preg_match_all(
 			'/(?<=^|\n)(?:'.
 				'\[(?<section>.+?)\]|'.
