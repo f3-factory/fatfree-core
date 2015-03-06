@@ -1357,7 +1357,7 @@ final class Base extends Prefab implements ArrayAccess {
 		$case=$this->hive['CASELESS']?'i':'';
 		preg_match('/^'.
 			preg_replace('/@(\w+\b)/','(?P<\1>[^\/\?]+)',
-			str_replace('\*','([^\?]*)',preg_quote($pattern,'/'))).
+			str_replace('\*','([^\?]+)',preg_quote($pattern,'/'))).
 				'\/?(?:\?.*)?$/'.$case.'um',$url,$args);
 		return $args;
 	}
@@ -1633,7 +1633,7 @@ final class Base extends Prefab implements ArrayAccess {
 				'(?<lval>[^\h\r\n;].*?)\h*=\h*'.
 				'(?<rval>(?:\\\\\h*\r?\n|.+?)*)'.
 			')(?=\r?\n|$)/',
-			preg_replace('/\\\\\h*\r?\n/',"\n",$this->read($file)),
+			$this->read($file),
 			$matches,PREG_SET_ORDER);
 		if ($matches) {
 			$sec='globals';
