@@ -106,7 +106,7 @@ abstract class Cursor extends \Magic implements \IteratorAggregate {
 	*	Causes a fatal error in PHP 5.3.5if uncommented
 	*	return ArrayIterator
 	**/
-	//abstract function getiterator();
+	abstract function getiterator();
 
 
 	/**

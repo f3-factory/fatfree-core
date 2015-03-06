@@ -129,7 +129,7 @@ class Auth {
 			@ldap_close($dc)) {
 			return $info[0]['uid'][0]==$id;
 		}
-		user_error(self::E_LDAP);
+		user_error(self::E_LDAP,E_USER_ERROR);
 	}
 
 	/**
@@ -176,7 +176,7 @@ class Auth {
 			fclose($socket);
 			return (bool)preg_match('/^235 /',$reply);
 		}
-		user_error(self::E_SMTP);
+		user_error(self::E_SMTP,E_USER_ERROR);
 	}
 
 	/**

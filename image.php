@@ -58,7 +58,7 @@ class Image {
 	function rgb($color) {
 		$hex=str_pad($hex=dechex($color),$color<4096?3:6,'0',STR_PAD_LEFT);
 		if (($len=strlen($hex))>6)
-			user_error(sprintf(self::E_Color,'0x'.$hex));
+			user_error(sprintf(self::E_Color,'0x'.$hex),E_USER_ERROR);
 		$color=str_split($hex,$len/3);
 		foreach ($color as &$hue) {
 			$hue=hexdec(str_repeat($hue,6/$len));
@@ -394,7 +394,7 @@ class Image {
 	function captcha($font,$size=24,$len=5,
 		$key=NULL,$path='',$fg=0xFFFFFF,$bg=0x000000) {
 		if ((!$ssl=extension_loaded('openssl')) && ($len<4 || $len>13)) {
-			user_error(sprintf(self::E_Length,$len));
+			user_error(sprintf(self::E_Length,$len),E_USER_ERROR);
 			return FALSE;
 		}
 		$fw=Base::instance();
@@ -440,7 +440,7 @@ class Image {
 					$fw->set($key,$seed);
 				return $this->save();
 			}
-		user_error(self::E_Font);
+		user_error(self::E_Font,E_USER_ERROR);
 		return FALSE;
 	}
 

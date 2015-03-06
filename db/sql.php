@@ -191,7 +191,7 @@ class SQL {
 					// Statement-level error occurred
 					if ($this->trans)
 						$this->rollback();
-					user_error('PDOStatement: '.$error[2]);
+					user_error('PDOStatement: '.$error[2],E_USER_ERROR);
 				}
 				if (preg_match('/^\s*'.
 					'(?:CALL|EXPLAIN|SELECT|PRAGMA|SHOW|RETURNING|EXEC)\b/is',
@@ -221,7 +221,7 @@ class SQL {
 					// PDO-level error occurred
 					if ($this->trans)
 						$this->rollback();
-					user_error('PDO: '.$error[2]);
+					user_error('PDO: '.$error[2],E_USER_ERROR);
 				}
 			}
 		}

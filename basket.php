@@ -65,7 +65,7 @@ class Basket extends Magic {
 			return $this->id;
 		if (array_key_exists($key,$this->item))
 			return $this->item[$key];
-		user_error(sprintf(self::E_Field,$key));
+		user_error(sprintf(self::E_Field,$key),E_USER_ERROR);
 		return FALSE;
 	}
 

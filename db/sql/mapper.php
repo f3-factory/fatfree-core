@@ -117,7 +117,7 @@ class Mapper extends \DB\Cursor {
 			return $this->fields[$key]['value'];
 		elseif (array_key_exists($key,$this->adhoc))
 			return $this->adhoc[$key]['value'];
-		user_error(sprintf(self::E_Field,$key));
+		user_error(sprintf(self::E_Field,$key),E_USER_ERROR);
 	}
 
 	/**
