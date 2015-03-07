@@ -1085,6 +1085,11 @@ final class Base extends Prefab implements ArrayAccess {
 					$_SERVER['REMOTE_ADDR']:''));
 	}
 
+	/**
+	*	Return formatted stack trace
+	*	@return string
+	*	@param $trace array|NULL
+	**/
 	function trace(array $trace=NULL) {
 		if (!$trace) {
 			$trace=debug_backtrace(FALSE);
@@ -1141,7 +1146,7 @@ final class Base extends Prefab implements ArrayAccess {
 		error_log($trace);
 		if ($highlight=PHP_SAPI!='cli' &&
 			$this->hive['HIGHLIGHT'] && is_file($css=__DIR__.'/'.self::CSS))
-			$trace=nl2br($this->highlight($trace));
+			$trace=$this->highlight($trace);
 		$this->hive['ERROR']=array(
 			'status'=>$header,
 			'code'=>$code,
@@ -1166,7 +1171,7 @@ final class Base extends Prefab implements ArrayAccess {
 				'<body>'.$eol.
 					'<h1>'.$header.'</h1>'.$eol.
 					'<p>'.$this->encode($text?:$req).'</p>'.$eol.
-					($debug?('<pre>'.$out.'</pre>'.$eol):'').
+					($this->hive['DEBUG']?('<pre>'.$trace.'</pre>'.$eol):'').
 				'</body>'.$eol.
 				'</html>');
 		if ($this->hive['HALT'])
