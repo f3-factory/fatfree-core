@@ -515,7 +515,6 @@ class Mapper extends \DB\Cursor {
 			unset($field);
 		}
 		parent::erase();
-		$this->skip(0);
 		if (isset($this->trigger['beforeerase']))
 			\Base::instance()->call($this->trigger['beforeerase'],
 				array($this,$pkeys));

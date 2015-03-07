@@ -278,7 +278,6 @@ class Mapper extends \DB\Cursor {
 		$result=$this->collection->
 			remove(array('_id'=>$this->document['_id']));
 		parent::erase();
-		$this->skip(0);
 		if (isset($this->trigger['aftererase']))
 			\Base::instance()->call($this->trigger['aftererase'],
 				array($this,$pkey));

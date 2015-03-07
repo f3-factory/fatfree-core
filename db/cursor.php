@@ -244,7 +244,7 @@ abstract class Cursor extends \Magic implements \IteratorAggregate {
 	function erase() {
 		$this->query=array_slice($this->query,0,$this->ptr,TRUE)+
 			array_slice($this->query,$this->ptr,NULL,TRUE);
-		$this->ptr=0;
+		$this->skip(0);
 	}
 
 	/**

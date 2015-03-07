@@ -379,7 +379,6 @@ class Mapper extends \DB\Cursor {
 		elseif (isset($this->id)) {
 			unset($data[$this->id]);
 			parent::erase();
-			$this->skip(0);
 		}
 		else
 			return FALSE;
