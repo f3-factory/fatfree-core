@@ -1306,7 +1306,8 @@ final class Base extends Prefab implements ArrayAccess {
 		}
 		foreach (explode('|',self::VERBS) as $method)
 			$this->route($method.' '.$url,
-				$class.'->'.strtolower($method),$ttl,$kbps);
+				$class.'->'.$this->hive['PREMAP'].strtolower($method),
+				$ttl,$kbps);
 	}
 
 	/**
@@ -2041,6 +2042,7 @@ final class Base extends Prefab implements ArrayAccess {
 			'PLUGINS'=>$this->fixslashes(__DIR__).'/',
 			'PORT'=>$port,
 			'PREFIX'=>NULL,
+			'PREMAP'=>'',
 			'PSEUDO'=>FALSE,
 			'QUERY'=>isset($uri['query'])?$uri['query']:'',
 			'QUIET'=>FALSE,
