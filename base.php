@@ -1648,10 +1648,10 @@ final class Base extends Prefab implements ArrayAccess {
 			foreach ($matches as $match) {
 				if ($match['section']) {
 					$sec=$match['section'];
-					if (!preg_match(
-						'/^(global|config|route|map|redirect)s\b/i',
-						$sec) && !$this->exists($sec))
-						$this->set($sec,NULL);
+					if (preg_match(
+						'/^(?!(?:global|config|route|map|redirect)s\b)(\w+(?:\.\w+)*)/i',
+						$sec,$msec) && !$this->exists($msec[0]))
+						$this->set($msec[0],NULL);
 				}
 				else {
 					if ($allow) {
