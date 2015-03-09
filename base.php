@@ -1143,7 +1143,9 @@ final class Base extends Prefab implements ArrayAccess {
 			$text='HTTP '.$code.' ('.$req.')';
 		error_log($text);
 		$trace=$this->trace($trace);
-		error_log($trace);
+		foreach (explode("\n",$trace) as $nexus)
+			if ($nexus)
+				error_log($nexus);
 		if ($highlight=PHP_SAPI!='cli' &&
 			$this->hive['HIGHLIGHT'] && is_file($css=__DIR__.'/'.self::CSS))
 			$trace=$this->highlight($trace);
@@ -1644,8 +1646,13 @@ final class Base extends Prefab implements ArrayAccess {
 		if ($matches) {
 			$sec='globals';
 			foreach ($matches as $match) {
-				if ($match['section'])
+				if ($match['section']) {
 					$sec=$match['section'];
+					if (!preg_match(
+						'/^(global|config|route|map|redirect)s\b/i',
+						$sec) && !$this->exists($sec))
+						$this->set($sec,NULL);
+				}
 				else {
 					if ($allow) {
 						$match['lval']=Preview::instance()->
