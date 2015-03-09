@@ -101,7 +101,10 @@ class Mapper extends \DB\Cursor {
 			return $this->fields[$key]['value']=$val;
 		}
 		// Parenthesize expression in case it's a subquery
-		$this->adhoc[$key]=array('expr'=>'('.$val.')','value'=>NULL);
+		if (isset($this->adhoc[$key]))
+			$this->adhoc[$key]['value']=$val;
+		else
+			$this->adhoc[$key]=array('expr'=>'('.$val.')','value'=>NULL);
 		return $val;
 	}
 
