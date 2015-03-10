@@ -1157,6 +1157,7 @@ final class Base extends Prefab implements ArrayAccess {
 		);
 		$handler=$this->hive['ONERROR'];
 		$this->hive['ONERROR']=NULL;
+		$eol="\n";
 		if ((!$handler ||
 			$this->call($handler,array($this,$this->hive['PARAMS']),
 				'beforeroute,afterroute')===FALSE) &&
