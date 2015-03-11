@@ -164,12 +164,16 @@ final class Base extends Prefab implements ArrayAccess {
 			}
 		else {
 			$i=0;
-			$url=preg_replace_callback('/@(\w+)|\*/',function($m)use(&$i,$params){
-				$i++;
-				if (isset($m[1]) && array_key_exists($m[1],$params))
-					return $params[$m[1]];
-				return array_key_exists($i,$params)?$params[$i]:$m[0];
-			},$url);
+			$url=preg_replace_callback('/@(\w+)|\*/',
+				function($match) use(&$i,$params) {
+					$i++;
+					if (isset($match[1]) &&
+						array_key_exists($match[1],$params))
+						return $params[$match[1]];
+					return array_key_exists($i,$params)?
+						$params[$i]:
+						$match[0];
+				},$url);
 		}
 		return $url;
 	}
@@ -1524,14 +1528,15 @@ final class Base extends Prefab implements ArrayAccess {
 				user_error(sprintf(self::E_Class,$parts[1]),E_USER_ERROR);
 			if ($this->hive['PSEUDO'] &&
 				$this->hive['VERB']=='POST' &&
-				strtolower($parts[3])=='post' &&
+				strtolower($parts[3])==
+					(strtolower($this->hive['PREMAP']).'post') &&
 				preg_match('/!(put|delete)/',
 					implode(',',array_keys($_GET)),$hook) &&
-				method_exists($parts[1],$parts[3])) {
+				is_callable(array($parts[1],$this->hive['PREMAP'].$hook[1]))) {
 				// ReST implementation for non-capable HTTP clients
 				$this->hive['BODY']=http_build_query($_POST);
-				$this->hive['VERB']=$parts[3];
-				$parts[3]=$hook[1];
+				$this->hive['VERB']=strtoupper($hook[1]);
+				$parts[3]=$this->hive['PREMAP'].$hook[1];
 			}
 			if ($parts[2]=='->') {
 				if (is_subclass_of($parts[1],'Prefab'))
