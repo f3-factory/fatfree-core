@@ -507,6 +507,12 @@ class Mapper extends \DB\Cursor {
 				$pkeys[$key]=$field['previous'];
 				$ctr++;
 			}
+			unset($field);
+		}
+		if (isset($this->trigger['beforeerase']))
+			\Base::instance()->call($this->trigger['beforeerase'],
+				array($this,$pkeys));
+		foreach ($this->fields as $key=>&$field) {
 			$field['value']=NULL;
 			$field['changed']=(bool)$field['default'];
 			if ($field['pkey'])
@@ -518,9 +524,6 @@ class Mapper extends \DB\Cursor {
 			unset($field);
 		}
 		parent::erase();
-		if (isset($this->trigger['beforeerase']))
-			\Base::instance()->call($this->trigger['beforeerase'],
-				array($this,$pkeys));
 		$out=$this->db->
 			exec('DELETE FROM '.$this->table.' WHERE '.$filter.';',$args);
 		if (isset($this->trigger['aftererase']))
