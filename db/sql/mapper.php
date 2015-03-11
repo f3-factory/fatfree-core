@@ -366,7 +366,7 @@ class Mapper extends \DB\Cursor {
 			$field['value']=$dry?NULL:$out->adhoc[$key]['value'];
 			unset($field);
 		}
-		if (isset($this->trigger['load']))
+		if (!$dry && isset($this->trigger['load']))
 			\Base::instance()->call($this->trigger['load'],$this);
 		return $out;
 	}
