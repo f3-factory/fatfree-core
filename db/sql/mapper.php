@@ -596,6 +596,16 @@ class Mapper extends \DB\Cursor {
 	}
 
 	/**
+	*	Return TRUE if field is not nullable
+	*	@return bool
+	*	@param $field string
+	**/
+	function required($field) {
+		return isset($this->fields[$field]) &&
+			!$this->fields[$field]['nullable'];
+	}
+
+	/**
 	*	Retrieve external iterator for fields
 	*	@return object
 	**/
