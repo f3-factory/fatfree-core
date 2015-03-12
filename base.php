@@ -1517,6 +1517,21 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
+	*	Loop until callback result is TRUE (for long polling)
+	*	@param $func callback
+	*	@param $args array
+	*	@param $sleep int
+	**/
+	function until($func,$args=NULL,$sleep=1) {
+		// Not for the weak of heart
+		set_time_limit(0);
+		if (!$args)
+			$args=array();
+		while (!$this->call($func,$args))
+			sleep($sleep);
+	}
+
+	/**
 	*	Grab the real route handler behind the string expression
 	*	@return object
 	*	@param $func string
