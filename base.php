@@ -1521,15 +1521,17 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@return mixed
 	*	@param $func callback
 	*	@param $args array
-	*	@param $sleep int
+	*	@param $timeout int
 	**/
-	function until($func,$args=NULL,$sleep=60) {
+	function until($func,$args=NULL,$timeout=60) {
 		// Not for the weak of heart
 		set_time_limit(0);
 		if (!$args)
 			$args=array();
-		while (!$out=$this->call($func,$args))
-			sleep($sleep);
+		$time=time();
+		$max=min($timeout,ini_get('max_execution_time'));
+		while (time()-$time+1<$timeout && !$out=$this->call($func,$args))
+			sleep(1);
 		return $out;
 	}
 
