@@ -1517,7 +1517,7 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
-	*	Loop until callback result is TRUE (for long polling)
+	*	Loop until callback returns TRUE (for long polling)
 	*	@return mixed
 	*	@param $func callback
 	*	@param $args array
@@ -1529,8 +1529,10 @@ final class Base extends Prefab implements ArrayAccess {
 		if (!$args)
 			$args=array();
 		$time=time();
-		$max=min($timeout,ini_get('max_execution_time'));
-		while (time()-$time+1<$timeout && !$out=$this->call($func,$args))
+		$limit=min($timeout,$max=ini_get('max_execution_time'));
+		while (!$out=$this->call($func,$args) &&
+			time()-$time+1<$limit &&
+			!connection_aborted())
 			sleep(1);
 		return $out;
 	}
@@ -1554,6 +1556,8 @@ final class Base extends Prefab implements ArrayAccess {
 					implode(',',array_keys($_GET)),$hook) &&
 				is_callable(array($parts[1],$this->hive['PREMAP'].$hook[1]))) {
 				// ReST implementation for non-capable HTTP clients
+				$this->hive['HEADERS']['Content-Type']=
+					'application/x-www-form-urlencoded';
 				$this->hive['BODY']=http_build_query($_POST);
 				$this->hive['VERB']=strtoupper($hook[1]);
 				$parts[3]=$this->hive['PREMAP'].$hook[1];
