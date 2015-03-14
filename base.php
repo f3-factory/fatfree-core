@@ -1524,15 +1524,14 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $timeout int
 	**/
 	function until($func,$args=NULL,$timeout=60) {
-		// Not for the weak of heart
-		set_time_limit(0);
 		if (!$args)
 			$args=array();
 		$time=time();
 		$limit=min($timeout,$max=ini_get('max_execution_time'));
+		// Not for the weak of heart
+		set_time_limit(0);
 		while (!$out=$this->call($func,$args) &&
-			time()-$time+1<$limit &&
-			!connection_aborted())
+			time()-$time+1<$limit && !connection_aborted())
 			sleep(1);
 		return $out;
 	}
@@ -1555,7 +1554,8 @@ final class Base extends Prefab implements ArrayAccess {
 				preg_match('/!(put|delete)/',
 					implode(',',array_keys($_GET)),$hook) &&
 				is_callable(array($parts[1],$this->hive['PREMAP'].$hook[1]))) {
-				// ReST implementation for non-capable HTTP clients
+				// ReST implementation for HTTP clients without
+				// HTTP PUT and DELETE capability
 				$this->hive['HEADERS']['Content-Type']=
 					'application/x-www-form-urlencoded';
 				$this->hive['BODY']=http_build_query($_POST);
