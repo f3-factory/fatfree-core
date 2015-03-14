@@ -1523,16 +1523,25 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $args array
 	*	@param $timeout int
 	**/
-	function until($func,$args=NULL,$timeout=60) {
+	function until($func,$args=NULL,$timeout=30) {
 		if (!$args)
 			$args=array();
 		$time=time();
-		$limit=min($timeout,$max=ini_get('max_execution_time'));
+		$limit=max(0,min($timeout,$max=ini_get('max_execution_time')-1));
 		// Not for the weak of heart
-		set_time_limit(0);
-		while (!$out=$this->call($func,$args) &&
-			time()-$time+1<$limit && !connection_aborted())
+		ignore_user_abort(TRUE);
+		ob_start();
+		while (
+			// WARNING: Callback will kill host if it never becomes truthy!
+			!($out=$this->call($func,$args)) &&
+			(time()-$time<$limit) &&
+			// Still alive?
+			!connection_aborted()) {
+			ob_flush();
+			flush();
+			// Hush down
 			sleep(1);
+		}
 		return $out;
 	}
 
