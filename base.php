@@ -1523,7 +1523,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $args array
 	*	@param $timeout int
 	**/
-	function until($func,$args=NULL,$timeout=30) {
+	function until($func,$args=NULL,$timeout=60) {
 		if (!$args)
 			$args=array();
 		$time=time();
