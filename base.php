@@ -1530,21 +1530,20 @@ final class Base extends Prefab implements ArrayAccess {
 		$limit=max(0,min($timeout,$max=ini_get('max_execution_time')-1));
 		$out='';
 		// Not for the weak of heart
-		ob_start();
 		while (
-			// Still alive?
-			!connection_aborted() &&
 			// Got time left?
 			(time()-$time+1<$limit) &&
+			// Still alive?
+			!connection_aborted() &&
 			// CAUTION: Callback will kill host if it never becomes truthy!
 			!($out=$this->call($func,$args))) {
-			// Hush down
-			sleep(1);
+			@session_start();
+			session_commit();
 			ob_flush();
 			flush();
+			// Hush down
+			sleep(1);
 		}
-		ob_flush();
-		flush();
 		return $out;
 	}
 
