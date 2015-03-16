@@ -400,11 +400,9 @@ class SQL {
 	function quotekey($key) {
 		if ($this->engine=='mysql')
 			$key="`".implode('`.`',explode('.',$key))."`";
-		elseif (preg_match('/sybase|dblib/',$this->engine))
-			$key="'".implode("'.'",explode('.',$key))."'";
 		elseif (preg_match('/sqlite2?|pgsql|oci/',$this->engine))
 			$key='"'.implode('"."',explode('.',$key)).'"';
-		elseif (preg_match('/mssql|sqlsrv|odbc/',$this->engine))
+		elseif (preg_match('/mssql|sqlsrv|odbc|sybase|dblib/',$this->engine))
 			$key="[".implode('].[',explode('.',$key))."]";
 		return $key;
 	}
