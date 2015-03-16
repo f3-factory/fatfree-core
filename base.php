@@ -1558,21 +1558,6 @@ final class Base extends Prefab implements ArrayAccess {
 			// Convert string to executable PHP callback
 			if (!class_exists($parts[1]))
 				user_error(sprintf(self::E_Class,$parts[1]),E_USER_ERROR);
-			if ($this->hive['PSEUDO'] &&
-				$this->hive['VERB']=='POST' &&
-				strtolower($parts[3])==
-					(strtolower($this->hive['PREMAP']).'post') &&
-				preg_match('/!(put|delete)/',
-					implode(',',array_keys($_GET)),$hook) &&
-				is_callable(array($parts[1],$this->hive['PREMAP'].$hook[1]))) {
-				// ReST implementation for HTTP clients without
-				// HTTP PUT and DELETE capability
-				$this->hive['HEADERS']['Content-Type']=
-					'application/x-www-form-urlencoded';
-				$this->hive['BODY']=http_build_query($_POST);
-				$this->hive['VERB']=strtoupper($hook[1]);
-				$parts[3]=$this->hive['PREMAP'].$hook[1];
-			}
 			if ($parts[2]=='->') {
 				if (is_subclass_of($parts[1],'Prefab'))
 					$parts[1]=call_user_func($parts[1].'::instance');
@@ -2090,7 +2075,6 @@ final class Base extends Prefab implements ArrayAccess {
 			'PORT'=>$port,
 			'PREFIX'=>NULL,
 			'PREMAP'=>'',
-			'PSEUDO'=>FALSE,
 			'QUERY'=>isset($uri['query'])?$uri['query']:'',
 			'QUIET'=>FALSE,
 			'RAW'=>FALSE,
