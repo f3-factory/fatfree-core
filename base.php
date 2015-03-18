@@ -1535,9 +1535,10 @@ final class Base extends Prefab implements ArrayAccess {
 			(time()-$time+1<$limit) &&
 			// Still alive?
 			!connection_aborted() &&
+			// Retart session
+			@session_start() &&
 			// CAUTION: Callback will kill host if it never becomes truthy!
 			!($out=$this->call($func,$args))) {
-			@session_start();
 			session_commit();
 			ob_flush();
 			flush();
