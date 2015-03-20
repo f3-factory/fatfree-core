@@ -586,11 +586,11 @@ class Mapper extends \DB\Cursor {
 	*	@return array
 	*	@param $fields NULL|array
 	**/
-    function schema($fields=null) {
-        if ($fields)
-            $this->fields = $fields;
-        return $this->fields;
-    }
+	function schema($fields=null) {
+		if ($fields)
+			$this->fields = $fields;
+		return $this->fields;
+	}
 
 	/**
 	*	Return field names
