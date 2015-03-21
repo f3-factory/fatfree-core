@@ -582,10 +582,13 @@ class Mapper extends \DB\Cursor {
 	}
 
 	/**
-	*	Return schema
+	*	Return schema and, if the first argument is provided, update it
 	*	@return array
+	*	@param $fields NULL|array
 	**/
-	function schema() {
+	function schema($fields=null) {
+		if ($fields)
+			$this->fields = $fields;
 		return $this->fields;
 	}
 
