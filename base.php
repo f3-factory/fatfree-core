@@ -1529,14 +1529,16 @@ final class Base extends Prefab implements ArrayAccess {
 		$time=time();
 		$limit=max(0,min($timeout,$max=ini_get('max_execution_time')-1));
 		$out='';
+		$flag=FALSE;
+		$down=FALSE;
 		// Not for the weak of heart
 		while (
-			// Got time left?
-			(time()-$time+1<$limit) &&
 			// Still alive?
 			!connection_aborted() &&
-			// Retart session
-			@session_start() &&
+			// Got time left?
+			(time()-$time+1<$limit) &&
+			// Restart session
+			$flag=@session_start() &&
 			// CAUTION: Callback will kill host if it never becomes truthy!
 			!($out=$this->call($func,$args))) {
 			session_commit();
@@ -1544,6 +1546,11 @@ final class Base extends Prefab implements ArrayAccess {
 			flush();
 			// Hush down
 			sleep(1);
+		}
+		if ($flag) {
+			session_commit();
+			ob_flush();
+			flush();
 		}
 		return $out;
 	}
@@ -1862,6 +1869,23 @@ final class Base extends Prefab implements ArrayAccess {
 			// Fatal error detected
 			$this->error(500,sprintf(self::E_Fatal,$error['message']),
 				array($error));
+	}
+
+	/**
+	*	Disconnect HTTP client
+	*	@param $flush bool
+	**/
+	function abort($flush=TRUE) {
+		ignore_user_abort(TRUE);
+		header('Connection: close');
+		header('Content-Length: '.(int)($flush?ob_get_length():0));
+		if ($flush) {
+			ob_end_flush();
+			flush();
+		else
+			ob_end_clean();
+		if (function_exists('fastcgi_finish_request'))
+			fastcgi_finish_request();
 	}
 
 	/**
