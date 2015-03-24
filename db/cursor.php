@@ -125,6 +125,10 @@ abstract class Cursor extends \Magic implements \IteratorAggregate {
 	*	@param $ttl int
 	**/
 	function findone($filter=NULL,array $options=NULL,$ttl=0) {
+		if (!$options)
+			$options=array();
+		// Override limit
+		$options['limit']=1;
 		return ($data=$this->find($filter,$options,$ttl))?$data[0]:FALSE;
 	}
 
