@@ -1881,6 +1881,7 @@ final class Base extends Prefab implements ArrayAccess {
 		if ($flush) {
 			ob_end_flush();
 			flush();
+		}
 		else
 			ob_end_clean();
 		if (function_exists('fastcgi_finish_request'))
