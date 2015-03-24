@@ -1876,14 +1876,14 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function abort($flush=TRUE) {
 		ignore_user_abort(TRUE);
-		header('Connection: close');
 		header('Content-Length: '.(int)($flush?ob_get_length():0));
+		header('Connection: close');
 		if ($flush) {
-			ob_end_flush();
+			@ob_end_flush();
 			flush();
 		}
 		else
-			ob_end_clean();
+			@ob_end_clean();
 		if (function_exists('fastcgi_finish_request'))
 			fastcgi_finish_request();
 	}
