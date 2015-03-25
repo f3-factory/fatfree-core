@@ -357,6 +357,7 @@ class Web extends Prefab {
 		if (!$socket)
 			return FALSE;
 		stream_set_blocking($socket,TRUE);
+		stream_set_timeout($socket,$options['timeout']);
 		fputs($socket,$options['method'].' '.$parts['path'].
 			($parts['query']?('?'.$parts['query']):'').' HTTP/1.0'.$eol
 		);
@@ -367,7 +368,8 @@ class Web extends Prefab {
 		$content='';
 		while (!feof($socket) &&
 			($info=stream_get_meta_data($socket)) &&
-			!$info['timed_out'] && $str=fgets($socket,4096))
+			!$info['timed_out'] && !connection_aborted() &&
+			$str=fgets($socket,4096))
 			$content.=$str;
 		fclose($socket);
 		$html=explode($eol.$eol,$content,2);
