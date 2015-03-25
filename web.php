@@ -713,7 +713,7 @@ class Web extends Prefab {
 			// Can't establish connection
 			return FALSE;
 		// Set connection timeout parameters
-		stream_set_blocking($socket,TRUE);
+		stream_set_blocking($socket,FALSE);
 		stream_set_timeout($socket,ini_get('default_socket_timeout'));
 		// Send request
 		fputs($socket,$addr."\r\n");
