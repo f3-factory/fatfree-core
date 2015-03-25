@@ -1556,6 +1556,27 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
+	*	Disconnect HTTP client
+	*	@param $flush bool
+	**/
+	function abort($flush=TRUE) {
+		ignore_user_abort(TRUE);
+		ob_start();
+		@session_start();
+		session_commit();
+		header('Content-Length: '.(int)($flush?ob_get_length():0));
+		header('Connection: close');
+		if ($flush) {
+			@ob_end_flush();
+			flush();
+		}
+		else
+			@ob_end_clean();
+		if (function_exists('fastcgi_finish_request'))
+			fastcgi_finish_request();
+	}
+
+	/**
 	*	Grab the real route handler behind the string expression
 	*	@return object
 	*	@param $func string
@@ -1868,26 +1889,6 @@ final class Base extends Prefab implements ArrayAccess {
 			// Fatal error detected
 			$this->error(500,sprintf(self::E_Fatal,$error['message']),
 				array($error));
-	}
-
-	/**
-	*	Disconnect HTTP client
-	*	@param $flush bool
-	**/
-	function abort($flush=TRUE) {
-		ignore_user_abort(TRUE);
-		@session_start();
-		session_commit();
-		header('Content-Length: '.(int)($flush?ob_get_length():0));
-		header('Connection: close');
-		if ($flush) {
-			@ob_end_flush();
-			flush();
-		}
-		else
-			@ob_end_clean();
-		if (function_exists('fastcgi_finish_request'))
-			fastcgi_finish_request();
 	}
 
 	/**
@@ -2498,7 +2499,7 @@ class View extends Prefab {
 				if (isset($_COOKIE[session_name()]))
 					@session_start();
 				$fw->sync('SESSION');
-				if ($mime && PHP_SAPI!='cli')
+				if ($mime && PHP_SAPI!='cli' && !headers_sent())
 					header('Content-Type: '.$mime.'; '.
 						'charset='.$fw->get('ENCODING'));
 				$data=$this->sandbox($hive);
@@ -2621,7 +2622,7 @@ class Preview extends View {
 				if (isset($_COOKIE[session_name()]))
 					@session_start();
 				$fw->sync('SESSION');
-				if ($mime && PHP_SAPI!='cli')
+				if ($mime && PHP_SAPI!='cli' && !headers_sent())
 					header('Content-Type: '.($this->mime=$mime).'; '.
 						'charset='.$fw->get('ENCODING'));
 				$data=$this->sandbox($hive);
