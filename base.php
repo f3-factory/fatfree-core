@@ -723,7 +723,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $str string
 	**/
 	function encode($str) {
-		return @htmlentities($str,$this->hive['BITMASK'],
+		return @htmlspecialchars($str,$this->hive['BITMASK'],
 			$this->hive['ENCODING'])?:$this->scrub($str);
 	}
 
@@ -733,8 +733,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $str string
 	**/
 	function decode($str) {
-		return html_entity_decode($str,$this->hive['BITMASK'],
-			$this->hive['ENCODING']);
+		return htmlspecialchars_decode($str,$this->hive['BITMASK']);
 	}
 
 	/**
@@ -1017,14 +1016,14 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
-	*	Send HTTP/1.1 status header; Return text equivalent of status code
+	*	Send HTTP status header; Return text equivalent of status code
 	*	@return string
 	*	@param $code int
 	**/
 	function status($code) {
 		$reason=@constant('self::HTTP_'.$code);
 		if (PHP_SAPI!='cli')
-			header('HTTP/1.1 '.$code.' '.$reason);
+			header($_SERVER['SERVER_PROTOCOL'].' '.$code.' '.$reason);
 		return $reason;
 	}
 
@@ -1557,15 +1556,12 @@ final class Base extends Prefab implements ArrayAccess {
 
 	/**
 	*	Disconnect HTTP client
-	*	@param $flush bool
 	**/
-	function abort($flush=TRUE) {
-		ob_start();
-		header('Connection: close');
-		header('Content-Length: '.ob_get_length(),TRUE);
-        if ($flush)
-			ob_end_flush();
-		else
+	function abort() {
+		@session_start();
+		session_commit();
+		header('Content-Length: 0');
+		while (ob_get_level())
 			ob_end_clean();
 		flush();
 		if (function_exists('fastcgi_finish_request'))
