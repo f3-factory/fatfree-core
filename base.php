@@ -1500,8 +1500,7 @@ final class Base extends Prefab implements ArrayAccess {
 				}
 				return $result;
 			}
-			$allowed=array_keys($route);
-			break;
+			$allowed=array_merge($allowed,array_keys($route));
 		}
 		if (!$allowed)
 			// URL doesn't match any route
