@@ -432,7 +432,7 @@ class SQL {
 	function __construct($dsn,$user=NULL,$pw=NULL,array $options=NULL) {
 		$fw=\Base::instance();
 		$this->uuid=$fw->hash($this->dsn=$dsn);
-		if (preg_match('/^.+?(?:dbname|database)=(.+?)(?=;|$)/i',$dsn,$parts))
+		if (preg_match('/^.+?(?:dbname|database)=(.+?)(?=;|$)/is',$dsn,$parts))
 			$this->dbname=$parts[1];
 		if (!$options)
 			$options=array();
