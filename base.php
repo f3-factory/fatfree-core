@@ -2463,9 +2463,9 @@ class View extends Prefab {
 			if (isset($hive['ALIASES']))
 				$hive['ALIASES']=$fw->build($hive['ALIASES']);
 		}
+		unset($fw, $implicit);
 		extract($hive);
 		unset($hive);
-		unset($fw);
 		ob_start();
 		require($this->view);
 		$this->level--;
