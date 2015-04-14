@@ -48,12 +48,13 @@ class Jig {
 	*	@return array
 	*	@param $file string
 	**/
-	function read($file) {
-		if (!$this->dir)
-			return isset($this->data[$file])?$this->data[$file]:array();
+	function &read($file) {
+		if (!$this->dir || !is_file($dst=$this->dir.$file)) {
+			if (!isset($this->data[$file]))
+				$this->data[$file]=array();
+			return $this->data[$file];
+		}
 		$fw=\Base::instance();
-		if (!is_file($dst=$this->dir.$file))
-			return array();
 		$raw=$fw->read($dst);
 		switch ($this->format) {
 			case self::FORMAT_JSON:
@@ -63,7 +64,8 @@ class Jig {
 				$data=$fw->unserialize($raw);
 				break;
 		}
-		return $data;
+		$this->data[$file] = $data;
+		return $this->data[$file];
 	}
 
 	/**
