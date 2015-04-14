@@ -254,6 +254,8 @@ class SQL {
 	*	@param $ttl int
 	**/
 	function schema($table,$fields=NULL,$ttl=0) {
+		if (strpos($table,'.'))
+			list($schema,$table)=explode('.',$table);
 		// Supported engines
 		$cmd=array(
 			'sqlite2?'=>array(
