@@ -320,15 +320,15 @@ class Mapper extends \DB\Cursor {
 		$db=$this->db;
 		$now=microtime(TRUE);
 		while (($id=uniqid(NULL,TRUE)) &&
-			($data=$db->read($this->file)) && isset($data[$id]) &&
+			($data=&$db->read($this->file)) && isset($data[$id]) &&
 			!connection_aborted())
 			usleep(mt_rand(0,100));
 		$this->id=$id;
-		$data[$id]=$this->document;
 		$pkey=array('_id'=>$this->id);
 		if (isset($this->trigger['beforeinsert']))
 			\Base::instance()->call($this->trigger['beforeinsert'],
 				array($this,$pkey));
+		$data[$id]=$this->document;
 		$db->write($this->file,$data);
 		$db->jot('('.sprintf('%.1f',1e3*(microtime(TRUE)-$now)).'ms) '.
 			$this->file.' [insert] '.json_encode($this->document));
@@ -346,11 +346,11 @@ class Mapper extends \DB\Cursor {
 	function update() {
 		$db=$this->db;
 		$now=microtime(TRUE);
-		$data=$db->read($this->file);
-		$data[$this->id]=$this->document;
+		$data=&$db->read($this->file);
 		if (isset($this->trigger['beforeupdate']))
 			\Base::instance()->call($this->trigger['beforeupdate'],
 				array($this,array('_id'=>$this->id)));
+		$data[$this->id]=$this->document;
 		$db->write($this->file,$data);
 		$db->jot('('.sprintf('%.1f',1e3*(microtime(TRUE)-$now)).'ms) '.
 			$this->file.' [update] '.json_encode($this->document));
@@ -368,7 +368,7 @@ class Mapper extends \DB\Cursor {
 	function erase($filter=NULL) {
 		$db=$this->db;
 		$now=microtime(TRUE);
-		$data=$db->read($this->file);
+		$data=&$db->read($this->file);
 		$pkey=array('_id'=>$this->id);
 		if ($filter) {
 			foreach ($this->find($filter,NULL,FALSE) as $mapper)
