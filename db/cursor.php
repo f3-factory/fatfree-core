@@ -119,7 +119,7 @@ abstract class Cursor extends \Magic implements \IteratorAggregate {
 
 	/**
 	*	Return first record (mapper object) that matches criteria
-	*	@return object|FALSE
+	*	@return \DB\Cursor|FALSE
 	*	@param $filter string|array
 	*	@param $options array
 	*	@param $ttl int

@@ -100,10 +100,11 @@ class Mapper extends \DB\Cursor {
 				$this->fields[$key]['changed']=TRUE;
 			return $this->fields[$key]['value']=$val;
 		}
-		// Parenthesize expression in case it's a subquery
+		// adjust result on existing expressions
 		if (isset($this->adhoc[$key]))
 			$this->adhoc[$key]['value']=$val;
 		else
+			// Parenthesize expression in case it's a subquery
 			$this->adhoc[$key]=array('expr'=>'('.$val.')','value'=>NULL);
 		return $val;
 	}
@@ -194,7 +195,7 @@ class Mapper extends \DB\Cursor {
 
 	/**
 	*	Build query string and execute
-	*	@return array
+	*	@return \DB\SQL\Mapper[]
 	*	@param $fields string
 	*	@param $filter string|array
 	*	@param $options array
@@ -298,7 +299,7 @@ class Mapper extends \DB\Cursor {
 
 	/**
 	*	Return records that match criteria
-	*	@return array
+	*	@return \DB\SQL\Mapper[]
 	*	@param $filter string|array
 	*	@param $options array
 	*	@param $ttl int
