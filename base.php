@@ -2435,16 +2435,6 @@ class View extends Prefab {
 	}
 
 	/**
-	 *	build an url from alias name
-	 *	@return string
-	 *	@param $key string
-	 *	@param $arg string
-	 **/
-	function alias($key,$arg=null) {
-		return Base::instance()->alias($key,$arg);
-	}
-
-	/**
 	*	Create sandbox for template execution
 	*	@return string
 	*	@param $hive array
@@ -2520,7 +2510,14 @@ class Preview extends View {
 
 	protected
 		//! MIME type
-		$mime;
+		$mime,
+		//! token filter
+		$filter = array(
+			'esc'=>'$this->esc',
+			'raw'=>'$this->raw',
+			'alias'=>'\Base::instance()->alias',
+			'format'=>'\Base::instance()->format'
+		);
 
 	/**
 	*	Convert token to variable
@@ -2530,6 +2527,18 @@ class Preview extends View {
 	function token($str) {
 		return trim(preg_replace('/\{\{(.+?)\}\}/s',trim('\1'),
 			Base::instance()->compile($str)));
+	}
+
+	/**
+	*	register token filter
+	*	@param string $key
+	*	@param string $func
+	*	@return array
+	*/
+	function filter($key=NULL,$func=NULL) {
+		if (!$key)
+			return array_keys($this->filter);
+		$this->filter[$key]=$func;
 	}
 
 	/**
@@ -2549,8 +2558,7 @@ class Preview extends View {
 					$str,$parts)) {
 					$str=$parts[1];
 					foreach (Base::instance()->split($parts[2]) as $func)
-						$str=(($func=='format')?'\Base::instance()':'$this').
-							'->'.$func.'('.$str.')';
+						$str=$this->filter[$func].'('.$str.')';
 				}
 				return '<?php echo '.$str.'; ?>'.
 					(isset($expr[3])?$expr[3]."\n":'');
