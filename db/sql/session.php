@@ -143,8 +143,9 @@ class Session extends Mapper {
 	*	@param $db object
 	*	@param $table string
 	*	@param $force bool
+	*	@param $onsuspect callback
 	**/
-	function __construct(\DB\SQL $db,$table='sessions',$force=TRUE) {
+	function __construct(\DB\SQL $db,$table='sessions',$force=TRUE,$onsuspect=NULL) {
 		if ($force) {
 			$eol="\n";
 			$tab="\t";
@@ -184,8 +185,12 @@ class Session extends Mapper {
 			($agent=$this->agent()) &&
 			(!isset($headers['User-Agent']) ||
 				$agent!=$headers['User-Agent'])) {
-			session_destroy();
-			$fw->error(403);
+			if (isset($onsuspect))
+				$fw->call($onsuspect,array($this));
+			else {
+				session_destroy();
+				$fw->error(403);
+			}
 		}
 		$csrf=$fw->hash($fw->get('ROOT').$fw->get('BASE')).'.'.
 			$fw->hash(mt_rand());
