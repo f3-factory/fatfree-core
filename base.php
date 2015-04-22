@@ -1500,15 +1500,14 @@ final class Base extends Prefab implements ArrayAccess {
 				}
 				return $result;
 			}
-			$allowed=array_keys($route);
-			break;
+			$allowed=array_merge($allowed,array_keys($route));
 		}
 		if (!$allowed)
 			// URL doesn't match any route
 			$this->error(404);
 		elseif (PHP_SAPI!='cli') {
 			// Unhandled HTTP method
-			header('Allow: '.implode(',',$allowed));
+			header('Allow: '.implode(',',array_unique($allowed)));
 			if ($this->hive['VERB']!='OPTIONS')
 				$this->error(405);
 		}
