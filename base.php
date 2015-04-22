@@ -1507,7 +1507,7 @@ final class Base extends Prefab implements ArrayAccess {
 			$this->error(404);
 		elseif (PHP_SAPI!='cli') {
 			// Unhandled HTTP method
-			header('Allow: '.implode(',',$allowed));
+			header('Allow: '.implode(',',array_unique($allowed)));
 			if ($this->hive['VERB']!='OPTIONS')
 				$this->error(405);
 		}
