@@ -1388,7 +1388,7 @@ final class Base extends Prefab implements ArrayAccess {
 		// Match specific routes first
 		$paths=array();
 		foreach ($keys=array_keys($this->hive['ROUTES']) as $key)
-			$paths[]=str_replace('@',"\x00".'@',$key);
+			$paths[]=str_replace('@','*@',$key);
 		$vals=array_values($this->hive['ROUTES']);
 		array_multisort($paths,SORT_DESC,$keys,$vals);
 		$this->hive['ROUTES']=array_combine($keys,$vals);
