@@ -2443,7 +2443,7 @@ class View extends Prefab {
 		$this->level++;
 		$fw=Base::instance();
 		$implicit=false;
-		if (!$hive) {
+		if ($hive === null) {
 			$implicit=true;
 			$hive=$fw->hive();
 		}
