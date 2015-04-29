@@ -1394,6 +1394,13 @@ final class Base extends Prefab implements ArrayAccess {
 		$this->hive['ROUTES']=array_combine($keys,$vals);
 		// Convert to BASE-relative URL
 		$req=$this->rel($this->hive['URI']);
+		if ($cors=(isset($this->hive['HEADERS']['Origin']) &&
+			$this->hive['CORS']['origin'])) {
+			$cors=$this->hive['CORS'];
+			header('Access-Control-Allow-Origin: '.$cors['origin']);
+			header('Access-Control-Allow-Credentials: '.
+				($cors['credentials']?'true':'false'));
+		}
 		$allowed=array();
 		foreach ($this->hive['ROUTES'] as $pattern=>$routes) {
 			if (!$args=$this->mask($pattern,$req))
@@ -1424,6 +1431,9 @@ final class Base extends Prefab implements ArrayAccess {
 				// Save matching route
 				$this->hive['ALIAS']=$alias;
 				$this->hive['PATTERN']=$pattern;
+				if ($cors && $cors['expose'])
+					header('Access-Control-Expose-Headers: '.(is_array($cors['expose'])?
+						implode(',',$cors['expose']):$cors['expose']));
 				if (is_string($handler)) {
 					// Replace route pattern tokens in handler if any
 					$handler=preg_replace_callback('/@(\w+\b)/',
@@ -1508,6 +1518,14 @@ final class Base extends Prefab implements ArrayAccess {
 		elseif (PHP_SAPI!='cli') {
 			// Unhandled HTTP method
 			header('Allow: '.implode(',',array_unique($allowed)));
+			if ($cors) {
+				header('Access-Control-Allow-Methods: '.implode(',',$allowed));
+				if ($cors['headers'])
+					header('Access-Control-Allow-Headers: '.(is_array($cors['headers'])?
+						implode(',',$cors['headers']):$cors['headers']));
+				if ($cors['ttl']>0)
+					header('Access-Control-Max-Age: '.$cors['ttl']);
+			}
 			if ($this->hive['VERB']!='OPTIONS')
 				$this->error(405);
 		}
@@ -2063,6 +2081,12 @@ final class Base extends Prefab implements ArrayAccess {
 			'CACHE'=>FALSE,
 			'CASELESS'=>TRUE,
 			'CONFIG'=>NULL,
+			'CORS'=>array(
+				'headers'=>'',
+				'origin'=>false,
+				'credentials'=>false,
+				'expose'=>false,
+				'ttl'=>0),
 			'DEBUG'=>0,
 			'DIACRITICS'=>array(),
 			'DNSBL'=>'',
