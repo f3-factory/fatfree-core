@@ -1519,7 +1519,7 @@ final class Base extends Prefab implements ArrayAccess {
 			// Unhandled HTTP method
 			header('Allow: '.implode(',',array_unique($allowed)));
 			if ($cors) {
-				header('Access-Control-Allow-Methods: '.implode(',',$allowed));
+				header('Access-Control-Allow-Methods: OPTIONS,'.implode(',',$allowed));
 				if ($cors['headers'])
 					header('Access-Control-Allow-Headers: '.(is_array($cors['headers'])?
 						implode(',',$cors['headers']):$cors['headers']));
