@@ -364,7 +364,7 @@ class SQL {
 
 	/**
 	*	Return parent object
-	*	@return object
+	*	@return \PDO
 	**/
 	function pdo() {
 		return $this->pdo;
