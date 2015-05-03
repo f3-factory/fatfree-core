@@ -141,10 +141,10 @@ class Session extends Mapper {
 	/**
 	*	Instantiate class
 	*	@param $db object
-	*	@param $table string
+	*	@param $file string
 	**/
-	function __construct(\DB\Jig $db,$table='sessions') {
-		parent::__construct($db,'sessions');
+	function __construct(\DB\Jig $db,$file='sessions') {
+		parent::__construct($db,$file);
 		session_set_save_handler(
 			array($this,'open'),
 			array($this,'close'),
