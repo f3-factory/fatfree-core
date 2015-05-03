@@ -142,8 +142,9 @@ class Session extends Mapper {
 	*	Instantiate class
 	*	@param $db object
 	*	@param $file string
+	*	@param $onsuspect callback
 	**/
-	function __construct(\DB\Jig $db,$file='sessions') {
+	function __construct(\DB\Jig $db,$file='sessions',$onsuspect=NULL) {
 		parent::__construct($db,$file);
 		session_set_save_handler(
 			array($this,'open'),
@@ -161,8 +162,12 @@ class Session extends Mapper {
 			($agent=$this->agent()) &&
 			(!isset($headers['User-Agent']) ||
 				$agent!=$headers['User-Agent'])) {
-			session_destroy();
-			$fw->error(403);
+			if (isset($onsuspect))
+				$fw->call($onsuspect,array($this));
+			else {
+				session_destroy();
+				$fw->error(403);
+			}
 		}
 		$csrf=$fw->hash($fw->get('ROOT').$fw->get('BASE')).'.'.
 			$fw->hash(mt_rand());
