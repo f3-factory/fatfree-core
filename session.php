@@ -150,9 +150,9 @@ class Session {
 
 	/**
 	*	Instantiate class
-	*	@return object
+	*	@param $onsuspect callback
 	**/
-	function __construct() {
+	function __construct($onsuspect=NULL) {
 		session_set_save_handler(
 			array($this,'open'),
 			array($this,'close'),
@@ -169,8 +169,12 @@ class Session {
 			($agent=$this->agent()) &&
 			(!isset($headers['User-Agent']) ||
 				$agent!=$headers['User-Agent'])) {
-			session_destroy();
-			\Base::instance()->error(403);
+			if (isset($onsuspect))
+				$fw->call($onsuspect,array($this));
+			else {
+				session_destroy();
+				$fw->error(403);
+			}
 		}
 		$csrf=$fw->hash($fw->get('ROOT').$fw->get('BASE')).'.'.
 			$fw->hash(mt_rand());
