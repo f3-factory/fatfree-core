@@ -104,28 +104,34 @@ class Audit extends Prefab {
 	/**
 	*	Return TRUE if user agent is a desktop browser
 	*	@return bool
+	*	@param $agent string
 	**/
-	function isdesktop($str=NULL) {
-		$agent=($str!==NULL)?$str:Base::instance()->get('AGENT');
+	function isdesktop($agent=NULL) {
+		if (!isset($agent))
+			$agent=Base::instance()->get('AGENT');
 		return (bool)preg_match('/('.self::UA_Desktop.')/i',$agent) &&
-			!$this->ismobile();
+			!$this->ismobile($agent);
 	}
 
 	/**
 	*	Return TRUE if user agent is a mobile device
 	*	@return bool
+	*	@param $agent string
 	**/
-	function ismobile($str=NULL) {
-		$agent=($str!==NULL)?$str:Base::instance()->get('AGENT');
+	function ismobile($agent=NULL) {
+		if (!isset($agent))
+			$agent=Base::instance()->get('AGENT');
 		return (bool)preg_match('/('.self::UA_Mobile.')/i',$agent);
 	}
 
 	/**
 	*	Return TRUE if user agent is a Web bot
 	*	@return bool
+	*	@param $agent string
 	**/
-	function isbot($str=NULL) {
-		$agent=($str!==NULL)?$str:Base::instance()->get('AGENT');
+	function isbot($agent=NULL) {
+		if (!isset($agent))
+			$agent=Base::instance()->get('AGENT');
 		return (bool)preg_match('/('.self::UA_Bot.')/i',$agent);
 	}
 
