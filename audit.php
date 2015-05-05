@@ -25,7 +25,7 @@ class Audit extends Prefab {
 
 	//@{ User agents
 	const
-		UA_Mobile='android|blackberry|iphone|ipod|palm|windows\s+ce',
+		UA_Mobile='android|blackberry|phone|ipod|palm|windows\s+ce',
 		UA_Desktop='bsd|linux|os\s+[x9]|solaris|windows',
 		UA_Bot='bot|crawl|slurp|spider';
 	//@}
