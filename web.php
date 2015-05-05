@@ -204,19 +204,21 @@ class Web extends Prefab {
 				(!$func || $fw->call($func,array($file))!==FALSE) &&
 				rename($tmp,$file['name']);
 		}
+		$fetch=function($arr)use(&$fetch){
+			if (!is_array($arr))
+				return array($arr);
+			$data=array();
+			foreach($arr as $k=>$sub)
+				$data=array_merge($data,$fetch($sub));
+			return $data;
+		};
 		$out=array();
 		foreach ($_FILES as $name=>$item) {
-			if (is_array($item['name'])) {
-				// Transpose array
-				$tmp=array();
-				foreach ($item as $keyx=>$cols)
-					foreach ($cols as $keyy=>$valy)
-						$tmp[$keyy][$keyx]=$valy;
-				$item=$tmp;
-			}
-			else
-				$item=array($item);
-			foreach ($item as $file) {
+			$files=array();
+			foreach($item as $k=>$mix)
+				foreach($fetch($mix) as $i=>$val)
+					$files[$i][$k]=$val;
+			foreach ($files as $file) {
 				if (empty($file['name']))
 					continue;
 				$base=basename($file['name']);
