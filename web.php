@@ -264,8 +264,6 @@ class Web extends Prefab {
 		curl_setopt($curl,CURLOPT_CUSTOMREQUEST,$options['method']);
 		if (isset($options['header']))
 			curl_setopt($curl,CURLOPT_HTTPHEADER,$options['header']);
-		if (isset($options['user_agent']))
-			curl_setopt($curl,CURLOPT_USERAGENT,$options['user_agent']);
 		if (isset($options['content']))
 			curl_setopt($curl,CURLOPT_POSTFIELDS,$options['content']);
 		curl_setopt($curl,CURLOPT_ENCODING,'gzip,deflate');
@@ -480,7 +478,9 @@ class Web extends Prefab {
 		$this->subst($options['header'],
 			array(
 				'Accept-Encoding: gzip,deflate',
-				'User-Agent: Mozilla/5.0 (compatible; '.php_uname('s').')',
+				'User-Agent: '.(isset($options['user_agent'])?
+					$options['user_agent']:
+					'Mozilla/5.0 (compatible; '.php_uname('s').')'),
 				'Connection: close'
 			)
 		);
