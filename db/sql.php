@@ -25,6 +25,11 @@ namespace DB;
 //! PDO wrapper
 class SQL {
 
+	//@{ Error messages
+	const
+		E_PKey='Table %s does not have a primary key';
+	//@}
+
 	protected
 		//! UUID
 		$uuid,
@@ -337,6 +342,7 @@ class SQL {
 				}
 				return $rows;
 			}
+		user_error(sprintf(self::E_PKey,$table),E_USER_ERROR);
 		return FALSE;
 	}
 

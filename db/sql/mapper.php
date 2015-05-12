@@ -25,11 +25,6 @@ namespace DB\SQL;
 //! SQL data mapper
 class Mapper extends \DB\Cursor {
 
-	//@{ Error messages
-	const
-		E_Adhoc='Unable to process ad hoc field %s';
-	//@}
-
 	protected
 		//! PDO wrapper
 		$db,
