@@ -199,8 +199,9 @@ class SQL {
 					user_error('PDOStatement: '.$error[2],E_USER_ERROR);
 				}
 				if (preg_match('/^\s*'.
-					'(?:CALL|EXPLAIN|SELECT|PRAGMA|SHOW|RETURNING|EXEC)\b/is',
-					$cmd)) {
+					'(?:EXPLAIN|SELECT|PRAGMA|SHOW|RETURNING)\b/is',$cmd) ||
+					(preg_match('/^\s*(?:CALL|EXEC)\b/is',$cmd) &&
+						$query->columnCount())) {
 					$result=$query->fetchall(\PDO::FETCH_ASSOC);
 					// Work around SQLite quote bug
 					if (preg_match('/sqlite2?/',$this->engine))
