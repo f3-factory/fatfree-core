@@ -80,12 +80,6 @@ class Session extends Mapper {
 			isset($headers['User-Agent'])?$headers['User-Agent']:'');
 		$this->set('stamp',time());
 		$this->save();
-		if (!$sent) {
-			if (isset($_COOKIE['_']))
-				setcookie('_','',strtotime('-1 year'));
-			call_user_func_array('setcookie',
-				array('_',$csrf)+$fw->get('JAR'));
-		}
 		return TRUE;
 	}
 
