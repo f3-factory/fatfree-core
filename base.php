@@ -1587,11 +1587,11 @@ final class Base extends Prefab implements ArrayAccess {
 
 	/**
 	*	Grab the real route handler behind the string expression
-	*	@return object
+	*	@return string|array
 	*	@param $func string
-	*	@param $args mixed
+	*	@param $args array
 	**/
-	function grab($func,$args) {
+	function grab($func,$args=NULL) {
 		if (preg_match('/(.+)\h*(->|::)\h*(.+)/s',$func,$parts)) {
 			// Convert string to executable PHP callback
 			if (!class_exists($parts[1]))
