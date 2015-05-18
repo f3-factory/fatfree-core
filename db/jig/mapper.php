@@ -325,9 +325,10 @@ class Mapper extends \DB\Cursor {
 			usleep(mt_rand(0,100));
 		$this->id=$id;
 		$pkey=array('_id'=>$this->id);
-		if (isset($this->trigger['beforeinsert']))
+		if (isset($this->trigger['beforeinsert']) &&
 			\Base::instance()->call($this->trigger['beforeinsert'],
-				array($this,$pkey));
+				array($this,$pkey))===FALSE)
+			return $this->document;
 		$data[$id]=$this->document;
 		$db->write($this->file,$data);
 		$db->jot('('.sprintf('%.1f',1e3*(microtime(TRUE)-$now)).'ms) '.
@@ -347,9 +348,10 @@ class Mapper extends \DB\Cursor {
 		$db=$this->db;
 		$now=microtime(TRUE);
 		$data=&$db->read($this->file);
-		if (isset($this->trigger['beforeupdate']))
+		if (isset($this->trigger['beforeupdate']) &&
 			\Base::instance()->call($this->trigger['beforeupdate'],
-				array($this,array('_id'=>$this->id)));
+				array($this,array('_id'=>$this->id)))===FALSE)
+			return $this->document;
 		$data[$this->id]=$this->document;
 		$db->write($this->file,$data);
 		$db->jot('('.sprintf('%.1f',1e3*(microtime(TRUE)-$now)).'ms) '.
@@ -382,9 +384,10 @@ class Mapper extends \DB\Cursor {
 		}
 		else
 			return FALSE;
-		if (isset($this->trigger['beforeerase']))
+		if (isset($this->trigger['beforeerase']) &&
 			\Base::instance()->call($this->trigger['beforeerase'],
-				array($this,$pkey));
+				array($this,$pkey))===FALSE)
+			return FALSE;
 		$db->write($this->file,$data);
 		if ($filter) {
 			$args=isset($filter[1]) && is_array($filter[1])?
