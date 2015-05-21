@@ -2308,12 +2308,16 @@ class Cache extends Prefab {
 		switch ($parts[0]) {
 			case 'apc':
 			case 'apcu':
-				$key='info';
 				$info=apc_cache_info('user');
-				foreach ($info['cache_list'] as $item)
-					if (preg_match($regex,$item[$key]) &&
-						$item['mtime']+$lifetime<time())
-						apc_delete($item[$key]);
+				if (!empty($info['cache_list'])) {
+					$key=array_key_exists('info',$info['cache_list'][0])?'info':'key';
+					$mtkey=array_key_exists('mtime',$info['cache_list'][0])?
+						'mtime':'modification_time';
+					foreach ($info['cache_list'] as $item)
+						if (preg_match($regex,$item[$key]) &&
+							$item[$mtkey]+$lifetime<time())
+							apc_delete($item[$key]);
+				}
 				return TRUE;
 			case 'redis':
 				$fw=Base::instance();
