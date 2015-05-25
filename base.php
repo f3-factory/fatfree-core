@@ -1546,7 +1546,6 @@ final class Base extends Prefab implements ArrayAccess {
 		$limit=max(0,min($timeout,$max=ini_get('max_execution_time')-1));
 		$out='';
 		$flag=FALSE;
-		$down=FALSE;
 		// Not for the weak of heart
 		while (
 			// Still alive?
