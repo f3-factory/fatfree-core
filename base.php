@@ -1628,9 +1628,9 @@ final class Base extends Prefab implements ArrayAccess {
 			// No route handler
 			if ($hooks=='beforeroute,afterroute') {
 				$allowed=array();
-				if (isset($parts[1]))
+				if (is_array($func))
 					$allowed=array_intersect(
-						array_map('strtoupper',get_class_methods($parts[1])),
+						array_map('strtoupper',get_class_methods($func[0])),
 						explode('|',self::VERBS)
 					);
 				header('Allow: '.implode(',',$allowed));
