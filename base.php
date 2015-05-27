@@ -1149,7 +1149,7 @@ final class Base extends Prefab implements ArrayAccess {
 		foreach (explode("\n",$trace) as $nexus)
 			if ($nexus)
 				error_log($nexus);
-		if ($highlight=PHP_SAPI!='cli' &&
+		if ($highlight=PHP_SAPI!='cli' && !$this->hive['AJAX'] &&
 			$this->hive['HIGHLIGHT'] && is_file($css=__DIR__.'/'.self::CSS))
 			$trace=$this->highlight($trace);
 		$this->hive['ERROR']=array(
