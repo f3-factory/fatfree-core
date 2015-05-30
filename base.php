@@ -1149,7 +1149,7 @@ final class Base extends Prefab implements ArrayAccess {
 		foreach (explode("\n",$trace) as $nexus)
 			if ($nexus)
 				error_log($nexus);
-		if ($highlight=PHP_SAPI!='cli' &&
+		if ($highlight=PHP_SAPI!='cli' && !$this->hive['AJAX'] &&
 			$this->hive['HIGHLIGHT'] && is_file($css=__DIR__.'/'.self::CSS))
 			$trace=$this->highlight($trace);
 		$this->hive['ERROR']=array(
@@ -1546,7 +1546,6 @@ final class Base extends Prefab implements ArrayAccess {
 		$limit=max(0,min($timeout,$max=ini_get('max_execution_time')-1));
 		$out='';
 		$flag=FALSE;
-		$down=FALSE;
 		// Not for the weak of heart
 		while (
 			// Still alive?
@@ -1629,9 +1628,9 @@ final class Base extends Prefab implements ArrayAccess {
 			// No route handler
 			if ($hooks=='beforeroute,afterroute') {
 				$allowed=array();
-				if (isset($parts[1]))
+				if (is_array($func))
 					$allowed=array_intersect(
-						array_map('strtoupper',get_class_methods($parts[1])),
+						array_map('strtoupper',get_class_methods($func[0])),
 						explode('|',self::VERBS)
 					);
 				header('Allow: '.implode(',',$allowed));
@@ -2565,6 +2564,8 @@ class Preview extends View {
 	function filter($key=NULL,$func=NULL) {
 		if (!$key)
 			return array_keys($this->filter);
+		if (!$func)
+			return $this->filter[$key];
 		$this->filter[$key]=$func;
 	}
 
@@ -2585,7 +2586,7 @@ class Preview extends View {
 					$str,$parts)) {
 					$str=$parts[1];
 					foreach (Base::instance()->split($parts[2]) as $func)
-						$str=$this->filter[$func].'('.$str.')';
+						$str=$self->filter($func).'('.$str.')';
 				}
 				return '<?php echo '.$str.'; ?>'.
 					(isset($expr[3])?$expr[3]."\n":'');
