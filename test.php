@@ -61,7 +61,7 @@ class Test {
 	function expect($cond,$text=NULL) {
 		$out=(bool)$cond;
 		if ($this->level==$out || $this->level==self::FLAG_Both) {
-			$data=array('status'=>$out,'text'=>$text,'source'=>NULL);
+			$data=array('status'=>$out,'text'=>$text,'source'=>NULL,'id'=>count($this->data));
 			foreach (debug_backtrace() as $frame)
 				if (isset($frame['file'])) {
 					$data['source']=Base::instance()->
