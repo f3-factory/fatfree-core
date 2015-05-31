@@ -346,6 +346,7 @@ class Template extends Preview {
 	*	return object
 	**/
 	function __construct() {
+		parent::__construct();
 		$ref=new ReflectionClass(__CLASS__);
 		$this->tags='';
 		foreach ($ref->getmethods() as $method)
