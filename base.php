@@ -2425,6 +2425,8 @@ class Cache extends Prefab {
 class View extends Prefab {
 
 	protected
+		//! Fat-Free Framework
+		$f3,
 		//! Template file
 		$view,
 		//! post-rendering handler
@@ -2432,13 +2434,17 @@ class View extends Prefab {
 		//! Nesting level
 		$level=0;
 
+	function __construct() {
+		$this->f3 = Base::instance();
+	}
+
 	/**
 	*	Encode characters to equivalent HTML entities
 	*	@return string
 	*	@param $arg mixed
 	**/
 	function esc($arg) {
-		$fw=Base::instance();
+		$fw=$this->f3;
 		return $fw->recursive($arg,
 			function($val) use($fw) {
 				return is_string($val)?$fw->encode($val):$val;
@@ -2452,7 +2458,7 @@ class View extends Prefab {
 	*	@param $arg mixed
 	**/
 	function raw($arg) {
-		$fw=Base::instance();
+		$fw=$this->f3;
 		return $fw->recursive($arg,
 			function($val) use($fw) {
 				return is_string($val)?$fw->decode($val):$val;
@@ -2467,7 +2473,7 @@ class View extends Prefab {
 	**/
 	protected function sandbox(array $hive=NULL) {
 		$this->level++;
-		$fw=Base::instance();
+		$fw=$this->f3;
 		$implicit=false;
 		if ($hive === null) {
 			$implicit=true;
@@ -2497,7 +2503,7 @@ class View extends Prefab {
 	*	@param $ttl int
 	**/
 	function render($file,$mime='text/html',array $hive=NULL,$ttl=0) {
-		$fw=Base::instance();
+		$fw=$this->f3;
 		$cache=Cache::instance();
 		$cached=$cache->exists($hash=$fw->hash($file),$data);
 		if ($cached && $cached[0]+$ttl>microtime(TRUE))
@@ -2541,8 +2547,8 @@ class Preview extends View {
 		$filter = array(
 			'esc'=>'$this->esc',
 			'raw'=>'$this->raw',
-			'alias'=>'\Base::instance()->alias',
-			'format'=>'\Base::instance()->format'
+			'alias'=>'$this->f3->alias',
+			'format'=>'$this->f3->format'
 		);
 
 	/**
@@ -2552,7 +2558,7 @@ class Preview extends View {
 	**/
 	function token($str) {
 		return trim(preg_replace('/\{\{(.+?)\}\}/s',trim('\1'),
-			Base::instance()->compile($str)));
+			$this->f3->compile($str)));
 	}
 
 	/**
@@ -2585,7 +2591,7 @@ class Preview extends View {
 				if (preg_match('/^([^|]+?)\h*\|(\h*\w+(?:\h*[,;]\h*\w+)*)/',
 					$str,$parts)) {
 					$str=$parts[1];
-					foreach (Base::instance()->split($parts[2]) as $func)
+					foreach ($this->f3->split($parts[2]) as $func)
 						$str=$self->filter($func).'('.$str.')';
 				}
 				return '<?php echo '.$str.'; ?>'.
@@ -2609,7 +2615,7 @@ class Preview extends View {
 	**/
 	function resolve($str,array $hive=NULL) {
 		if (!$hive)
-			$hive=\Base::instance()->hive();
+			$hive=$this->f3->hive();
 		extract($hive);
 		ob_start();
 		eval(' ?>'.$this->build($str).'<?php ');
@@ -2625,7 +2631,7 @@ class Preview extends View {
 	*	@param $ttl int
 	**/
 	function render($file,$mime='text/html',array $hive=NULL,$ttl=0) {
-		$fw=Base::instance();
+		$fw=$this->f3;
 		$cache=Cache::instance();
 		if (!is_dir($tmp=$fw->get('TEMP')))
 			mkdir($tmp,Base::MODE,TRUE);
