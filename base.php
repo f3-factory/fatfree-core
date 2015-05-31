@@ -1300,20 +1300,28 @@ final class Base extends Prefab implements ArrayAccess {
 	*	Provide ReST interface by mapping HTTP verb to class method
 	*	@return NULL
 	*	@param $url string
-	*	@param $class string
+	*	@param $handler string|object
 	*	@param $ttl int
 	*	@param $kbps int
 	**/
-	function map($url,$class,$ttl=0,$kbps=0) {
+	function map($url,$handler,$ttl=0,$kbps=0) {
 		if (is_array($url)) {
 			foreach ($url as $item)
-				$this->map($item,$class,$ttl,$kbps);
+				$this->map($item,$handler,$ttl,$kbps);
 			return;
 		}
-		foreach (explode('|',self::VERBS) as $method)
-			$this->route($method.' '.$url,
-				$class.'->'.$this->hive['PREMAP'].strtolower($method),
-				$ttl,$kbps);
+		foreach (explode('|',self::VERBS) as $method) {
+			if(is_string($handler)) {
+				$this->route($method.' '.$url,
+					$handler.'->'.$this->hive['PREMAP'].strtolower($method),
+					$ttl,$kbps);
+			}
+			elseif(is_object($handler)) {
+				$this->route($method.' '.$url,
+					array($handler,strtolower($method)),
+					$ttl,$kbps);
+			}
+		}
 	}
 
 	/**
