@@ -1300,7 +1300,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	Provide ReST interface by mapping HTTP verb to class method
 	*	@return NULL
 	*	@param $url string
-	*	@param $class string
+	*	@param $class string|object
 	*	@param $ttl int
 	*	@param $kbps int
 	**/
@@ -1311,8 +1311,9 @@ final class Base extends Prefab implements ArrayAccess {
 			return;
 		}
 		foreach (explode('|',self::VERBS) as $method)
-			$this->route($method.' '.$url,
-				$class.'->'.$this->hive['PREMAP'].strtolower($method),
+			$this->route($method.' '.$url,is_string($class)?
+				$class.'->'.$this->hive['PREMAP'].strtolower($method):
+				array($class,$this->hive['PREMAP'].strtolower($method)),
 				$ttl,$kbps);
 	}
 
