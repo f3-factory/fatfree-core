@@ -1310,18 +1310,14 @@ final class Base extends Prefab implements ArrayAccess {
 				$this->map($item,$handler,$ttl,$kbps);
 			return;
 		}
-		foreach (explode('|',self::VERBS) as $method) {
-			if(is_string($handler)) {
-				$this->route($method.' '.$url,
-					$handler.'->'.$this->hive['PREMAP'].strtolower($method),
-					$ttl,$kbps);
-			}
-			elseif(is_object($handler)) {
-				$this->route($method.' '.$url,
-					array($handler,strtolower($method)),
-					$ttl,$kbps);
-			}
-		}
+		if(is_string($handler))
+			$handler = new $handler();
+		if(!is_object($handler))
+			$this->error(self::E_Fatal, "Invalid map class");
+		foreach (explode('|',self::VERBS) as $method)
+			$this->route($method.' '.$url,
+				array($handler,$this->hive['PREMAP'].strtolower($method)),
+				$ttl,$kbps);
 	}
 
 	/**
