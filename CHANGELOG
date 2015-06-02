@@ -1,6 +1,6 @@
 CHANGELOG
 
-3.5.0 (1 June 2015)
+3.5.0 (2 June 2015)
 *	NEW: until() method for long polling
 *	NEW: abort() to disconnect HTTP client (and continue execution)
 *	NEW: SQL Mapper->required() returns TRUE if field is not nullable
@@ -14,7 +14,8 @@ CHANGELOG
 *	NEW: CORS variable for Cross-Origin Resource Sharing support, #731
 *	Change in behavior: Switch to htmlspecialchars for escaping
 *	Change in behavior: No movement in cursor position after erase(), #797
-*	Change in behavior: error trace becomes a multiline string
+*	Change in behavior: ERROR.trace is a multiline string now
+*	Change in behavior: Strict token recognition in <include> href attribute
 *	Router fix: loose method search
 *	Better route precedence order, #12
 *	Preserve contents of ROUTES, #723
@@ -24,7 +25,7 @@ CHANGELOG
 *	Audit: better mobile detection
 *	Audit: add argument to test string as browser agent
 *	DB mappers: abort insert/update/erase from hooks, #684
-*	DB mapper: Allow array inputs in copyfrom()
+*	DB mappers: Allow array inputs in copyfrom()
 *	Cache,SQL,Jig,Mongo Session: custom callback for suspect sessions
 *	Fix for unexpected HIVE values when defining an empty HIVE array
 *	SQL mapper: check for results from CALL and EXEC queries, #771
@@ -36,7 +37,6 @@ CHANGELOG
 *	Improvement: Keep JIG table as reference, #758
 *	Expand regex to include whitespaces in SQL DB dsn, #817
 *	View: Removed reserved variables $fw and $implicit
-*	Improved token recognition in <include> href
 *	Add missing newlines after template expansion
 *	Web->receive: fix for complex field names, #806
 *	Web: Improvements in socket engine
