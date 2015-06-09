@@ -357,7 +357,8 @@ class Web extends Prefab {
 		if (!$socket)
 			return FALSE;
 		stream_set_blocking($socket,TRUE);
-		stream_set_timeout($socket,$options['timeout']);
+		stream_set_timeout($socket,isset($options['timeout'])?
+			$options['timeout']:ini_get('default_socket_timeout'));
 		fputs($socket,$options['method'].' '.$parts['path'].
 			($parts['query']?('?'.$parts['query']):'').' HTTP/1.0'.$eol
 		);
@@ -504,8 +505,7 @@ class Web extends Prefab {
 			'header'=>$options['header'],
 			'follow_location'=>TRUE,
 			'max_redirects'=>20,
-			'ignore_errors'=>FALSE,
-			'timeout'=>20
+			'ignore_errors'=>FALSE
 		);
 		$eol="\r\n";
 		if ($fw->get('CACHE') &&
