@@ -422,7 +422,7 @@ class SQL {
 	}
 
 	/**
-	*	Redirect call to MongoDB object
+	*	Redirect call to PDO object
 	*	@return mixed
 	*	@param $func string
 	*	@param $args array
