@@ -504,7 +504,8 @@ class Web extends Prefab {
 			'header'=>$options['header'],
 			'follow_location'=>TRUE,
 			'max_redirects'=>20,
-			'ignore_errors'=>FALSE
+			'ignore_errors'=>FALSE,
+			'timeout'=>20
 		);
 		$eol="\r\n";
 		if ($fw->get('CACHE') &&
