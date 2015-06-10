@@ -1577,9 +1577,11 @@ final class Base extends Prefab implements ArrayAccess {
 	function abort() {
 		@session_start();
 		session_commit();
-		header('Content-Length: 0');
+		$out='';
 		while (ob_get_level())
-			ob_end_clean();
+			$out=ob_get_clean().$out;
+		header('Content-Length: '.strlen($out));
+		echo $out;
 		flush();
 		if (function_exists('fastcgi_finish_request'))
 			fastcgi_finish_request();
