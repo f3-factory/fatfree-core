@@ -357,7 +357,8 @@ class Web extends Prefab {
 		if (!$socket)
 			return FALSE;
 		stream_set_blocking($socket,TRUE);
-		stream_set_timeout($socket,$options['timeout']);
+		stream_set_timeout($socket,isset($options['timeout'])?
+			$options['timeout']:ini_get('default_socket_timeout'));
 		fputs($socket,$options['method'].' '.$parts['path'].
 			($parts['query']?('?'.$parts['query']):'').' HTTP/1.0'.$eol
 		);
@@ -785,7 +786,7 @@ class Web extends Prefab {
 				'ù'=>'u','ű'=>'u','ů'=>'u','ư'=>'u','ū'=>'u','ǚ'=>'u',
 				'ǜ'=>'u','ǔ'=>'u','ǖ'=>'u','ũ'=>'u','ü'=>'ue','в'=>'v',
 				'ŵ'=>'w','ы'=>'y','ÿ'=>'y','ý'=>'y','ŷ'=>'y','ź'=>'z',
-				'ž'=>'z','з'=>'z','ż'=>'z','ж'=>'zh'
+				'ž'=>'z','з'=>'z','ż'=>'z','ж'=>'zh','ь'=>'','ъ'=>''
 			)+Base::instance()->get('DIACRITICS'))))),'-');
 	}
 
