@@ -1458,7 +1458,7 @@ final class Base extends Prefab implements ArrayAccess {
 					$cached=$cache->exists(
 						$hash=$this->hash($this->hive['VERB'].' '.
 							$this->hive['URI']).'.url',$data);
-					if ($cached && $cached[0]+$ttl>$now) {
+					if ($cached) {
 						if (isset($headers['If-Modified-Since']) &&
 							strtotime($headers['If-Modified-Since'])+
 								$ttl>$now) {
@@ -1520,10 +1520,13 @@ final class Base extends Prefab implements ArrayAccess {
 			// Unhandled HTTP method
 			header('Allow: '.implode(',',array_unique($allowed)));
 			if ($cors) {
-				header('Access-Control-Allow-Methods: OPTIONS,'.implode(',',$allowed));
+				header('Access-Control-Allow-Methods: OPTIONS,'.
+					implode(',',$allowed));
 				if ($cors['headers'])
-					header('Access-Control-Allow-Headers: '.(is_array($cors['headers'])?
-						implode(',',$cors['headers']):$cors['headers']));
+					header('Access-Control-Allow-Headers: '.
+						(is_array($cors['headers'])?
+							implode(',',$cors['headers']):
+							$cors['headers']));
 				if ($cors['ttl']>0)
 					header('Access-Control-Max-Age: '.$cors['ttl']);
 			}
@@ -2500,8 +2503,7 @@ class View extends Prefab {
 	function render($file,$mime='text/html',array $hive=NULL,$ttl=0) {
 		$fw=Base::instance();
 		$cache=Cache::instance();
-		$cached=$cache->exists($hash=$fw->hash($file),$data);
-		if ($cached && $cached[0]+$ttl>microtime(TRUE))
+		if ($cache->exists($hash=$fw->hash($file),$data))
 			return $data;
 		foreach ($fw->split($fw->get('UI').';./') as $dir)
 			if (is_file($this->view=$fw->fixslashes($dir.$file))) {
@@ -2631,8 +2633,7 @@ class Preview extends View {
 		if (!is_dir($tmp=$fw->get('TEMP')))
 			mkdir($tmp,Base::MODE,TRUE);
 		foreach ($fw->split($fw->get('UI')) as $dir) {
-			$cached=$cache->exists($hash=$fw->hash($dir.$file),$data);
-			if ($cached && $cached[0]+$ttl>microtime(TRUE))
+			if ($cache->exists($hash=$fw->hash($dir.$file),$data))
 				return $data;
 			if (is_file($view=$fw->fixslashes($dir.$file))) {
 				if (!is_file($this->view=($tmp.
