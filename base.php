@@ -891,8 +891,8 @@ final class Base extends Prefab implements ArrayAccess {
 											$thousands_sep).'%';
 									case 'decimal':
 										return number_format(
-											$args[$pos],$prop,$decimal_point,
-												$thousands_sep);
+											$args[$pos],isset($prop)?$prop:2,
+											$decimal_point,$thousands_sep);
 								}
 							break;
 						case 'date':
