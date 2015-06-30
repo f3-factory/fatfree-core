@@ -2134,7 +2134,7 @@ final class Base extends Prefab implements ArrayAccess {
 			'SERIALIZER'=>extension_loaded($ext='igbinary')?$ext:'php',
 			'TEMP'=>'tmp/',
 			'TIME'=>microtime(TRUE),
-			'TZ'=>@date_default_timezone_get(),
+			'TZ'=>date_default_timezone_get(),
 			'UI'=>'./',
 			'UNLOAD'=>NULL,
 			'UPLOADS'=>'./',
