@@ -177,14 +177,13 @@ class SMTP extends Magic {
 		$this->dialog(NULL,FALSE);
 		// Announce presence
 		$reply=$this->dialog('EHLO '.$fw->get('HOST'),$log);
+		$headers['Content-Transfer-Encoding']='8bit';
 		if (strtolower($this->scheme)=='tls') {
 			$this->dialog('STARTTLS',$log);
 			stream_socket_enable_crypto(
 				$socket,TRUE,STREAM_CRYPTO_METHOD_TLS_CLIENT);
 			$reply=$this->dialog('EHLO '.$fw->get('HOST'),$log);
-			if (preg_match('/8BITMIME/',$reply))
-				$headers['Content-Transfer-Encoding']='8bit';
-			else {
+			if (!preg_match('/8BITMIME/',$reply)) {
 				$headers['Content-Transfer-Encoding']='quoted-printable';
 				$message=quoted_printable_encode($message);
 			}
@@ -251,7 +250,7 @@ class SMTP extends Magic {
 				if ($attachment['cid'])
 					$out.='Content-ID: '.$attachment['cid'].$eol;
 				$out.='Content-Disposition: attachment; '.
-					'filename="'.$filename.'"'.$eol;
+					'filename="'.$attachment['filename'].'"'.$eol;
 				$out.=$eol;
 				$out.=chunk_split(
 					base64_encode(file_get_contents($filename))).$eol;
