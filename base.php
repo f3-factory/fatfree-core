@@ -1394,7 +1394,7 @@ final class Base extends Prefab implements ArrayAccess {
 		array_multisort($paths,SORT_DESC,$keys,$vals);
 		$this->hive['ROUTES']=array_combine($keys,$vals);
 		// Convert to BASE-relative URL
-		$req=$this->rel($this->hive['URI']);
+		$req=$this->rel(urldecode($this->hive['URI']));
 		if ($cors=(isset($this->hive['HEADERS']['Origin']) &&
 			$this->hive['CORS']['origin'])) {
 			$cors=$this->hive['CORS'];
@@ -1428,7 +1428,7 @@ final class Base extends Prefab implements ArrayAccess {
 						if (is_numeric($key) && $key)
 							unset($args[$key]);
 				// Capture values of route pattern tokens
-				$this->hive['PARAMS']=$args=array_map('urldecode',$args);
+				$this->hive['PARAMS']=$args;
 				// Save matching route
 				$this->hive['ALIAS']=$alias;
 				$this->hive['PATTERN']=$pattern;
