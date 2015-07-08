@@ -186,8 +186,8 @@ class SMTP extends Magic {
 		if (preg_match('/8BITMIME/',$reply))
 			$headers['Content-Transfer-Encoding']='8bit';
 		else {
-			$headers['Content-Transfer-Encoding']='quoted-printable';
-			$message=quoted_printable_encode($message);
+			$headers['Content-Transfer-Encoding']='base64';
+			$message=chunk_split(base64_encode($message));
 		}
 		if ($this->user && $this->pw && preg_match('/AUTH/',$reply)) {
 			// Authenticate
@@ -204,9 +204,8 @@ class SMTP extends Magic {
 		$str='';
 		// Stringify headers
 		foreach ($headers as $key=>&$val) {
-			if (!in_array($key,$reqd)) {
+			if (!in_array($key,$reqd))
 				$str.=$key.': '.$val.$eol;
-			}
 			if (in_array($key,array('From','To','Cc','Bcc')) &&
 				!preg_match('/[<>]/',$val))
 				$val='<'.$val.'>';
@@ -228,14 +227,14 @@ class SMTP extends Magic {
 			// Send mail headers
 			$out='';
 			foreach ($headers as $key=>$val)
-				if ($key!='Bcc')
+				if ($key!='Bcc' && $key!='Content-Type')
 					$out.=$key.': '.$val.$eol;
 			$out.=$eol;
 			$out.='This is a multi-part message in MIME format'.$eol;
 			$out.=$eol;
 			$out.='--'.$hash.$eol;
 			$out.='Content-Type: '.$type.$eol;
-			$out.=$eol;
+			$out.=$str.$eol;
 			$out.=$message.$eol;
 			foreach ($this->attachments as $attachment) {
 				if (is_array($attachment['filename'])) {
