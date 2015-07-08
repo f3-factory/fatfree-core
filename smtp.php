@@ -186,8 +186,8 @@ class SMTP extends Magic {
 		if (preg_match('/8BITMIME/',$reply))
 			$headers['Content-Transfer-Encoding']='8bit';
 		else {
-			$headers['Content-Transfer-Encoding']='base64';
-			$message=chunk_split(base64_encode($message));
+			$headers['Content-Transfer-Encoding']='quoted-printable';
+			$message=quoted_printable_encode($message);
 		}
 		if ($this->user && $this->pw && preg_match('/AUTH/',$reply)) {
 			// Authenticate
