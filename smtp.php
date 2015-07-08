@@ -204,7 +204,8 @@ class SMTP extends Magic {
 		$str='';
 		// Stringify headers
 		foreach ($headers as $key=>&$val) {
-			if (!in_array($key,$reqd))
+			if (!in_array($key,$reqd) && (!$this->attachments ||
+				$key!='Content-Type' && $key!='Content-Transfer-Encoding'))
 				$str.=$key.': '.$val.$eol;
 			if (in_array($key,array('From','To','Cc','Bcc')) &&
 				!preg_match('/[<>]/',$val))
@@ -220,20 +221,22 @@ class SMTP extends Magic {
 		$this->dialog('DATA',$log);
 		if ($this->attachments) {
 			// Replace Content-Type
-			$hash=uniqid(NULL,TRUE);
 			$type=$headers['Content-Type'];
-			$headers['Content-Type']='multipart/mixed; '.
-				'boundary="'.$hash.'"';
+			unset($headers['Content-Type']);
+			$enc=$headers['Content-Transfer-Encoding'];
+			unset($headers['Content-Transfer-Encoding']);
+			$hash=uniqid(NULL,TRUE);
 			// Send mail headers
-			$out='';
+			$out='Content-Type: multipart/mixed; boundary="'.$hash.'"'.$eol;
 			foreach ($headers as $key=>$val)
-				if ($key!='Bcc' && $key!='Content-Type')
+				if ($key!='Bcc')
 					$out.=$key.': '.$val.$eol;
 			$out.=$eol;
 			$out.='This is a multi-part message in MIME format'.$eol;
 			$out.=$eol;
 			$out.='--'.$hash.$eol;
 			$out.='Content-Type: '.$type.$eol;
+			$out.='Content-Transfer-Encoding: '.$enc.$eol;
 			$out.=$str.$eol;
 			$out.=$message.$eol;
 			foreach ($this->attachments as $attachment) {
