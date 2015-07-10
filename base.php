@@ -1552,6 +1552,8 @@ final class Base extends Prefab implements ArrayAccess {
 		$flag=FALSE;
 		// Not for the weak of heart
 		while (
+			// No error occurred
+			!$this->hive['ERROR'] &&
 			// Still alive?
 			!connection_aborted() &&
 			// Got time left?
