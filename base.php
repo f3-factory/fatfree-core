@@ -1561,10 +1561,9 @@ final class Base extends Prefab implements ArrayAccess {
 			// Restart session
 			$flag=@session_start() &&
 			// CAUTION: Callback will kill host if it never becomes truthy!
-			!($out=$this->call($func,$args))) {
+			!($out=$this->call($func,$args)))
 			// Hush down
 			sleep(1);
-		}
 		if ($flag) {
 			session_commit();
 			ob_flush();
