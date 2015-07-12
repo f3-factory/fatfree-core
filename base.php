@@ -1022,7 +1022,7 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function status($code) {
 		$reason=@constant('self::HTTP_'.$code);
-		if (PHP_SAPI!='cli')
+		if (PHP_SAPI!='cli' && !headers_sent())
 			header($_SERVER['SERVER_PROTOCOL'].' '.$code.' '.$reason);
 		return $reason;
 	}
@@ -1562,9 +1562,6 @@ final class Base extends Prefab implements ArrayAccess {
 			$flag=@session_start() &&
 			// CAUTION: Callback will kill host if it never becomes truthy!
 			!($out=$this->call($func,$args))) {
-			session_commit();
-			ob_flush();
-			flush();
 			// Hush down
 			sleep(1);
 		}
