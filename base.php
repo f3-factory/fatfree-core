@@ -1543,7 +1543,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $args array
 	*	@param $timeout int
 	**/
-	function until($func,$args=NULL,$timeout=60) {
+function until($func,$args=NULL,$timeout=60) {
 		if (!$args)
 			$args=array();
 		$time=time();
@@ -1557,10 +1557,18 @@ final class Base extends Prefab implements ArrayAccess {
 			!connection_aborted() &&
 			// Got time left?
 			(time()-$time+1<$limit) &&
+			// Turn output buffering on
+			ob_start() &&
+			// Restart session
+			@session_start() &&
 			// CAUTION: Callback will kill host if it never becomes truthy!
-			!($out=$this->call($func,$args)))
+			!($out=$this->call($func,$args))) {
+			session_commit();
+			ob_flush();
+			flush();
 			// Hush down
 			sleep(1);
+		}
 		return $out;
 	}
 
