@@ -1437,12 +1437,13 @@ final class Base extends Prefab implements ArrayAccess {
 						implode(',',$cors['expose']):$cors['expose']));
 				if (is_string($handler)) {
 					// Replace route pattern tokens in handler if any
-					$handler=preg_replace_callback('/@(\w+\b)/',
-						function($id) use($args) {
-							return isset($args[$id[1]])?$args[$id[1]]:$id[0];
-						},
-						$handler
-					);
+                    $handler=preg_replace_callback('/({)?@(\w+\b)(?(1)})/',
+                        function($id) use($args) {
+                            $tokid=count($id)>2?2:1;
+                            return isset($args[$id[$tokid]])?$args[$id[$tokid]]:$id[0];
+                        },
+                        $handler
+                    );
 					if (preg_match('/(.+)\h*(?:->|::)/',$handler,$match) &&
 						!class_exists($match[1]))
 						$this->error(404);
