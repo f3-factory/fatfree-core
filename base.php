@@ -1549,6 +1549,8 @@ function until($func,$args=NULL,$timeout=60) {
 		$time=time();
 		$limit=max(0,min($timeout,$max=ini_get('max_execution_time')-1));
 		$out='';
+		// Turn output buffering on
+		ob_start();
 		// Not for the weak of heart
 		while (
 			// No error occurred
@@ -1557,18 +1559,16 @@ function until($func,$args=NULL,$timeout=60) {
 			!connection_aborted() &&
 			// Got time left?
 			(time()-$time+1<$limit) &&
-			// Turn output buffering on
-			ob_start() &&
 			// Restart session
 			@session_start() &&
 			// CAUTION: Callback will kill host if it never becomes truthy!
 			!($out=$this->call($func,$args))) {
 			session_commit();
-			ob_flush();
-			flush();
 			// Hush down
 			sleep(1);
 		}
+		ob_flush();
+		flush();
 		return $out;
 	}
 
