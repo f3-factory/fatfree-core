@@ -566,7 +566,7 @@ class Web extends Prefab {
 						$src=$fw->read($save);
 						for ($ptr=0,$len=strlen($src);$ptr<$len;) {
 							if (preg_match('/^@import\h+url'.
-								'\(\h*([\'"])(.+?)\1\h*\)[^;]*;/',
+								'\(\h*([\'"])((?!(?:https?:)?\/\/).+?)\1\h*\)[^;]*;/',
 								substr($src,$ptr),$parts)) {
 								$path=dirname($file);
 								$data.=$this->minify(
