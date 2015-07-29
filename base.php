@@ -1829,7 +1829,7 @@ function until($func,$args=NULL,$timeout=60) {
 		$out='';
 		$pre=FALSE;
 		$text=trim($text);
-		if (!preg_match('/^<\?php/',$text)) {
+		if ($text && !preg_match('/^<\?php/',$text)) {
 			$text='<?php '.$text;
 			$pre=TRUE;
 		}
