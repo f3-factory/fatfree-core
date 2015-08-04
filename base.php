@@ -1439,8 +1439,8 @@ final class Base extends Prefab implements ArrayAccess {
 					// Replace route pattern tokens in handler if any
 					$handler=preg_replace_callback('/({{)?@(\w+\b)(?(1)}})/',
 						function($id) use($args) {
-                            $pid=count($id)>2?2:1;
-							return isset($args[$id[$pid]])?$args[$id[$pid]]:$id[0];
+							$tokid=count($id)>2?2:1;
+							return isset($args[$id[$tokid]])?$args[$id[$tokid]]:$id[0];
 						},
 						$handler
 					);
