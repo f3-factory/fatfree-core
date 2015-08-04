@@ -1369,7 +1369,7 @@ final class Base extends Prefab implements ArrayAccess {
 			$url=$this->rel($this->hive['URI']);
 		$case=$this->hive['CASELESS']?'i':'';
 		preg_match('/^'.
-			preg_replace('/@(\w+\b)/','(?P<\1>[^\/\?]+)',
+			preg_replace('/((\\\{\\\{)?@(\w+\b)(?(2)\\\}\\\}))/','(?P<\3>[^\/\?]+)',
 			str_replace('\*','([^\?]+)',preg_quote($pattern,'/'))).
 				'\/?(?:\?.*)?$/'.$case.'um',$url,$args);
 		return $args;
@@ -1437,10 +1437,10 @@ final class Base extends Prefab implements ArrayAccess {
 						implode(',',$cors['expose']):$cors['expose']));
 				if (is_string($handler)) {
 					// Replace route pattern tokens in handler if any
-					$handler=preg_replace_callback('/({)?@(\w+\b)(?(1)})/',
+					$handler=preg_replace_callback('/({{)?@(\w+\b)(?(1)}})/',
 						function($id) use($args) {
-							$tokid=count($id)>2?2:1;
-							return isset($args[$id[$tokid]])?$args[$id[$tokid]]:$id[0];
+                            $pid=count($id)>2?2:1;
+							return isset($args[$id[$pid]])?$args[$id[$pid]]:$id[0];
 						},
 						$handler
 					);
