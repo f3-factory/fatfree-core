@@ -2580,7 +2580,7 @@ class Preview extends View {
 	protected function build($node) {
 		$self=$this;
 		return preg_replace_callback(
-			'/\{\-(.+?)\-\}|\{\{(.+?)\}\}(\n+)?/s',
+			'/\{\-(.+?)\-\}|\{\{(.+?)\}\}(\n+)?|(\{\*.*\*\})/s',
 			function($expr) use($self) {
 				if ($expr[1])
 					return $expr[1];
@@ -2591,8 +2591,10 @@ class Preview extends View {
 					foreach (Base::instance()->split($parts[2]) as $func)
 						$str=$self->filter($func).'('.$str.')';
 				}
-				return '<?php echo '.$str.'; ?>'.
-					(isset($expr[3])?$expr[3]."\n":'');
+				return empty($expr[4])?
+					('<?php echo '.$str.'; ?>'.
+					(isset($expr[3])?$expr[3]."\n":'')):
+					'';
 			},
 			preg_replace_callback(
 				'/\{~(.+?)~\}/s',
