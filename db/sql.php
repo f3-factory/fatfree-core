@@ -149,6 +149,11 @@ class SQL {
 		for ($i=0;$i<$count;$i++) {
 			$cmd=$cmds[$i];
 			$arg=$args[$i];
+			// ensure 1-based arguments
+			if (array_key_exists(0,$arg)) {
+				array_unshift($arg,'');
+				unset($arg[0]);
+			}
 			if (!preg_replace('/(^\s+|[\s;]+$)/','',$cmd))
 				continue;
 			$now=microtime(TRUE);
