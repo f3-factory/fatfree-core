@@ -2580,7 +2580,7 @@ class Preview extends View {
 	protected function build($node) {
 		$self=$this;
 		return preg_replace_callback(
-			'/\{\-(.+?)\-\}|\{\{(.+?)\}\}(\n+)?|(\{\*.*\*\})/s',
+			'/\{\-(.+?)\-\}|\{\{(.+?)\}\}(\n+)?|(\{\*.*?\*\})/s',
 			function($expr) use($self) {
 				if ($expr[1])
 					return $expr[1];
