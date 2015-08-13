@@ -38,8 +38,9 @@ class Template extends Preview {
 	*	Template -set- tag handler
 	*	@return string
 	*	@param $node array
+	*	@param $empty bool
 	**/
-	protected function _set(array $node) {
+	protected function _set(array $node,$empty=TRUE) {
 		$out='';
 		foreach ($node['@attrib'] as $key=>$val)
 			$out.='$'.$key.'='.
@@ -53,8 +54,9 @@ class Template extends Preview {
 	*	Template -include- tag handler
 	*	@return string
 	*	@param $node array
+	*	@param $empty bool
 	**/
-	protected function _include(array $node) {
+	protected function _include(array $node,$empty=TRUE) {
 		$attrib=$node['@attrib'];
 		$hive=isset($attrib['with']) &&
 			($attrib['with']=$this->token($attrib['with'])) &&
@@ -318,7 +320,19 @@ class Template extends Preview {
 										(isset($kv[3]) && $kv[3]!==''?
 											$kv[3]:NULL));
 					}
-					if ($match[4])
+					$empty=FALSE;
+					$method=FALSE;
+					if (($method=method_exists($this,'_'.$match[2])) ||
+						array_key_exists('_'.$match[2],$this->custom)) {
+						$ref=$method?
+							new ReflectionMethod($this,'_'.$match[2]):
+							new ReflectionFunction(
+								$this->custom['_'.$match[2]]);
+						foreach ($ref->getParameters() as $arg)
+							if ($arg->getName()=='empty')
+								$empty=TRUE;
+					}
+					if ($match[4] || $empty)
 						// Empty tag
 						$node=&$stack[$depth];
 					else
