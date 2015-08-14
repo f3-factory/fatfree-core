@@ -31,8 +31,6 @@ class Template extends Preview {
 	protected
 		//! Template tags
 		$tags,
-		//! Empty tags
-		$etags='set|include',
 		//! Custom tag handlers
 		$custom=array();
 
@@ -244,12 +242,9 @@ class Template extends Preview {
 	*	@return NULL
 	*	@param $tag string
 	*	@param $func callback
-	*	@param $empty bool
 	**/
-	function extend($tag,$func,$empty=FALSE) {
+	function extend($tag,$func) {
 		$this->tags.='|'.$tag;
-		if ($empty)
-			$this->etags.='|'.$tag;
 		$this->custom['_'.$tag]=$func;
 	}
 
@@ -286,21 +281,16 @@ class Template extends Preview {
 				// Element node
 				if ($match[1]) {
 					// Find matching start tag
-					$save=$depth;
-					$found=FALSE;
-					while ($depth>0) {
-						$depth--;
-						foreach ($stack[$depth] as $item)
-							if (is_array($item) && isset($item[$match[2]])) {
-								// Start tag found
-								$found=TRUE;
-								break 2;
-							}
+					for($i=count($stack[$depth])-2;$i>=0;$i--) {
+						$item = $stack[$depth][$i];
+						if (is_array($item) && array_key_exists($match[2],$item)
+						&& !isset($item[$match[2]][0])) {
+							// Start tag found
+							$node[$i][$match[2]]+=array_slice($stack[$depth],$i+1);
+							$stack[$depth]=array_slice($stack[$depth],0,$i+1);
+							break;
+						}
 					}
-					if (!$found)
-						// Unbalanced tag
-						$depth=$save;
-					$node=&$stack[$depth];
 				}
 				else {
 					// Start tag
@@ -322,13 +312,9 @@ class Template extends Preview {
 										$kv[2]:
 										(isset($kv[3]) && $kv[3]!==''?
 											$kv[3]:NULL));
-					}
-					if ($match[4] ||
-						in_array($match[2],explode('|',$this->etags)))
-						// Empty tag
-						$node=&$stack[$depth];
-					else
-						$depth++;
+					} else
+						$node=array();
+					$node=&$stack[$depth];
 				}
 				$tmp='';
 				$ptr+=strlen($match[0]);
