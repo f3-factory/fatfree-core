@@ -278,7 +278,7 @@ class Template extends Preview {
 			$stack=array(),$depth=0,$tmp='';$ptr<$len;)
 			if (preg_match('/^<(\/?)(?:F3:)?'.
 				'('.$this->tags.')\b((?:\h+[\w-]+'.
-				'(?:\h*=\h*(?:"(?:.+?)"|\'(?:.+?)\'))?|'.
+				'(?:\h*=\h*(?:"(?:.*?)"|\'(?:.*?)\'))?|'.
 				'\h*\{\{.+?\}\})*)\h*(\/?)>/is',
 				substr($text,$ptr),$match)) {
 				if (strlen($tmp))
