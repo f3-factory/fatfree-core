@@ -680,6 +680,19 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
+	*	Extract values of an associative array whose keys start with the given prefix
+	*	@return array
+	*	@param $arr array
+	*	@param $prefix string
+	**/
+	function extract($arr,$prefix) {
+		$out=array();
+		foreach (preg_grep('/^'.$prefix.'/',array_keys($arr)) as $key)
+			$out[substr($key,strlen($prefix))]=$arr[$key];
+		return $out;
+	}
+
+	/**
 	*	Convert class constants to array
 	*	@return array
 	*	@param $class object|string
@@ -687,14 +700,7 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function constants($class,$prefix='') {
 		$ref=new ReflectionClass($class);
-		$out=array();
-		foreach (preg_grep('/^'.$prefix.'/',array_keys($ref->getconstants()))
-			as $val) {
-			$out[$key=substr($val,strlen($prefix))]=
-				constant((is_object($class)?get_class($class):$class).'::'.$prefix.$key);
-		}
-		unset($ref);
-		return $out;
+		return $this->extract($ref->getconstants(),$prefix);
 	}
 
 	/**
