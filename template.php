@@ -269,33 +269,32 @@ class Template extends Preview {
 	**/
 	function parse($text) {
 		// Build tree structure
-		for ($ptr=0,$len=strlen($text),$tree=array(),$node=&$tree,
-			$stack=array(),$depth=0,$tmp='';$ptr<$len;)
+		for ($ptr=0,$len=strlen($text),$tree=array(),$tmp='';$ptr<$len;)
 			if (preg_match('/^<(\/?)(?:F3:)?'.
 				'('.$this->tags.')\b((?:\h+[\w-]+'.
 				'(?:\h*=\h*(?:"(?:.*?)"|\'(?:.*?)\'))?|'.
 				'\h*\{\{.+?\}\})*)\h*(\/?)>/is',
 				substr($text,$ptr),$match)) {
 				if (strlen($tmp))
-					$node[]=$tmp;
+					$tree[]=$tmp;
 				// Element node
 				if ($match[1]) {
 					// Find matching start tag
-					for($i=count($stack[$depth])-2;$i>=0;$i--) {
-						$item = $stack[$depth][$i];
+					for($i=count($tree)-2;$i>=0;$i--) {
+						$item = $tree[$i];
 						if (is_array($item) && array_key_exists($match[2],$item)
 						&& !isset($item[$match[2]][0])) {
 							// Start tag found
-							$node[$i][$match[2]]+=array_slice($stack[$depth],$i+1);
-							$stack[$depth]=array_slice($stack[$depth],0,$i+1);
+							$tree[$i][$match[2]]+=array_slice($tree,$i+1);
+							$tree=array_slice($tree,0,$i+1);
 							break;
 						}
 					}
 				}
 				else {
 					// Start tag
-					$stack[$depth]=&$node;
-					$node=&$node[][$match[2]];
+					$node=&$tree[][$match[2]];
+					$node=array();
 					if ($match[3]) {
 						// Process attributes
 						preg_match_all(
@@ -312,9 +311,7 @@ class Template extends Preview {
 										$kv[2]:
 										(isset($kv[3]) && $kv[3]!==''?
 											$kv[3]:NULL));
-					} else
-						$node=array();
-					$node=&$stack[$depth];
+					}
 				}
 				$tmp='';
 				$ptr+=strlen($match[0]);
@@ -326,10 +323,9 @@ class Template extends Preview {
 			}
 		if (strlen($tmp))
 			// Append trailing text
-			$node[]=$tmp;
+			$tree[]=$tmp;
 		// Break references
 		unset($node);
-		unset($stack);
 		return $tree;
 	}
 
