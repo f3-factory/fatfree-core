@@ -687,7 +687,7 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function extract($arr,$prefix) {
 		$out=array();
-		foreach (preg_grep('/^'.$prefix.'/',array_keys($arr)) as $key)
+		foreach (preg_grep('/^'.preg_quote($prefix,'/').'/',array_keys($arr)) as $key)
 			$out[substr($key,strlen($prefix))]=$arr[$key];
 		return $out;
 	}
