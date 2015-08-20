@@ -490,6 +490,14 @@ class Image {
 	}
 
 	/**
+	*	Return image resource
+	*	@return resource
+	**/
+	function data() {
+		return $this->data;
+	}
+
+	/**
 	*	Save current state
 	*	@return object
 	**/
