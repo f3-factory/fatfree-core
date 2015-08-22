@@ -280,15 +280,16 @@ class Template extends Preview {
 				// Element node
 				if ($match[1]) {
 					// Find matching start tag
-					for($i=count($tree)-2;$i>=0;$i--) {
+					$stack=array();
+					for($i=count($tree)-1;$i>=0;$i--) {
 						$item = $tree[$i];
 						if (is_array($item) && array_key_exists($match[2],$item)
 						&& !isset($item[$match[2]][0])) {
 							// Start tag found
-							$tree[$i][$match[2]]+=array_slice($tree,$i+1);
+							$tree[$i][$match[2]]+=array_reverse($stack);
 							$tree=array_slice($tree,0,$i+1);
 							break;
-						}
+						} else $stack[]=$item;
 					}
 				}
 				else {
