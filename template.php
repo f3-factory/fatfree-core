@@ -316,11 +316,14 @@ class Template extends Preview {
 				}
 				$tmp='';
 				$ptr+=strlen($match[0]);
+				$w=5;
 			}
 			else {
 				// Text node
 				$tmp.=substr($text,$ptr,$w);
 				$ptr+=$w;
+				if ($w<50)
+					$w++;
 			}
 		if (strlen($tmp))
 			// Append trailing text
