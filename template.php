@@ -269,24 +269,24 @@ class Template extends Preview {
 	**/
 	function parse($text) {
 		// Build tree structure
-		for ($ptr=0,$len=strlen($text),$tree=array(),$tmp='';$ptr<$len;)
-			if (preg_match('/^<(\/?)(?:F3:)?'.
+		for ($ptr=0,$w=5,$len=strlen($text),$tree=array(),$tmp='';$ptr<$len;)
+			if (preg_match('/^(.{0,'.$w.'}?)<(\/?)(?:F3:)?'.
 				'('.$this->tags.')\b((?:\h+[\w-]+'.
 				'(?:\h*=\h*(?:"(?:.*?)"|\'(?:.*?)\'))?|'.
 				'\h*\{\{.+?\}\})*)\h*(\/?)>/is',
 				substr($text,$ptr),$match)) {
-				if (strlen($tmp))
-					$tree[]=$tmp;
+				if (strlen($tmp)||$match[1])
+					$tree[]=$tmp.$match[1];
 				// Element node
-				if ($match[1]) {
+				if ($match[2]) {
 					// Find matching start tag
 					$stack=array();
 					for($i=count($tree)-1;$i>=0;$i--) {
 						$item = $tree[$i];
-						if (is_array($item) && array_key_exists($match[2],$item)
-						&& !isset($item[$match[2]][0])) {
+						if (is_array($item) && array_key_exists($match[3],$item)
+						&& !isset($item[$match[3]][0])) {
 							// Start tag found
-							$tree[$i][$match[2]]+=array_reverse($stack);
+							$tree[$i][$match[3]]+=array_reverse($stack);
 							$tree=array_slice($tree,0,$i+1);
 							break;
 						} else $stack[]=$item;
@@ -294,15 +294,15 @@ class Template extends Preview {
 				}
 				else {
 					// Start tag
-					$node=&$tree[][$match[2]];
+					$node=&$tree[][$match[3]];
 					$node=array();
-					if ($match[3]) {
+					if ($match[4]) {
 						// Process attributes
 						preg_match_all(
 							'/(?:\b([\w-]+)\h*'.
 							'(?:=\h*(?:"(.*?)"|\'(.*?)\'))?|'.
 							'(\{\{.+?\}\}))/s',
-							$match[3],$attr,PREG_SET_ORDER);
+							$match[4],$attr,PREG_SET_ORDER);
 						foreach ($attr as $kv)
 							if (isset($kv[4]))
 								$node['@attrib'][]=$kv[4];
@@ -319,8 +319,8 @@ class Template extends Preview {
 			}
 			else {
 				// Text node
-				$tmp.=substr($text,$ptr,1);
-				$ptr++;
+				$tmp.=substr($text,$ptr,$w);
+				$ptr+=$w;
 			}
 		if (strlen($tmp))
 			// Append trailing text
