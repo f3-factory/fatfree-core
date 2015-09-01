@@ -2561,7 +2561,7 @@ class Preview extends View {
 	*	@param $str string
 	**/
 	function token($str) {
-		$str = trim(preg_replace('/\{\{(.+?)\}\}/s',trim('\1'),
+		$str=trim(preg_replace('/\{\{(.+?)\}\}/s',trim('\1'),
 			Base::instance()->compile($str)));
 		if (preg_match('/^([^|]+?)\h*\|(\h*\w+(?:\h*[,;]\h*\w+)*)/',
 			$str,$parts)) {
