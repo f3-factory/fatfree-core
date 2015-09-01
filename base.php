@@ -2561,8 +2561,15 @@ class Preview extends View {
 	*	@param $str string
 	**/
 	function token($str) {
-		return trim(preg_replace('/\{\{(.+?)\}\}/s',trim('\1'),
+		$str = trim(preg_replace('/\{\{(.+?)\}\}/s',trim('\1'),
 			Base::instance()->compile($str)));
+		if (preg_match('/^([^|]+?)\h*\|(\h*\w+(?:\h*[,;]\h*\w+)*)/',
+			$str,$parts)) {
+			$str=$parts[1];
+			foreach (Base::instance()->split($parts[2]) as $func)
+				$str=$this->filter($func).'('.$str.')';
+		}
+		return $str;
 	}
 
 	/**
@@ -2592,12 +2599,6 @@ class Preview extends View {
 				if ($expr[1])
 					return $expr[1];
 				$str=trim($self->token($expr[2]));
-				if (preg_match('/^([^|]+?)\h*\|(\h*\w+(?:\h*[,;]\h*\w+)*)/',
-					$str,$parts)) {
-					$str=$parts[1];
-					foreach (Base::instance()->split($parts[2]) as $func)
-						$str=$self->filter($func).'('.$str.')';
-				}
 				return empty($expr[4])?
 					('<?php echo '.$str.'; ?>'.
 					(isset($expr[3])?$expr[3]."\n":'')):
