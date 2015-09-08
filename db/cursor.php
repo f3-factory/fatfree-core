@@ -103,7 +103,7 @@ abstract class Cursor extends \Magic implements \IteratorAggregate {
 
 	/**
 	*	Get cursor's equivalent external iterator
-	*	Causes a fatal error in PHP 5.3.5if uncommented
+	*	Causes a fatal error in PHP 5.3.5 if uncommented
 	*	return ArrayIterator
 	**/
 	abstract function getiterator();
