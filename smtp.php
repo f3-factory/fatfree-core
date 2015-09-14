@@ -188,7 +188,7 @@ class SMTP extends Magic {
 		else {
 			$headers['Content-Transfer-Encoding']='quote-printable';
 			$message=preg_replace('/^\.(.+)/m',
-				'..$1',quoted_printable_code($message);
+				'..$1',quoted_printable_code($message));
 		}
 		if ($this->user && $this->pw && preg_match('/AUTH/',$reply)) {
 			// Authenticate
