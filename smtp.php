@@ -186,7 +186,7 @@ class SMTP extends Magic {
 		if (preg_match('/8BITMIME/',$reply))
 			$headers['Content-Transfer-Encoding']='8bit';
 		else {
-			$headers['Content-Transfer-Encoding']='quote-printable';
+			$headers['Content-Transfer-Encoding']='quoted-printable';
 			$message=preg_replace('/^\.(.+)/m',
 				'..$1',quoted_printable_code($message));
 		}
