@@ -2563,7 +2563,7 @@ class Preview extends View {
 	function token($str) {
 		$str=trim(preg_replace('/\{\{(.+?)\}\}/s',trim('\1'),
 			Base::instance()->compile($str)));
-		if (preg_match('/^(.+)(?<!\|)\|((?:\h*\w+(?:\h*[,;]?))+)$/',
+		if (preg_match('/^(.+)(?<!\|)\|((?:\h*\w+(?:\h*[,;]?))+)$/s',
 			$str,$parts)) {
 			$str=trim($parts[1]);
 			foreach (Base::instance()->split($parts[2]) as $func)
