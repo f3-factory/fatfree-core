@@ -849,9 +849,10 @@ final class Base extends Prefab implements ArrayAccess {
 										return number_format(
 											$args[$pos],0,'',$thousands_sep);
 									case 'currency':
+										$int=(isset($prop) && $prop=='int');
 										if (function_exists('money_format'))
 											return money_format(
-												'%n',$args[$pos]);
+												'%'.($int?'i':'n'),$args[$pos]);
 										$fmt=array(
 											0=>'(nc)',1=>'(n c)',
 											2=>'(nc)',10=>'+nc',
@@ -884,7 +885,8 @@ final class Base extends Prefab implements ArrayAccess {
 												$frac_digits,
 												$decimal_point,
 												$thousands_sep),
-												$currency_symbol),
+												$int?$int_curr_symbol
+													:$currency_symbol),
 											$fmt[(int)(
 												(${$pre.'_cs_precedes'}%2).
 												(${$pre.'_sign_posn'}%5).
