@@ -2569,7 +2569,10 @@ class Preview extends View {
 			$str,$parts)) {
 			$str=trim($parts[1]);
 			foreach (Base::instance()->split($parts[2]) as $func)
-				$str=$this->filter($func).'('.$str.')';
+				$str=is_callable($cmd=$this->filter($func))
+					?'\Base::instance()->call('.
+						'$this->filter(\''.$func.'\'),array('.$str.'))'
+					:$cmd.'('.$str.')';
 		}
 		return $str;
 	}
