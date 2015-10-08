@@ -2578,10 +2578,10 @@ class Preview extends View {
 	}
 
 	/**
-	*	register token filter
+	*	Register or get (a specific one or all) token filters
 	*	@param string $key
-	*	@param string $func
-	*	@return array
+	*	@param string|closure $func
+	*	@return array|closure|string
 	*/
 	function filter($key=NULL,$func=NULL) {
 		if (!$key)
