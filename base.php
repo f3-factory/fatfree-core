@@ -179,8 +179,8 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
-	*	assemble url from alias name
-	*	@return NULL
+	*	Assemble url from alias name
+	*	@return string
 	*	@param $name string
 	*	@param $params array|string
 	**/
