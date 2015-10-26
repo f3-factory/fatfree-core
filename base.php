@@ -305,10 +305,11 @@ final class Base extends Prefab implements ArrayAccess {
 
 	/**
 	*	Return TRUE if hive key is empty and not cached
-	*	@return bool
 	*	@param $key string
+	*	@param $val mixed
+	*	@return bool
 	**/
-	function devoid($key) {
+	function devoid($key,&$val=NULL) {
 		$val=$this->ref($key,FALSE);
 		return empty($val) &&
 			(!Cache::instance()->exists($this->hash($key).'.var',$val) ||
