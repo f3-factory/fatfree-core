@@ -290,7 +290,7 @@ class SMTP extends Magic {
 	*	@param $user string
 	*	@param $pw string
 	**/
-	function __construct($host,$port,$scheme,$user,$pw) {
+	function __construct($host='localhost',$port=25,$scheme=null,$user=null,$pw=null) {
 		$this->headers=array(
 			'MIME-Version'=>'1.0',
 			'Content-Type'=>'text/plain; '.
