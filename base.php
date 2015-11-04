@@ -423,8 +423,7 @@ final class Base extends Prefab implements ArrayAccess {
 				// End session
 				session_unset();
 				session_destroy();
-				unset($_COOKIE[session_name()]);
-				header_remove('Set-Cookie');
+				$this->clear('COOKIE.'.session_name());
 			}
 			$this->sync('SESSION');
 		}
