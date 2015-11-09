@@ -64,11 +64,11 @@ class Session extends Mapper {
 	**/
 	function read($id) {
 		$this->load(array('session_id=?',$this->sid=$id));
-		$fw=\Base::instance();
-		if (($ip=$this->get('ip')) && $ip!=$this->_ip ||
-			($agent=$this->get('agent')) && $agent!=$this->_agent) {
-			if (!isset($this->onsuspect) ||
-				FALSE===$fw->call($this->onsuspect,array($this,$id))) {
+		if ($this->dry())
+			return FALSE;
+		if ($this->get('ip')!=$this->_ip || $this->get('agent')!=$this->_agent) {
+			$fw=\Base::instance();
+			if (!isset($this->onsuspect) || FALSE===$fw->call($this->onsuspect,array($this,$id))) {
 				//NB: `session_destroy` can't be called at that stage (`session_start` not completed)
 				$this->destroy($id);
 				$this->close();
@@ -76,7 +76,7 @@ class Session extends Mapper {
 				$fw->error(403);
 			}
 		}
-		return $this->dry()?FALSE:$this->get('data');
+		return $this->get('data');
 	}
 
 	/**
