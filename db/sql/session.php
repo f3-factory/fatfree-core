@@ -66,8 +66,7 @@ class Session extends Mapper {
 		$this->load(array('session_id=?',$this->sid=$id));
 		$fw=\Base::instance();
 		if (($ip=$this->get('ip')) && $ip!=$this->_ip ||
-			($agent=$this->get('agent')) && $agent!=$this->_agent ||
-			($csrf=$fw->get('POST.csrf')) && $csrf!=$this->get('csrf')) {
+			($agent=$this->get('agent')) && $agent!=$this->_agent) {
 			if (!isset($this->onsuspect) ||
 				FALSE===$fw->call($this->onsuspect,array($this,$id))) {
 				//NB: `session_destroy` can't be called at that stage (`session_start` not completed)
@@ -89,7 +88,6 @@ class Session extends Mapper {
 	function write($id,$data) {
 		$this->set('session_id',$id);
 		$this->set('data',$data);
-		$this->set('csrf',$this->_csrf);
 		$this->set('ip',$this->_ip);
 		$this->set('agent',$this->_agent);
 		$this->set('stamp',time());
@@ -165,8 +163,9 @@ class Session extends Mapper {
 	*	@param $table string
 	*	@param $force bool
 	*	@param $onsuspect callback
+	*	@param $key string
 	**/
-	function __construct(\DB\SQL $db,$table='sessions',$force=TRUE,$onsuspect=NULL) {
+	function __construct(\DB\SQL $db,$table='sessions',$force=TRUE,$onsuspect=NULL,$key=NULL) {
 		if ($force) {
 			$eol="\n";
 			$tab="\t";
@@ -181,7 +180,6 @@ class Session extends Mapper {
 				$table.' ('.$eol.
 					$tab.$db->quotekey('session_id').' VARCHAR(40),'.$eol.
 					$tab.$db->quotekey('data').' TEXT,'.$eol.
-					$tab.$db->quotekey('csrf').' TEXT,'.$eol.
 					$tab.$db->quotekey('ip').' VARCHAR(40),'.$eol.
 					$tab.$db->quotekey('agent').' VARCHAR(255),'.$eol.
 					$tab.$db->quotekey('stamp').' INTEGER,'.$eol.
@@ -204,6 +202,8 @@ class Session extends Mapper {
 		$headers=$fw->get('HEADERS');
 		$this->_csrf=$fw->hash($fw->get('ROOT').$fw->get('BASE')).'.'.
 			$fw->hash(mt_rand());
+		if ($key)
+			$fw->set($key,$this->_csrf);
 		$this->_agent=isset($headers['User-Agent'])?$headers['User-Agent']:'';
 		$this->_ip=$fw->get('IP');
 	}
