@@ -69,6 +69,7 @@ class Template extends Preview {
 									\Base::instance()->stringify($pair[2]));
 						},$pairs)).')+get_defined_vars()':
 					'get_defined_vars()';
+		$ttl=isset($attrib['ttl'])?(int)$attrib['ttl']:0;
 		return
 			'<?php '.(isset($attrib['if'])?
 				('if ('.$this->token($attrib['if']).') '):'').
@@ -76,7 +77,7 @@ class Template extends Preview {
 					(preg_match('/^\{\{(.+?)\}\}$/',$attrib['href'])?
 						$this->token($attrib['href']):
 						Base::instance()->stringify($attrib['href'])).','.
-					'$this->mime,'.$hive.'); ?>');
+					'$this->mime,'.$hive.','.$ttl.'); ?>');
 	}
 
 	/**
