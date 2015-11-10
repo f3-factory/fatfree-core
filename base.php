@@ -1099,11 +1099,12 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
-	*	Return formatted stack trace
-	*	@return string
+	*	Return filtered, formatted stack trace
+	*	@return string|array
 	*	@param $trace array|NULL
+	*	@param $format bool
 	**/
-	function trace(array $trace=NULL) {
+	function trace(array $trace=NULL, $format=TRUE) {
 		if (!$trace) {
 			$trace=debug_backtrace(FALSE);
 			$frame=$trace[0];
@@ -1121,6 +1122,8 @@ final class Base extends Prefab implements ArrayAccess {
 						'__call|call_user_func)/',$frame['function']));
 			}
 		);
+		if (!$format)
+			return $trace;
 		$out='';
 		$eol="\n";
 		// Analyze stack trace
