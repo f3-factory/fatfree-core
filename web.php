@@ -595,7 +595,8 @@ class Web extends Prefab {
 									// Single-line comment
 									$str=strstr(
 										substr($src,$ptr+2),"\n",TRUE);
-									$ptr+=strlen($str)+2;
+									$ptr+=(empty($str))?
+										strlen(substr($src,$ptr)):strlen($str)+2;
 								}
 								else {
 									// Presume it's a regex pattern
