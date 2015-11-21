@@ -215,7 +215,7 @@ final class Base extends Prefab implements ArrayAccess {
 	function compile($str) {
 		$fw=$this;
 		return preg_replace_callback(
-			'/(?<!\w)@(\w(?:[\w\.\[\]\(]|\->|::)*)/',
+			'/(?<!\w)@(\w(?:[\h\w\.\[\]\(]|\->|::)*)/',
 			function($var) use($fw) {
 				return '$'.preg_replace_callback(
 					'/\.(\w+)\(|\.(\w+)|\[((?:[^\[\]]*|(?R))*)\]/',
