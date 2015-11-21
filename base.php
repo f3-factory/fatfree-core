@@ -226,7 +226,7 @@ final class Base extends Prefab implements ArrayAccess {
 								('['.var_export($expr[1],TRUE).']')).'('):
 							('['.var_export(
 								isset($expr[3])?
-									$fw->compile($expr[3]):
+									trim($fw->compile($expr[3])):
 									(ctype_digit($expr[2])?
 										(int)$expr[2]:
 										$expr[2]),TRUE).']');
