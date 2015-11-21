@@ -2532,7 +2532,7 @@ class View extends Prefab {
 					foreach($this->trigger['afterrender'] as $func)
 						$data=$fw->call($func,$data);
 				if ($ttl)
-					$cache->set($hash,$data);
+					$cache->set($hash,$data,$ttl);
 				return $data;
 			}
 		user_error(sprintf(Base::E_Open,$file),E_USER_ERROR);
@@ -2680,7 +2680,7 @@ class Preview extends View {
 					foreach ($this->trigger['afterrender'] as $func)
 						$data = $fw->call($func, $data);
 				if ($ttl)
-					$cache->set($hash,$data);
+					$cache->set($hash,$data,$ttl);
 				return $data;
 			}
 		}
