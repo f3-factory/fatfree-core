@@ -180,7 +180,6 @@ class Mapper extends \DB\Cursor {
 		return $out;
 	}
 
-
 	/**
 	*	Return records that match criteria
 	*	@return \DB\Mongo\Mapper[]
