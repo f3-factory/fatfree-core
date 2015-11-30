@@ -171,8 +171,9 @@ abstract class Cursor extends \Magic implements \IteratorAggregate {
 	*	@param $ttl int
 	**/
 	function load($filter=NULL,array $options=NULL,$ttl=0) {
+		$this->reset();
 		return ($this->query=$this->find($filter,$options,$ttl)) &&
-			$this->skip(0)?$this->query[$this->ptr=0]:FALSE;
+			$this->skip(0)?$this->query[$this->ptr]:FALSE;
 	}
 
 	/**

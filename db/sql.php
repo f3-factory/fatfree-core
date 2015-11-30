@@ -203,7 +203,7 @@ class SQL {
 						$this->rollback();
 					user_error('PDOStatement: '.$error[2],E_USER_ERROR);
 				}
-				if (preg_match('/^\s*'.
+				if (preg_match('/^[\s\(]*'.
 					'(?:EXPLAIN|SELECT|PRAGMA|SHOW|RETURNING)\b/is',$cmd) ||
 					(preg_match('/^\s*(?:CALL|EXEC)\b/is',$cmd) &&
 						$query->columnCount())) {

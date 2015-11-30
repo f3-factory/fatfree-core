@@ -362,7 +362,7 @@ class Mapper extends \DB\Cursor {
 			$field['value']=$dry?NULL:$out->adhoc[$key]['value'];
 			unset($field);
 		}
-		if (isset($this->trigger['load']))
+		if (!$dry && isset($this->trigger['load']))
 			\Base::instance()->call($this->trigger['load'],$this);
 		return $out;
 	}
@@ -559,14 +559,8 @@ class Mapper extends \DB\Cursor {
 		if ($func)
 			$var=call_user_func($func,$var);
 		foreach ($var as $key=>$val)
-			if (in_array($key,array_keys($this->fields))) {
-				$field=&$this->fields[$key];
-				if ($field['value']!==$val) {
-					$field['value']=$val;
-					$field['changed']=TRUE;
-				}
-				unset($field);
-			}
+			if (in_array($key,array_keys($this->fields)))
+				$this->set($key,$val);
 	}
 
 	/**

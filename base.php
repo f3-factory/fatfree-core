@@ -179,8 +179,8 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
-	*	assemble url from alias name
-	*	@return NULL
+	*	Assemble url from alias name
+	*	@return string
 	*	@param $name string
 	*	@param $params array|string
 	**/
@@ -215,7 +215,7 @@ final class Base extends Prefab implements ArrayAccess {
 	function compile($str) {
 		$fw=$this;
 		return preg_replace_callback(
-			'/(?<!\w)@(\w(?:[\w\.\[\]\(]|\->|::)*)/',
+			'/(?<!\w)@(\w(?:[\h\w\.\[\]\(]|\->|::)*)/',
 			function($var) use($fw) {
 				return '$'.preg_replace_callback(
 					'/\.(\w+)\(|\.(\w+)|\[((?:[^\[\]]*|(?R))*)\]/',
@@ -226,7 +226,7 @@ final class Base extends Prefab implements ArrayAccess {
 								('['.var_export($expr[1],TRUE).']')).'('):
 							('['.var_export(
 								isset($expr[3])?
-									$fw->compile($expr[3]):
+									trim($fw->compile($expr[3])):
 									(ctype_digit($expr[2])?
 										(int)$expr[2]:
 										$expr[2]),TRUE).']');
@@ -305,10 +305,11 @@ final class Base extends Prefab implements ArrayAccess {
 
 	/**
 	*	Return TRUE if hive key is empty and not cached
-	*	@return bool
 	*	@param $key string
+	*	@param $val mixed
+	*	@return bool
 	**/
-	function devoid($key) {
+	function devoid($key,&$val=NULL) {
 		$val=$this->ref($key,FALSE);
 		return empty($val) &&
 			(!Cache::instance()->exists($this->hash($key).'.var',$val) ||
@@ -422,8 +423,7 @@ final class Base extends Prefab implements ArrayAccess {
 				// End session
 				session_unset();
 				session_destroy();
-				unset($_COOKIE[session_name()]);
-				header_remove('Set-Cookie');
+				$this->clear('COOKIE.'.session_name());
 			}
 			$this->sync('SESSION');
 		}
@@ -849,9 +849,12 @@ final class Base extends Prefab implements ArrayAccess {
 										return number_format(
 											$args[$pos],0,'',$thousands_sep);
 									case 'currency':
-										if (function_exists('money_format'))
+										$int=$cstm=false;
+										if (isset($prop) && $cstm=!$int=($prop=='int'))
+											$currency_symbol=$prop;
+										if (!$cstm && function_exists('money_format'))
 											return money_format(
-												'%n',$args[$pos]);
+												'%'.($int?'i':'n'),$args[$pos]);
 										$fmt=array(
 											0=>'(nc)',1=>'(n c)',
 											2=>'(nc)',10=>'+nc',
@@ -884,7 +887,8 @@ final class Base extends Prefab implements ArrayAccess {
 												$frac_digits,
 												$decimal_point,
 												$thousands_sep),
-												$currency_symbol),
+												$int?$int_curr_symbol
+													:$currency_symbol),
 											$fmt[(int)(
 												(${$pre.'_cs_precedes'}%2).
 												(${$pre.'_sign_posn'}%5).
@@ -1095,11 +1099,12 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
-	*	Return formatted stack trace
-	*	@return string
+	*	Return filtered, formatted stack trace
+	*	@return string|array
 	*	@param $trace array|NULL
+	*	@param $format bool
 	**/
-	function trace(array $trace=NULL) {
+	function trace(array $trace=NULL, $format=TRUE) {
 		if (!$trace) {
 			$trace=debug_backtrace(FALSE);
 			$frame=$trace[0];
@@ -1117,6 +1122,8 @@ final class Base extends Prefab implements ArrayAccess {
 						'__call|call_user_func)/',$frame['function']));
 			}
 		);
+		if (!$format)
+			return $trace;
 		$out='';
 		$eol="\n";
 		// Analyze stack trace
@@ -2525,7 +2532,7 @@ class View extends Prefab {
 					foreach($this->trigger['afterrender'] as $func)
 						$data=$fw->call($func,$data);
 				if ($ttl)
-					$cache->set($hash,$data);
+					$cache->set($hash,$data,$ttl);
 				return $data;
 			}
 		user_error(sprintf(Base::E_Open,$file),E_USER_ERROR);
@@ -2563,20 +2570,23 @@ class Preview extends View {
 	function token($str) {
 		$str=trim(preg_replace('/\{\{(.+?)\}\}/s',trim('\1'),
 			Base::instance()->compile($str)));
-		if (preg_match('/^(.+)(?<!\|)\|((?:\h*\w+(?:\h*[,;]?))+)$/',
+		if (preg_match('/^(.+)(?<!\|)\|((?:\h*\w+(?:\h*[,;]?))+)$/s',
 			$str,$parts)) {
 			$str=trim($parts[1]);
 			foreach (Base::instance()->split($parts[2]) as $func)
-				$str=$this->filter($func).'('.$str.')';
+				$str=is_callable($cmd=$this->filter($func))
+					?'\Base::instance()->call('.
+						'$this->filter(\''.$func.'\'),array('.$str.'))'
+					:$cmd.'('.$str.')';
 		}
 		return $str;
 	}
 
 	/**
-	*	Register token filter
+	*	Register or get (a specific one or all) token filters
 	*	@param string $key
-	*	@param string $func
-	*	@return array
+	*	@param string|closure $func
+	*	@return array|closure|string
 	*/
 	function filter($key=NULL,$func=NULL) {
 		if (!$key)
@@ -2670,7 +2680,7 @@ class Preview extends View {
 					foreach ($this->trigger['afterrender'] as $func)
 						$data = $fw->call($func, $data);
 				if ($ttl)
-					$cache->set($hash,$data);
+					$cache->set($hash,$data,$ttl);
 				return $data;
 			}
 		}

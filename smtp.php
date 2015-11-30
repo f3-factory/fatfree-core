@@ -186,9 +186,9 @@ class SMTP extends Magic {
 		if (preg_match('/8BITMIME/',$reply))
 			$headers['Content-Transfer-Encoding']='8bit';
 		else {
-			$headers['Content-Transfer-Encoding']='quote-printable';
+			$headers['Content-Transfer-Encoding']='quoted-printable';
 			$message=preg_replace('/^\.(.+)/m',
-				'..$1',quoted_printable_code($message));
+				'..$1',quoted_printable_encode($message));
 		}
 		if ($this->user && $this->pw && preg_match('/AUTH/',$reply)) {
 			// Authenticate
@@ -290,7 +290,7 @@ class SMTP extends Magic {
 	*	@param $user string
 	*	@param $pw string
 	**/
-	function __construct($host,$port,$scheme,$user,$pw) {
+	function __construct($host='localhost',$port=25,$scheme=null,$user=null,$pw=null) {
 		$this->headers=array(
 			'MIME-Version'=>'1.0',
 			'Content-Type'=>'text/plain; '.
