@@ -1550,7 +1550,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $args array
 	*	@param $timeout int
 	**/
-function until($func,$args=NULL,$timeout=60) {
+	function until($func,$args=NULL,$timeout=60) {
 		if (!$args)
 			$args=array();
 		$time=time();
@@ -2093,9 +2093,9 @@ function until($func,$args=NULL,$timeout=60) {
 			'CONFIG'=>NULL,
 			'CORS'=>array(
 				'headers'=>'',
-				'origin'=>false,
-				'credentials'=>false,
-				'expose'=>false,
+				'origin'=>FALSE,
+				'credentials'=>FALSE,
+				'expose'=>FALSE,
 				'ttl'=>0),
 			'DEBUG'=>0,
 			'DIACRITICS'=>array(),
@@ -2548,7 +2548,7 @@ class Preview extends View {
 		//! MIME type
 		$mime,
 		//! token filter
-		$filter = array(
+		$filter=array(
 			'esc'=>'$this->esc',
 			'raw'=>'$this->raw',
 			'alias'=>'\Base::instance()->alias',
@@ -2573,7 +2573,7 @@ class Preview extends View {
 	}
 
 	/**
-	*	register token filter
+	*	Register token filter
 	*	@param string $key
 	*	@param string $func
 	*	@return array
