@@ -125,38 +125,39 @@ class Web extends Prefab {
 	*	@param $kbps int
 	*	@param $force bool
 	**/
-	function send($file,$mime=NULL,$kbps=0,$force=TRUE) {
-		if (!is_file($file))
+	function send($file, $mime = NULL, $kbps = 0, $force = TRUE) {
+		if(!is_file($file))
 			return FALSE;
-		$size=filesize($file);
-		if (PHP_SAPI!='cli') {
-			if(ob_get_level()){ob_end_clean();}
-			header('Content-Type: '.($mime?:$this->mime($file)));
-			if ($force)
-				header('Content-Disposition: attachment; '.
-					'filename="'.basename($file).'"');
+		$size = filesize($file);
+		if(PHP_SAPI != 'cli') {
+			header('Content-Type: ' . ($mime? : $this->mime($file)));
+			if($force)
+				header('Content-Disposition: attachment; ' .
+					'filename="' . basename($file) . '"');
 			header('Accept-Ranges: bytes');
-			header('Content-Length: '.$size);
-			header('X-Powered-By: '.Base::instance()->get('PACKAGE'));
+			header('Content-Length: ' . $size);
+			header('X-Powered-By: ' . Base::instance()->get('PACKAGE'));
 		}
-		if(!$kbps){
-		    readfile($file);
-		}else{
-		    $ctr=0;
-		    $handle=fopen($file,'rb');
-		    $start=microtime(TRUE);
-		    while (!feof($handle) &&
-			    ($info=stream_get_meta_data($handle)) &&
-			    !$info['timed_out'] && !connection_aborted()) {
-				    // Throttle output
-				    $ctr++;
-				    if ($ctr/$kbps>$elapsed=microtime(TRUE)-$start)
-					    usleep(1e6*($ctr/$kbps-$elapsed));
-			    // Send 1KiB and reset timer
-			    echo fread($handle,1024);
-		    }
-		    fclose($handle);
+		while(ob_get_level())
+			ob_end_clean();
+		if(!$kbps) {
+			readfile($file);
+			return $size;
 		}
+		$ctr = 0;
+		$handle = fopen($file, 'rb');
+		$start = microtime(TRUE);
+		while(!feof($handle) &&
+		($info = stream_get_meta_data($handle)) &&
+		!$info['timed_out'] && !connection_aborted()) {
+			// Throttle output
+			$ctr++;
+			if($ctr / $kbps > $elapsed = microtime(TRUE) - $start)
+				usleep(1e6 * ($ctr / $kbps - $elapsed));
+			// Send 1KiB and reset timer
+			echo fread($handle, 1024);
+		}
+		fclose($handle);
 		return $size;
 	}
 
