@@ -175,7 +175,7 @@ class Mapper extends \DB\Cursor {
 		//important: empty SplFixedArray should not be created, since empty(new \SplFixedArray(0)) does not return true
 		
 		for($c=0;$c<$resultSize;$c++){
-		    $out[$c]=$this->factory($result[$c]);
+			$out[$c]=$this->factory($result[$c]);
 		}
 		return $out;
 	}
