@@ -759,6 +759,12 @@ final class Base extends Prefab implements ArrayAccess {
 			$stack=array();
 		switch (gettype($arg)) {
 			case 'object':
+				if($arg instanceof SplFixedArray){
+					$copy=new \SplFixedArray(count($arg));
+					foreach ($arg as $key=>$val)
+						$copy[$key]=$this->recursive($val,$func, array_merge($stack,array($arg)));
+					return $copy;
+				}
 				if (method_exists('ReflectionClass','iscloneable')) {
 					$ref=new ReflectionClass($arg);
 					if ($ref->iscloneable()) {
