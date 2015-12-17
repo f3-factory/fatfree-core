@@ -149,7 +149,7 @@ class Mapper extends \DB\Cursor {
 
 	/**
 	*	Return records that match criteria
-	*	@return \DB\JIG\Mapper[]|FALSE
+	*	@return static[]|FALSE
 	*	@param $filter array
 	*	@param $options array
 	*	@param $ttl int

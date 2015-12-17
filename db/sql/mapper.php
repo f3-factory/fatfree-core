@@ -190,7 +190,7 @@ class Mapper extends \DB\Cursor {
 
 	/**
 	*	Build query string and execute
-	*	@return \DB\SQL\Mapper[]
+	*	@return static[]
 	*	@param $fields string
 	*	@param $filter string|array
 	*	@param $options array
@@ -294,7 +294,7 @@ class Mapper extends \DB\Cursor {
 
 	/**
 	*	Return records that match criteria
-	*	@return \DB\SQL\Mapper[]
+	*	@return static[]
 	*	@param $filter string|array
 	*	@param $options array
 	*	@param $ttl int

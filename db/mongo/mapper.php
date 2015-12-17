@@ -84,7 +84,7 @@ class Mapper extends \DB\Cursor {
 
 	/**
 	*	Convert array to mapper object
-	*	@return \DB\Mongo\Mapper
+	*	@return static
 	*	@param $row array
 	**/
 	protected function factory($row) {
@@ -111,7 +111,7 @@ class Mapper extends \DB\Cursor {
 
 	/**
 	*	Build query and execute
-	*	@return \DB\Mongo\Mapper[]
+	*	@return static[]
 	*	@param $fields string
 	*	@param $filter array
 	*	@param $options array
@@ -177,7 +177,7 @@ class Mapper extends \DB\Cursor {
 
 	/**
 	*	Return records that match criteria
-	*	@return \DB\Mongo\Mapper[]
+	*	@return static[]
 	*	@param $filter array
 	*	@param $options array
 	*	@param $ttl int
