@@ -91,6 +91,8 @@ class SQL {
 				return \PDO::PARAM_BOOL;
 			case 'integer':
 				return \PDO::PARAM_INT;
+			case 'resource':
+				return \PDO::PARAM_LOB;
 			default:
 				return \PDO::PARAM_STR;
 		}
@@ -112,6 +114,8 @@ class SQL {
 				return (bool)$val;
 			case \PDO::PARAM_STR:
 				return (string)$val;
+			case \PDO::PARAM_LOB:
+				return (binary)$val;
 		}
 	}
 
@@ -338,7 +342,10 @@ class SQL {
 									\PDO::PARAM_INT:
 									(preg_match('/bool/i',$row[$val[2]])?
 										\PDO::PARAM_BOOL:
-										\PDO::PARAM_STR),
+										(preg_match('/blob|bytea|image|binary/i',
+											$row[$val[2]])?
+											\PDO::PARAM_LOB:
+											\PDO::PARAM_STR)),
 							'default'=>is_string($row[$val[3]])?
 								preg_replace('/^\s*([\'"])(.*)\1\s*/','\2',
 								$row[$val[3]]):$row[$val[3]],
