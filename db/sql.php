@@ -254,11 +254,14 @@ class SQL {
 	}
 
 	/**
-	*	Return SQL profiler results
+	*	Return SQL profiler results (or disable logging)
+	*	@param $flag bool
 	*	@return string
 	**/
-	function log() {
-		return $this->log;
+	function log($flag=TRUE) {
+		if ($flag)
+			return $this->log;
+		$this->log=FALSE;
 	}
 
 	/**
