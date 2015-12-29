@@ -242,7 +242,7 @@ class SMTP extends Magic {
 			$out.=$message.$eol;
 			foreach ($this->attachments as $attachment) {
 				if (is_array($attachment['filename'])) {
-					list($alias,$file)=each($attachment);
+					list($alias,$file)=each($attachment['filename']);
 					$filename=$alias;
 					$attachment['filename']=$file;
 				}
