@@ -28,7 +28,7 @@ class Image {
 		E_Color='Invalid color specified: %s',
 		E_File='File not found',
 		E_Font='CAPTCHA font not found',
-		E_TTF='GD module was built without TrueType support',
+		E_TTF='No TrueType support in GD module',
 		E_Length='Invalid CAPTCHA length: %s';
 	//@}
 
