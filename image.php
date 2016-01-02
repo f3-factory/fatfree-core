@@ -28,6 +28,7 @@ class Image {
 		E_Color='Invalid color specified: %s',
 		E_File='File not found',
 		E_Font='CAPTCHA font not found',
+		E_TTF='GD module was built without TrueType support',
 		E_Length='Invalid CAPTCHA length: %s';
 	//@}
 
@@ -396,6 +397,10 @@ class Image {
 		$key=NULL,$path='',$fg=0xFFFFFF,$bg=0x000000) {
 		if ((!$ssl=extension_loaded('openssl')) && ($len<4 || $len>13)) {
 			user_error(sprintf(self::E_Length,$len),E_USER_ERROR);
+			return FALSE;
+		}
+		if (!function_exists('imagettftext')) {
+			user_error(self::E_TTF,E_USER_ERROR);
 			return FALSE;
 		}
 		$fw=Base::instance();
