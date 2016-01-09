@@ -147,7 +147,7 @@ class SMTP extends Magic {
 	function attach($file,$alias=NULL,$cid=NULL) {
 		if (!is_file($file))
 			user_error(sprintf(self::E_Attach,$file),E_USER_ERROR);
-		if (is_string($alias))
+		if ($alias)
 			$file=array($alias=>$file);
 		$this->attachments[]=array('filename'=>$file,'cid'=>$cid);
 	}
@@ -242,18 +242,18 @@ class SMTP extends Magic {
 			$out.=$message.$eol;
 			foreach ($this->attachments as $attachment) {
 				if (is_array($attachment['filename'])) {
-					list($filename,$file)=each($attachment['filename']);
+					list($alias,$file)=each($attachment['filename']);
 					$attachment['filename']=$file;
 				}
 				else
-					$filename=basename($attachment['filename']);
+					$alias=basename($attachment['filename']);
 				$out.='--'.$hash.$eol;
 				$out.='Content-Type: application/octet-stream'.$eol;
 				$out.='Content-Transfer-Encoding: base64'.$eol;
 				if ($attachment['cid'])
 					$out.='Content-ID: '.$attachment['cid'].$eol;
 				$out.='Content-Disposition: attachment; '.
-					'filename="'.$filename.'"'.$eol;
+					'filename="'.$alias.'"'.$eol;
 				$out.=$eol;
 				$out.=chunk_split(base64_encode(
 					file_get_contents($attachment['filename']))).$eol;
