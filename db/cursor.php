@@ -103,7 +103,7 @@ abstract class Cursor extends \Magic implements \IteratorAggregate {
 
 	/**
 	*	Get cursor's equivalent external iterator
-	*	Causes a fatal error in PHP 5.3.5if uncommented
+	*	Causes a fatal error in PHP 5.3.5 if uncommented
 	*	return ArrayIterator
 	**/
 	abstract function getiterator();
@@ -119,12 +119,16 @@ abstract class Cursor extends \Magic implements \IteratorAggregate {
 
 	/**
 	*	Return first record (mapper object) that matches criteria
-	*	@return object|FALSE
+	*	@return static|FALSE
 	*	@param $filter string|array
 	*	@param $options array
 	*	@param $ttl int
 	**/
 	function findone($filter=NULL,array $options=NULL,$ttl=0) {
+		if (!$options)
+			$options=array();
+		// Override limit
+		$options['limit']=1;
 		return ($data=$this->find($filter,$options,$ttl))?$data[0]:FALSE;
 	}
 
@@ -167,8 +171,9 @@ abstract class Cursor extends \Magic implements \IteratorAggregate {
 	*	@param $ttl int
 	**/
 	function load($filter=NULL,array $options=NULL,$ttl=0) {
+		$this->reset();
 		return ($this->query=$this->find($filter,$options,$ttl)) &&
-			$this->skip(0)?$this->query[$this->ptr=0]:FALSE;
+			$this->skip(0)?$this->query[$this->ptr]:FALSE;
 	}
 
 	/**

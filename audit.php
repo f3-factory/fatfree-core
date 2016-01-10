@@ -25,7 +25,7 @@ class Audit extends Prefab {
 
 	//@{ User agents
 	const
-		UA_Mobile='android|blackberry|iphone|ipod|palm|windows\s+ce',
+		UA_Mobile='android|blackberry|phone|ipod|palm|windows\s+ce',
 		UA_Desktop='bsd|linux|os\s+[x9]|solaris|windows',
 		UA_Bot='bot|crawl|slurp|spider';
 	//@}
@@ -104,28 +104,34 @@ class Audit extends Prefab {
 	/**
 	*	Return TRUE if user agent is a desktop browser
 	*	@return bool
+	*	@param $agent string
 	**/
-	function isdesktop() {
-		$agent=Base::instance()->get('AGENT');
+	function isdesktop($agent=NULL) {
+		if (!isset($agent))
+			$agent=Base::instance()->get('AGENT');
 		return (bool)preg_match('/('.self::UA_Desktop.')/i',$agent) &&
-			!$this->ismobile();
+			!$this->ismobile($agent);
 	}
 
 	/**
 	*	Return TRUE if user agent is a mobile device
 	*	@return bool
+	*	@param $agent string
 	**/
-	function ismobile() {
-		$agent=Base::instance()->get('AGENT');
+	function ismobile($agent=NULL) {
+		if (!isset($agent))
+			$agent=Base::instance()->get('AGENT');
 		return (bool)preg_match('/('.self::UA_Mobile.')/i',$agent);
 	}
 
 	/**
 	*	Return TRUE if user agent is a Web bot
 	*	@return bool
+	*	@param $agent string
 	**/
-	function isbot() {
-		$agent=Base::instance()->get('AGENT');
+	function isbot($agent=NULL) {
+		if (!isset($agent))
+			$agent=Base::instance()->get('AGENT');
 		return (bool)preg_match('/('.self::UA_Bot.')/i',$agent);
 	}
 

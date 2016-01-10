@@ -84,7 +84,7 @@ class Mapper extends \DB\Cursor {
 
 	/**
 	*	Convert array to mapper object
-	*	@return object
+	*	@return static
 	*	@param $row array
 	**/
 	protected function factory($row) {
@@ -111,7 +111,7 @@ class Mapper extends \DB\Cursor {
 
 	/**
 	*	Build query and execute
-	*	@return array
+	*	@return static[]
 	*	@param $fields string
 	*	@param $filter array
 	*	@param $options array
@@ -177,7 +177,7 @@ class Mapper extends \DB\Cursor {
 
 	/**
 	*	Return records that match criteria
-	*	@return array
+	*	@return static[]
 	*	@param $filter array
 	*	@param $options array
 	*	@param $ttl int
@@ -206,7 +206,7 @@ class Mapper extends \DB\Cursor {
 		if (!($cached=$cache->exists($hash=$fw->hash($fw->stringify(
 			array($filter))).'.mongo',$result)) || !$ttl ||
 			$cached[0]+$ttl<microtime(TRUE)) {
-			$result=$this->collection->count($filter);
+			$result=$this->collection->count($filter?:array());
 			if ($fw->get('CACHE') && $ttl)
 				// Save to cache backend
 				$cache->set($hash,$result,$ttl);
@@ -234,9 +234,10 @@ class Mapper extends \DB\Cursor {
 	function insert() {
 		if (isset($this->document['_id']))
 			return $this->update();
-		if (isset($this->trigger['beforeinsert']))
+		if (isset($this->trigger['beforeinsert']) &&
 			\Base::instance()->call($this->trigger['beforeinsert'],
-				array($this,array('_id'=>$this->document['_id'])));
+				array($this,array('_id'=>$this->document['_id'])))===FALSE)
+			return $this->document;
 		$this->collection->insert($this->document);
 		$pkey=array('_id'=>$this->document['_id']);
 		if (isset($this->trigger['afterinsert']))
@@ -252,9 +253,10 @@ class Mapper extends \DB\Cursor {
 	**/
 	function update() {
 		$pkey=array('_id'=>$this->document['_id']);
-		if (isset($this->trigger['beforeupdate']))
+		if (isset($this->trigger['beforeupdate']) &&
 			\Base::instance()->call($this->trigger['beforeupdate'],
-				array($this,$pkey));
+				array($this,$pkey))===FALSE)
+			return $this->document;
 		$this->collection->update(
 			$pkey,$this->document,array('upsert'=>TRUE));
 		if (isset($this->trigger['afterupdate']))
@@ -272,9 +274,10 @@ class Mapper extends \DB\Cursor {
 		if ($filter)
 			return $this->collection->remove($filter);
 		$pkey=array('_id'=>$this->document['_id']);
-		if (isset($this->trigger['beforeerase']))
+		if (isset($this->trigger['beforeerase']) &&
 			\Base::instance()->call($this->trigger['beforeerase'],
-				array($this,$pkey));
+				array($this,$pkey))===FALSE)
+			return FALSE;
 		$result=$this->collection->
 			remove(array('_id'=>$this->document['_id']));
 		parent::erase();
@@ -305,7 +308,7 @@ class Mapper extends \DB\Cursor {
 		if ($func)
 			$var=call_user_func($func,$var);
 		foreach ($var as $key=>$val)
-			$this->document[$key]=$val;
+			$this->set($key,$val);
 	}
 
 	/**

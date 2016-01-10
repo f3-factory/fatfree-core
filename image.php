@@ -28,6 +28,7 @@ class Image {
 		E_Color='Invalid color specified: %s',
 		E_File='File not found',
 		E_Font='CAPTCHA font not found',
+		E_TTF='No TrueType support in GD module',
 		E_Length='Invalid CAPTCHA length: %s';
 	//@}
 
@@ -230,9 +231,9 @@ class Image {
 		$ratio=($origw=imagesx($this->data))/($origh=imagesy($this->data));
 		if (!$crop) {
 			if ($width/$ratio<=$height)
-				$height=$width/$ratio;
+				$height=round($width/$ratio);
 			else
-				$width=$height*$ratio;
+				$width=round($height*$ratio);
 		}
 		if (!$enlarge) {
 			$width=min($origw,$width);
@@ -245,12 +246,12 @@ class Image {
 		// Resize
 		if ($crop) {
 			if ($width/$ratio<=$height) {
-				$cropw=$origh*$width/$height;
+				$cropw=round($origh*$width/$height);
 				imagecopyresampled($tmp,$this->data,
 					0,0,($origw-$cropw)/2,0,$width,$height,$cropw,$origh);
 			}
 			else {
-				$croph=$origw*$height/$width;
+				$croph=round($origw*$height/$width);
 				imagecopyresampled($tmp,$this->data,
 					0,0,0,($origh-$croph)/2,$width,$height,$origw,$croph);
 			}
@@ -398,6 +399,10 @@ class Image {
 			user_error(sprintf(self::E_Length,$len),E_USER_ERROR);
 			return FALSE;
 		}
+		if (!function_exists('imagettftext')) {
+			user_error(self::E_TTF,E_USER_ERROR);
+			return FALSE;
+		}
 		$fw=Base::instance();
 		foreach ($fw->split($path?:$fw->get('UI').';./') as $dir)
 			if (is_file($path=$dir.$font)) {
@@ -487,6 +492,14 @@ class Image {
 		call_user_func_array('image'.$format,
 			array_merge(array($this->data),$args));
 		return ob_get_clean();
+	}
+
+	/**
+	*	Return image resource
+	*	@return resource
+	**/
+	function data() {
+		return $this->data;
 	}
 
 	/**

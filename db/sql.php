@@ -25,6 +25,11 @@ namespace DB;
 //! PDO wrapper
 class SQL {
 
+	//@{ Error messages
+	const
+		E_PKey='Table %s does not have a primary key';
+	//@}
+
 	protected
 		//! UUID
 		$uuid,
@@ -86,6 +91,8 @@ class SQL {
 				return \PDO::PARAM_BOOL;
 			case 'integer':
 				return \PDO::PARAM_INT;
+			case 'resource':
+				return \PDO::PARAM_LOB;
 			default:
 				return \PDO::PARAM_STR;
 		}
@@ -107,6 +114,8 @@ class SQL {
 				return (bool)$val;
 			case \PDO::PARAM_STR:
 				return (string)$val;
+			case \PDO::PARAM_LOB:
+				return (binary)$val;
 		}
 	}
 
@@ -144,6 +153,11 @@ class SQL {
 		for ($i=0;$i<$count;$i++) {
 			$cmd=$cmds[$i];
 			$arg=$args[$i];
+			// ensure 1-based arguments
+			if (array_key_exists(0,$arg)) {
+				array_unshift($arg,'');
+				unset($arg[0]);
+			}
 			if (!preg_replace('/(^\s+|[\s;]+$)/','',$cmd))
 				continue;
 			$now=microtime(TRUE);
@@ -193,9 +207,10 @@ class SQL {
 						$this->rollback();
 					user_error('PDOStatement: '.$error[2],E_USER_ERROR);
 				}
-				if (preg_match('/^\s*'.
-					'(?:CALL|EXPLAIN|SELECT|PRAGMA|SHOW|RETURNING|EXEC)\b/is',
-					$cmd)) {
+				if (preg_match('/(?:^[\s\(]*'.
+					'(?:EXPLAIN|SELECT|PRAGMA|SHOW)|RETURNING)\b/is',$cmd) ||
+					(preg_match('/^\s*(?:CALL|EXEC)\b/is',$cmd) &&
+						$query->columnCount())) {
 					$result=$query->fetchall(\PDO::FETCH_ASSOC);
 					// Work around SQLite quote bug
 					if (preg_match('/sqlite2?/',$this->engine))
@@ -239,11 +254,14 @@ class SQL {
 	}
 
 	/**
-	*	Return SQL profiler results
+	*	Return SQL profiler results (or disable logging)
+	*	@param $flag bool
 	*	@return string
 	**/
-	function log() {
-		return $this->log;
+	function log($flag=TRUE) {
+		if ($flag)
+			return $this->log;
+		$this->log=FALSE;
 	}
 
 	/**
@@ -254,6 +272,8 @@ class SQL {
 	*	@param $ttl int
 	**/
 	function schema($table,$fields=NULL,$ttl=0) {
+		if (strpos($table,'.'))
+			list($schema,$table)=explode('.',$table);
 		// Supported engines
 		$cmd=array(
 			'sqlite2?'=>array(
@@ -325,7 +345,10 @@ class SQL {
 									\PDO::PARAM_INT:
 									(preg_match('/bool/i',$row[$val[2]])?
 										\PDO::PARAM_BOOL:
-										\PDO::PARAM_STR),
+										(preg_match('/blob|bytea|image|binary/i',
+											$row[$val[2]])?
+											\PDO::PARAM_LOB:
+											\PDO::PARAM_STR)),
 							'default'=>is_string($row[$val[3]])?
 								preg_replace('/^\s*([\'"])(.*)\1\s*/','\2',
 								$row[$val[3]]):$row[$val[3]],
@@ -335,6 +358,7 @@ class SQL {
 				}
 				return $rows;
 			}
+		user_error(sprintf(self::E_PKey,$table),E_USER_ERROR);
 		return FALSE;
 	}
 
@@ -362,7 +386,7 @@ class SQL {
 
 	/**
 	*	Return parent object
-	*	@return object
+	*	@return \PDO
 	**/
 	function pdo() {
 		return $this->pdo;
@@ -398,19 +422,22 @@ class SQL {
 	*	@param $key
 	**/
 	function quotekey($key) {
-		if ($this->engine=='mysql')
-			$key="`".implode('`.`',explode('.',$key))."`";
-		elseif (preg_match('/sybase|dblib/',$this->engine))
-			$key="'".implode("'.'",explode('.',$key))."'";
-		elseif (preg_match('/sqlite2?|pgsql|oci/',$this->engine))
-			$key='"'.implode('"."',explode('.',$key)).'"';
-		elseif (preg_match('/mssql|sqlsrv|odbc/',$this->engine))
-			$key="[".implode('].[',explode('.',$key))."]";
-		return $key;
+		$delims=array(
+			'mysql'=>'``',
+			'sqlite2?|pgsql|oci'=>'""',
+			'mssql|sqlsrv|odbc|sybase|dblib'=>'[]'
+		);
+		$use='';
+		foreach ($delims as $engine=>$delim)
+			if (preg_match('/'.$engine.'/',$this->engine)) {
+				$use=$delim;
+				break;
+			}
+		return $use[0].implode($use[1].'.'.$use[0],explode('.',$key)).$use[1];
 	}
 
 	/**
-	*	Redirect call to MongoDB object
+	*	Redirect call to PDO object
 	*	@return mixed
 	*	@param $func string
 	*	@param $args array
@@ -429,7 +456,7 @@ class SQL {
 	function __construct($dsn,$user=NULL,$pw=NULL,array $options=NULL) {
 		$fw=\Base::instance();
 		$this->uuid=$fw->hash($this->dsn=$dsn);
-		if (preg_match('/^.+?(?:dbname|database)=(.+?)(?=;|$)/i',$dsn,$parts))
+		if (preg_match('/^.+?(?:dbname|database)=(.+?)(?=;|$)/is',$dsn,$parts))
 			$this->dbname=$parts[1];
 		if (!$options)
 			$options=array();
