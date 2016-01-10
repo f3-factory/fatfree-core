@@ -20,10 +20,10 @@
 
 */
 
-namespace Web;
+namespace F3\Web;
 
 //! Geo plug-in
-class Geo extends \Prefab {
+class Geo extends \F3\Prefab {
 
 	/**
 	*	Return information about specified Unix time zone
@@ -52,8 +52,8 @@ class Geo extends \Prefab {
 	*	@param $ip string
 	**/
 	function location($ip=NULL) {
-		$fw=\Base::instance();
-		$web=\Web::instance();
+		$fw=\F3\Base::instance();
+		$web=\F3\Web::instance();
 		if (!$ip)
 			$ip=$fw->get('IP');
 		$public=filter_var($ip,FILTER_VALIDATE_IP,
@@ -89,8 +89,8 @@ class Geo extends \Prefab {
 	*	@param $longitude float
 	**/
 	function weather($latitude,$longitude) {
-		$fw=\Base::instance();
-		$web=\Web::instance();
+		$fw=\F3\Base::instance();
+		$web=\F3\Web::instance();
 		$query=array(
 			'lat'=>$latitude,
 			'lon'=>$longitude

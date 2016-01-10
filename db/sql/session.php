@@ -20,7 +20,7 @@
 
 */
 
-namespace DB\SQL;
+namespace F3\DB\SQL;
 
 //! SQL-managed session handler
 class Session extends Mapper {
@@ -67,7 +67,7 @@ class Session extends Mapper {
 		if ($this->dry())
 			return FALSE;
 		if ($this->get('ip')!=$this->_ip || $this->get('agent')!=$this->_agent) {
-			$fw=\Base::instance();
+			$fw=\F3\Base::instance();
 			if (!isset($this->onsuspect) || FALSE===$fw->call($this->onsuspect,array($this,$id))) {
 				//NB: `session_destroy` can't be called at that stage (`session_start` not completed)
 				$this->destroy($id);
@@ -159,13 +159,13 @@ class Session extends Mapper {
 
 	/**
 	*	Instantiate class
-	*	@param $db \DB\SQL
+	*	@param $db \F3\DB\SQL
 	*	@param $table string
 	*	@param $force bool
 	*	@param $onsuspect callback
 	*	@param $key string
 	**/
-	function __construct(\DB\SQL $db,$table='sessions',$force=TRUE,$onsuspect=NULL,$key=NULL) {
+	function __construct(\F3\DB\SQL $db,$table='sessions',$force=TRUE,$onsuspect=NULL,$key=NULL) {
 		if ($force) {
 			$eol="\n";
 			$tab="\t";
@@ -198,7 +198,7 @@ class Session extends Mapper {
 			array($this,'cleanup')
 		);
 		register_shutdown_function('session_commit');
-		$fw=\Base::instance();
+		$fw=\F3\Base::instance();
 		$headers=$fw->get('HEADERS');
 		$this->_csrf=$fw->hash($fw->get('ROOT').$fw->get('BASE')).'.'.
 			$fw->hash(mt_rand());

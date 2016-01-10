@@ -20,6 +20,8 @@
 
 */
 
+namespace F3;
+
 //! Unicode string manager
 class UTF extends Prefab {
 

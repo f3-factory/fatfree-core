@@ -20,6 +20,8 @@
 
 */
 
+namespace F3;
+
 //! Generic array utilities
 class Matrix extends Prefab {
 

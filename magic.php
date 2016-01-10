@@ -20,8 +20,10 @@
 
 */
 
+namespace F3;
+
 //! PHP magic wrapper
-abstract class Magic implements ArrayAccess {
+abstract class Magic implements \ArrayAccess {
 
 	/**
 	*	Return TRUE if key is not empty

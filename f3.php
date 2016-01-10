@@ -20,6 +20,8 @@
 
 */
 
+namespace F3;
+
 //! Legacy mode enabler
 class F3 {
 

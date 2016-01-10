@@ -20,7 +20,7 @@
 
 */
 
-namespace DB\Jig;
+namespace F3\DB\Jig;
 
 //! Jig-managed session handler
 class Session extends Mapper {
@@ -67,7 +67,7 @@ class Session extends Mapper {
 		if ($this->dry())
 			return FALSE;
 		if ($this->get('ip')!=$this->_ip || $this->get('agent')!=$this->_agent) {
-			$fw=\Base::instance();
+			$fw=\F3\Base::instance();
 			if (!isset($this->onsuspect) || FALSE===$fw->call($this->onsuspect,array($this,$id))) {
 				//NB: `session_destroy` can't be called at that stage (`session_start` not completed)
 				$this->destroy($id);
@@ -159,12 +159,12 @@ class Session extends Mapper {
 
 	/**
 	*	Instantiate class
-	*	@param $db \DB\Jig
+	*	@param $db \F3\DB\Jig
 	*	@param $file string
 	*	@param $onsuspect callback
 	*	@param $key string
 	**/
-	function __construct(\DB\Jig $db,$file='sessions',$onsuspect=NULL,$key=NULL) {
+	function __construct(\F3\DB\Jig $db,$file='sessions',$onsuspect=NULL,$key=NULL) {
 		parent::__construct($db,$file);
 		$this->onsuspect=$onsuspect;
 		session_set_save_handler(
@@ -176,7 +176,7 @@ class Session extends Mapper {
 			array($this,'cleanup')
 		);
 		register_shutdown_function('session_commit');
-		$fw=\Base::instance();
+		$fw=\F3\Base::instance();
 		$headers=$fw->get('HEADERS');
 		$this->_csrf=$fw->hash($fw->get('ROOT').$fw->get('BASE')).'.'.
 			$fw->hash(mt_rand());

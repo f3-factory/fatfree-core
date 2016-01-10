@@ -20,6 +20,8 @@
 
 */
 
+namespace F3;
+
 //! Factory class for single-instance objects
 abstract class Prefab {
 
@@ -29,7 +31,7 @@ abstract class Prefab {
 	**/
 	static function instance() {
 		if (!Registry::exists($class=get_called_class())) {
-			$ref=new Reflectionclass($class);
+			$ref=new \Reflectionclass($class);
 			$args=func_get_args();
 			Registry::set($class,
 				$args?$ref->newinstanceargs($args):new $class);
@@ -40,7 +42,7 @@ abstract class Prefab {
 }
 
 //! Base structure
-final class Base extends Prefab implements ArrayAccess {
+final class Base extends Prefab implements \ArrayAccess {
 
 	//@{ Framework details
 	const
@@ -460,7 +462,7 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function visible($obj,$key) {
 		if (property_exists($obj,$key)) {
-			$ref=new ReflectionProperty(get_class($obj),$key);
+			$ref=new \ReflectionProperty(get_class($obj),$key);
 			$out=$ref->ispublic();
 			unset($ref);
 			return $out;
@@ -699,7 +701,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $prefix string
 	**/
 	function constants($class,$prefix='') {
-		$ref=new ReflectionClass($class);
+		$ref=new \ReflectionClass($class);
 		return $this->extract($ref->getconstants(),$prefix);
 	}
 
@@ -760,7 +762,7 @@ final class Base extends Prefab implements ArrayAccess {
 		switch (gettype($arg)) {
 			case 'object':
 				if (method_exists('ReflectionClass','iscloneable')) {
-					$ref=new ReflectionClass($arg);
+					$ref=new \ReflectionClass($arg);
 					if ($ref->iscloneable()) {
 						$arg=clone($arg);
 						$cast=is_a($arg,'IteratorAggregate')?
@@ -1617,7 +1619,7 @@ final class Base extends Prefab implements ArrayAccess {
 				if (is_subclass_of($parts[1],'Prefab'))
 					$parts[1]=call_user_func($parts[1].'::instance');
 				else {
-					$ref=new ReflectionClass($parts[1]);
+					$ref=new \ReflectionClass($parts[1]);
 					$parts[1]=method_exists($parts[1],'__construct')?
 						$ref->newinstanceargs($args):
 						$ref->newinstance();
@@ -1896,7 +1898,7 @@ final class Base extends Prefab implements ArrayAccess {
 				is_file($file=$auto.$class.'.php') ||
 				is_file($file=$auto.strtolower($class).'.php') ||
 				is_file($file=strtolower($auto.$class).'.php'))
-				return require($file);
+				return require_once($file);
 	}
 
 	/**
@@ -2394,7 +2396,7 @@ class Cache extends Prefab {
 					list($host,$port)=$parts;
 				else
 					$host=$parts[0];
-				$this->ref=new Redis;
+				$this->ref=new \Redis;
 				if(!$this->ref->connect($host,$port,2))
 					$this->ref=NULL;
 			}
@@ -2558,8 +2560,8 @@ class Preview extends View {
 		$filter=array(
 			'esc'=>'$this->esc',
 			'raw'=>'$this->raw',
-			'alias'=>'\Base::instance()->alias',
-			'format'=>'\Base::instance()->format'
+			'alias'=>'\F3\Base::instance()->alias',
+			'format'=>'\F3\Base::instance()->format'
 		);
 
 	/**
@@ -2575,7 +2577,7 @@ class Preview extends View {
 			$str=trim($parts[1]);
 			foreach (Base::instance()->split($parts[2]) as $func)
 				$str=is_string($cmd=$this->filter($func))?$cmd.'('.$str.')':
-					'\Base::instance()->call('.
+					'\F3\Base::instance()->call('.
 						'$this->filter(\''.$func.'\'),array('.$str.'))';
 		}
 		return $str;
@@ -2631,7 +2633,7 @@ class Preview extends View {
 	**/
 	function resolve($str,array $hive=NULL) {
 		if (!$hive)
-			$hive=\Base::instance()->hive();
+			$hive=Base::instance()->hive();
 		extract($hive);
 		ob_start();
 		eval(' ?>'.$this->build($str).'<?php ');
@@ -3036,7 +3038,7 @@ class ISO extends Prefab {
 	*	@return array
 	**/
 	function languages() {
-		return \Base::instance()->constants($this,'LC_');
+		return Base::instance()->constants($this,'LC_');
 	}
 
 	/**
@@ -3044,7 +3046,7 @@ class ISO extends Prefab {
 	*	@return array
 	**/
 	function countries() {
-		return \Base::instance()->constants($this,'CC_');
+		return Base::instance()->constants($this,'CC_');
 	}
 
 }

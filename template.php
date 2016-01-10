@@ -20,6 +20,8 @@
 
 */
 
+namespace F3;
+
 //! XML-style template engine
 class Template extends Preview {
 
@@ -66,7 +68,7 @@ class Template extends Preview {
 								(preg_match('/^\'.*\'$/',$pair[2]) ||
 									preg_match('/\$/',$pair[2])?
 									$pair[2]:
-									\Base::instance()->stringify($pair[2]));
+									Base::instance()->stringify($pair[2]));
 						},$pairs)).')+get_defined_vars()':
 					'get_defined_vars()';
 		$ttl=isset($attrib['ttl'])?(int)$attrib['ttl']:0;
@@ -339,7 +341,7 @@ class Template extends Preview {
 	*	return object
 	**/
 	function __construct() {
-		$ref=new ReflectionClass(__CLASS__);
+		$ref=new \ReflectionClass(__CLASS__);
 		$this->tags='';
 		foreach ($ref->getmethods() as $method)
 			if (preg_match('/^_(?=[[:alpha:]])/',$method->name))

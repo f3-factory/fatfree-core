@@ -20,6 +20,8 @@
 
 */
 
+namespace F3;
+
 //! SMTP plug-in
 class SMTP extends Magic {
 

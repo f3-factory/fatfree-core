@@ -20,10 +20,10 @@
 
 */
 
-namespace Web;
+namespace F3\Web;
 
 //! OpenID consumer
-class OpenID extends \Magic {
+class OpenID extends \F3\Magic {
 
 	protected
 		//! OpenID provider endpoint URL
@@ -49,7 +49,7 @@ class OpenID extends \Magic {
 			strtolower($url['host']).(isset($url['path'])?$url['path']:'/').
 			(isset($url['query'])?('?'.$url['query']):'');
 		// HTML-based discovery of OpenID provider
-		$req=\Web::instance()->
+		$req=\F3\Web::instance()->
 			request($this->args['identity'],array('proxy'=>$proxy));
 		if (!$req)
 			return FALSE;
@@ -141,7 +141,7 @@ class OpenID extends \Magic {
 	*	@param $reqd string|array
 	**/
 	function auth($proxy=NULL,$attr=array(),array $reqd=NULL) {
-		$fw=\Base::instance();
+		$fw=\F3\Base::instance();
 		$root=$fw->get('SCHEME').'://'.$fw->get('HOST');
 		if (empty($this->args['trust_root']))
 			$this->args['trust_root']=$root.$fw->get('BASE').'/';
@@ -182,7 +182,7 @@ class OpenID extends \Magic {
 			$var=array();
 			foreach ($this->args as $key=>$val)
 				$var['openid.'.$key]=$val;
-			$req=\Web::instance()->request(
+			$req=\F3\Web::instance()->request(
 				$this->url,
 				array(
 					'method'=>'POST',

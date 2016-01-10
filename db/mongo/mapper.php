@@ -20,10 +20,10 @@
 
 */
 
-namespace DB\Mongo;
+namespace F3\DB\Mongo;
 
 //! MongoDB mapper
-class Mapper extends \DB\Cursor {
+class Mapper extends \F3\DB\Cursor {
 
 	protected
 		//! MongoDB wrapper
@@ -94,7 +94,7 @@ class Mapper extends \DB\Cursor {
 			$mapper->document[$key]=$val;
 		$mapper->query=array(clone($mapper));
 		if (isset($mapper->trigger['load']))
-			\Base::instance()->call($mapper->trigger['load'],$mapper);
+			\F3\Base::instance()->call($mapper->trigger['load'],$mapper);
 		return $mapper;
 	}
 
@@ -126,8 +126,8 @@ class Mapper extends \DB\Cursor {
 			'limit'=>0,
 			'offset'=>0
 		);
-		$fw=\Base::instance();
-		$cache=\Cache::instance();
+		$fw=\F3\Base::instance();
+		$cache=\F3\Cache::instance();
 		if (!($cached=$cache->exists($hash=$fw->hash($this->db->dsn().
 			$fw->stringify(array($fields,$filter,$options))).'.mongo',
 			$result)) || !$ttl || $cached[0]+$ttl<microtime(TRUE)) {
@@ -201,8 +201,8 @@ class Mapper extends \DB\Cursor {
 	*	@param $ttl int
 	**/
 	function count($filter=NULL,$ttl=0) {
-		$fw=\Base::instance();
-		$cache=\Cache::instance();
+		$fw=\F3\Base::instance();
+		$cache=\F3\Cache::instance();
 		if (!($cached=$cache->exists($hash=$fw->hash($fw->stringify(
 			array($filter))).'.mongo',$result)) || !$ttl ||
 			$cached[0]+$ttl<microtime(TRUE)) {
@@ -223,7 +223,7 @@ class Mapper extends \DB\Cursor {
 	function skip($ofs=1) {
 		$this->document=($out=parent::skip($ofs))?$out->document:array();
 		if ($this->document && isset($this->trigger['load']))
-			\Base::instance()->call($this->trigger['load'],$this);
+			\F3\Base::instance()->call($this->trigger['load'],$this);
 		return $out;
 	}
 
@@ -235,13 +235,13 @@ class Mapper extends \DB\Cursor {
 		if (isset($this->document['_id']))
 			return $this->update();
 		if (isset($this->trigger['beforeinsert']) &&
-			\Base::instance()->call($this->trigger['beforeinsert'],
+			\F3\Base::instance()->call($this->trigger['beforeinsert'],
 				array($this,array('_id'=>$this->document['_id'])))===FALSE)
 			return $this->document;
 		$this->collection->insert($this->document);
 		$pkey=array('_id'=>$this->document['_id']);
 		if (isset($this->trigger['afterinsert']))
-			\Base::instance()->call($this->trigger['afterinsert'],
+			\F3\Base::instance()->call($this->trigger['afterinsert'],
 				array($this,$pkey));
 		$this->load($pkey);
 		return $this->document;
@@ -254,13 +254,13 @@ class Mapper extends \DB\Cursor {
 	function update() {
 		$pkey=array('_id'=>$this->document['_id']);
 		if (isset($this->trigger['beforeupdate']) &&
-			\Base::instance()->call($this->trigger['beforeupdate'],
+			\F3\Base::instance()->call($this->trigger['beforeupdate'],
 				array($this,$pkey))===FALSE)
 			return $this->document;
 		$this->collection->update(
 			$pkey,$this->document,array('upsert'=>TRUE));
 		if (isset($this->trigger['afterupdate']))
-			\Base::instance()->call($this->trigger['afterupdate'],
+			\F3\Base::instance()->call($this->trigger['afterupdate'],
 				array($this,$pkey));
 		return $this->document;
 	}
@@ -275,14 +275,14 @@ class Mapper extends \DB\Cursor {
 			return $this->collection->remove($filter);
 		$pkey=array('_id'=>$this->document['_id']);
 		if (isset($this->trigger['beforeerase']) &&
-			\Base::instance()->call($this->trigger['beforeerase'],
+			\F3\Base::instance()->call($this->trigger['beforeerase'],
 				array($this,$pkey))===FALSE)
 			return FALSE;
 		$result=$this->collection->
 			remove(array('_id'=>$this->document['_id']));
 		parent::erase();
 		if (isset($this->trigger['aftererase']))
-			\Base::instance()->call($this->trigger['aftererase'],
+			\F3\Base::instance()->call($this->trigger['aftererase'],
 				array($this,$pkey));
 		return $result;
 	}
@@ -304,7 +304,7 @@ class Mapper extends \DB\Cursor {
 	**/
 	function copyfrom($var,$func=NULL) {
 		if (is_string($var))
-			$var=\Base::instance()->get($var);
+			$var=\F3\Base::instance()->get($var);
 		if ($func)
 			$var=call_user_func($func,$var);
 		foreach ($var as $key=>$val)
@@ -317,7 +317,7 @@ class Mapper extends \DB\Cursor {
 	*	@param $key string
 	**/
 	function copyto($key) {
-		$var=&\Base::instance()->ref($key);
+		$var=&\F3\Base::instance()->ref($key);
 		foreach ($this->document as $key=>$field)
 			$var[$key]=$field;
 	}
@@ -352,7 +352,7 @@ class Mapper extends \DB\Cursor {
 	*	@param $db object
 	*	@param $collection string
 	**/
-	function __construct(\DB\Mongo $db,$collection) {
+	function __construct(\F3\DB\Mongo $db,$collection) {
 		$this->db=$db;
 		$this->collection=$db->selectcollection($collection);
 		$this->reset();

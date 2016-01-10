@@ -20,6 +20,8 @@
 
 */
 
+namespace F3;
+
 //! Lightweight password hashing library
 class Bcrypt extends Prefab {
 

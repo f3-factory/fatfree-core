@@ -20,6 +20,8 @@
 
 */
 
+namespace F3;
+
 //! Custom logger
 class Log {
 

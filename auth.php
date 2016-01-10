@@ -20,6 +20,8 @@
 
 */
 
+namespace F3;
+
 
 //! Authorization/authentication plug-in
 class Auth {

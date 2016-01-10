@@ -20,7 +20,7 @@
 
 */
 
-namespace DB;
+namespace F3\DB;
 
 //! PDO wrapper
 class SQL {
@@ -147,8 +147,8 @@ class SQL {
 			$cmds=array($cmds);
 			$args=array($args);
 		}
-		$fw=\Base::instance();
-		$cache=\Cache::instance();
+		$fw=\F3\Base::instance();
+		$cache=\F3\Cache::instance();
 		$result=FALSE;
 		for ($i=0;$i<$count;$i++) {
 			$cmd=$cmds[$i];
@@ -329,7 +329,7 @@ class SQL {
 				'FIELD','TYPE','DEFVAL','NULLABLE','Y','PKEY','P')
 		);
 		if (is_string($fields))
-			$fields=\Base::instance()->split($fields);
+			$fields=\F3\Base::instance()->split($fields);
 		foreach ($cmd as $key=>$val)
 			if (preg_match('/'.$key.'/',$this->engine)) {
 				// Improve InnoDB performance on MySQL with
@@ -371,7 +371,7 @@ class SQL {
 	function quote($val,$type=\PDO::PARAM_STR) {
 		return $this->engine=='odbc'?
 			(is_string($val)?
-				\Base::instance()->stringify(str_replace('\'','\'\'',$val)):
+				\F3\Base::instance()->stringify(str_replace('\'','\'\'',$val)):
 				$val):
 			$this->pdo->quote($val,$type);
 	}
@@ -454,7 +454,7 @@ class SQL {
 	*	@param $options array
 	**/
 	function __construct($dsn,$user=NULL,$pw=NULL,array $options=NULL) {
-		$fw=\Base::instance();
+		$fw=\F3\Base::instance();
 		$this->uuid=$fw->hash($this->dsn=$dsn);
 		if (preg_match('/^.+?(?:dbname|database)=(.+?)(?=;|$)/is',$dsn,$parts))
 			$this->dbname=$parts[1];

@@ -20,7 +20,7 @@
 
 */
 
-namespace DB;
+namespace F3\DB;
 
 //! In-memory/flat-file DB wrapper
 class Jig {
@@ -54,7 +54,7 @@ class Jig {
 				$this->data[$file]=array();
 			return $this->data[$file];
 		}
-		$fw=\Base::instance();
+		$fw=\F3\Base::instance();
 		$raw=$fw->read($dst);
 		switch ($this->format) {
 			case self::FORMAT_JSON:
@@ -77,7 +77,7 @@ class Jig {
 	function write($file,array $data=NULL) {
 		if (!$this->dir)
 			return count($this->data[$file]=$data);
-		$fw=\Base::instance();
+		$fw=\F3\Base::instance();
 		switch ($this->format) {
 			case self::FORMAT_JSON:
 				$out=json_encode($data,@constant('JSON_PRETTY_PRINT'));
@@ -142,8 +142,8 @@ class Jig {
 	**/
 	function __construct($dir=NULL,$format=self::FORMAT_JSON) {
 		if ($dir && !is_dir($dir))
-			mkdir($dir,\Base::MODE,TRUE);
-		$this->uuid=\Base::instance()->hash($this->dir=$dir);
+			mkdir($dir,\F3\Base::MODE,TRUE);
+		$this->uuid=\F3\Base::instance()->hash($this->dir=$dir);
 		$this->format=$format;
 	}
 

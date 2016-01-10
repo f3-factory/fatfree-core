@@ -20,6 +20,8 @@
 
 */
 
+namespace F3;
+
 //! Markdown-to-HTML converter
 class Markdown extends Prefab {
 

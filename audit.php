@@ -20,6 +20,8 @@
 
 */
 
+namespace F3;
+
 //! Data validator
 class Audit extends Prefab {
 

@@ -20,6 +20,8 @@
 
 */
 
+namespace F3;
+
 //! Session-based pseudo-mapper
 class Basket extends Magic {
 
@@ -193,7 +195,7 @@ class Basket extends Magic {
 	**/
 	function copyfrom($var) {
 		if (is_string($var))
-			$var=\Base::instance()->get($var);
+			$var=Base::instance()->get($var);
 		foreach ($var as $key=>$val)
 			$this->set($key,$val);
 	}
@@ -204,7 +206,7 @@ class Basket extends Magic {
 	*	@param $key string
 	**/
 	function copyto($key) {
-		$var=&\Base::instance()->ref($key);
+		$var=&Base::instance()->ref($key);
 		foreach ($this->item as $key=>$field)
 			$var[$key]=$field;
 	}

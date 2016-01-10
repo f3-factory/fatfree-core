@@ -20,6 +20,8 @@
 
 */
 
+namespace F3;
+
 //! Unit test kit
 class Test {
 

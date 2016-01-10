@@ -20,10 +20,10 @@
 
 */
 
-namespace DB\Jig;
+namespace F3\DB\Jig;
 
 //! Flat-file DB mapper
-class Mapper extends \DB\Cursor {
+class Mapper extends \F3\DB\Cursor {
 
 	protected
 		//! Flat-file DB wrapper
@@ -99,7 +99,7 @@ class Mapper extends \DB\Cursor {
 			$mapper->document[$field]=$val;
 		$mapper->query=array(clone($mapper));
 		if (isset($mapper->trigger['load']))
-			\Base::instance()->call($mapper->trigger['load'],$mapper);
+			\F3\Base::instance()->call($mapper->trigger['load'],$mapper);
 		return $mapper;
 	}
 
@@ -128,7 +128,7 @@ class Mapper extends \DB\Cursor {
 				return '$'.preg_replace_callback(
 					'/(\.\w+)|\[((?:[^\[\]]*|(?R))*)\]/',
 					function($expr) use($self) {
-						$fw=\Base::instance();
+						$fw=\F3\Base::instance();
 						return
 							'['.
 							($expr[1]?
@@ -163,8 +163,8 @@ class Mapper extends \DB\Cursor {
 			'limit'=>0,
 			'offset'=>0
 		);
-		$fw=\Base::instance();
-		$cache=\Cache::instance();
+		$fw=\F3\Base::instance();
+		$cache=\F3\Cache::instance();
 		$db=$this->db;
 		$now=microtime(TRUE);
 		$data=array();
@@ -306,7 +306,7 @@ class Mapper extends \DB\Cursor {
 		$this->document=($out=parent::skip($ofs))?$out->document:array();
 		$this->id=$out?$out->id:NULL;
 		if ($this->document && isset($this->trigger['load']))
-			\Base::instance()->call($this->trigger['load'],$this);
+			\F3\Base::instance()->call($this->trigger['load'],$this);
 		return $out;
 	}
 
@@ -326,7 +326,7 @@ class Mapper extends \DB\Cursor {
 		$this->id=$id;
 		$pkey=array('_id'=>$this->id);
 		if (isset($this->trigger['beforeinsert']) &&
-			\Base::instance()->call($this->trigger['beforeinsert'],
+			\F3\Base::instance()->call($this->trigger['beforeinsert'],
 				array($this,$pkey))===FALSE)
 			return $this->document;
 		$data[$id]=$this->document;
@@ -334,7 +334,7 @@ class Mapper extends \DB\Cursor {
 		$db->jot('('.sprintf('%.1f',1e3*(microtime(TRUE)-$now)).'ms) '.
 			$this->file.' [insert] '.json_encode($this->document));
 		if (isset($this->trigger['afterinsert']))
-			\Base::instance()->call($this->trigger['afterinsert'],
+			\F3\Base::instance()->call($this->trigger['afterinsert'],
 				array($this,$pkey));
 		$this->load(array('@_id=?',$this->id));
 		return $this->document;
@@ -349,7 +349,7 @@ class Mapper extends \DB\Cursor {
 		$now=microtime(TRUE);
 		$data=&$db->read($this->file);
 		if (isset($this->trigger['beforeupdate']) &&
-			\Base::instance()->call($this->trigger['beforeupdate'],
+			\F3\Base::instance()->call($this->trigger['beforeupdate'],
 				array($this,array('_id'=>$this->id)))===FALSE)
 			return $this->document;
 		$data[$this->id]=$this->document;
@@ -357,7 +357,7 @@ class Mapper extends \DB\Cursor {
 		$db->jot('('.sprintf('%.1f',1e3*(microtime(TRUE)-$now)).'ms) '.
 			$this->file.' [update] '.json_encode($this->document));
 		if (isset($this->trigger['afterupdate']))
-			\Base::instance()->call($this->trigger['afterupdate'],
+			\F3\Base::instance()->call($this->trigger['afterupdate'],
 				array($this,array('_id'=>$this->id)));
 		return $this->document;
 	}
@@ -385,7 +385,7 @@ class Mapper extends \DB\Cursor {
 		else
 			return FALSE;
 		if (isset($this->trigger['beforeerase']) &&
-			\Base::instance()->call($this->trigger['beforeerase'],
+			\F3\Base::instance()->call($this->trigger['beforeerase'],
 				array($this,$pkey))===FALSE)
 			return FALSE;
 		$db->write($this->file,$data);
@@ -395,7 +395,7 @@ class Mapper extends \DB\Cursor {
 				array_slice($filter,1,NULL,TRUE);
 			$args=is_array($args)?$args:array(1=>$args);
 			foreach ($args as $key=>$val) {
-				$vals[]=\Base::instance()->
+				$vals[]=\F3\Base::instance()->
 					stringify(is_array($val)?$val[0]:$val);
 				$keys[]='/'.(is_numeric($key)?'\?':preg_quote($key)).'/';
 			}
@@ -404,7 +404,7 @@ class Mapper extends \DB\Cursor {
 			$this->file.' [erase] '.
 			($filter?preg_replace($keys,$vals,$filter[0],1):''));
 		if (isset($this->trigger['aftererase']))
-			\Base::instance()->call($this->trigger['aftererase'],
+			\F3\Base::instance()->call($this->trigger['aftererase'],
 				array($this,$pkey));
 		return TRUE;
 	}
@@ -427,7 +427,7 @@ class Mapper extends \DB\Cursor {
 	**/
 	function copyfrom($var,$func=NULL) {
 		if (is_string($var))
-			$var=\Base::instance()->get($var);
+			$var=\F3\Base::instance()->get($var);
 		if ($func)
 			$var=call_user_func($func,$var);
 		foreach ($var as $key=>$val)
@@ -440,7 +440,7 @@ class Mapper extends \DB\Cursor {
 	*	@param $key string
 	**/
 	function copyto($key) {
-		$var=&\Base::instance()->ref($key);
+		$var=&\F3\Base::instance()->ref($key);
 		foreach ($this->document as $key=>$field)
 			$var[$key]=$field;
 	}
@@ -467,7 +467,7 @@ class Mapper extends \DB\Cursor {
 	*	@param $db object
 	*	@param $file string
 	**/
-	function __construct(\DB\Jig $db,$file) {
+	function __construct(\F3\DB\Jig $db,$file) {
 		$this->db=$db;
 		$this->file=$file;
 		$this->reset();

@@ -20,10 +20,10 @@
 
 */
 
-namespace DB\SQL;
+namespace F3\DB\SQL;
 
 //! SQL data mapper
-class Mapper extends \DB\Cursor {
+class Mapper extends \F3\DB\Cursor {
 
 	protected
 		//! PDO wrapper
@@ -168,7 +168,7 @@ class Mapper extends \DB\Cursor {
 		}
 		$mapper->query=array(clone($mapper));
 		if (isset($mapper->trigger['load']))
-			\Base::instance()->call($mapper->trigger['load'],$mapper);
+			\F3\Base::instance()->call($mapper->trigger['load'],$mapper);
 		return $mapper;
 	}
 
@@ -363,7 +363,7 @@ class Mapper extends \DB\Cursor {
 			unset($field);
 		}
 		if (!$dry && isset($this->trigger['load']))
-			\Base::instance()->call($this->trigger['load'],$this);
+			\F3\Base::instance()->call($this->trigger['load'],$this);
 		return $out;
 	}
 
@@ -386,7 +386,7 @@ class Mapper extends \DB\Cursor {
 			if ($field['pkey'])
 				$pkeys[$key]=$field['previous'];
 		if (isset($this->trigger['beforeinsert']) &&
-			\Base::instance()->call($this->trigger['beforeinsert'],
+			\F3\Base::instance()->call($this->trigger['beforeinsert'],
 				array($this,$pkeys))===FALSE)
 			return $this;
 		foreach ($this->fields as $key=>&$field) {
@@ -430,7 +430,7 @@ class Mapper extends \DB\Cursor {
 					$this->fields[$inc]['pdo_type'],$this->_id)):
 				array($filter,$nkeys));
 			if (isset($this->trigger['afterinsert']))
-				\Base::instance()->call($this->trigger['afterinsert'],
+				\F3\Base::instance()->call($this->trigger['afterinsert'],
 					array($this,$pkeys));
 		}
 		return $this;
@@ -450,7 +450,7 @@ class Mapper extends \DB\Cursor {
 			if ($field['pkey'])
 				$pkeys[$key]=$field['previous'];
 		if (isset($this->trigger['beforeupdate']) &&
-			\Base::instance()->call($this->trigger['beforeupdate'],
+			\F3\Base::instance()->call($this->trigger['beforeupdate'],
 				array($this,$pkeys))===FALSE)
 			return $this;
 		foreach ($this->fields as $key=>$field)
@@ -470,7 +470,7 @@ class Mapper extends \DB\Cursor {
 			$sql='UPDATE '.$this->table.' SET '.$pairs.$filter;
 			$this->db->exec($sql,$args);
 			if (isset($this->trigger['afterupdate']))
-				\Base::instance()->call($this->trigger['afterupdate'],
+				\F3\Base::instance()->call($this->trigger['afterupdate'],
 					array($this,$pkeys));
 		}
 		return $this;
@@ -517,13 +517,13 @@ class Mapper extends \DB\Cursor {
 		}
 		parent::erase();
 		if (isset($this->trigger['beforeerase']) &&
-			\Base::instance()->call($this->trigger['beforeerase'],
+			\F3\Base::instance()->call($this->trigger['beforeerase'],
 				array($this,$pkeys))===FALSE)
 			return 0;
 		$out=$this->db->
 			exec('DELETE FROM '.$this->table.' WHERE '.$filter.';',$args);
 		if (isset($this->trigger['aftererase']))
-			\Base::instance()->call($this->trigger['aftererase'],
+			\F3\Base::instance()->call($this->trigger['aftererase'],
 				array($this,$pkeys));
 		return $out;
 	}
@@ -555,7 +555,7 @@ class Mapper extends \DB\Cursor {
 	**/
 	function copyfrom($var,$func=NULL) {
 		if (is_string($var))
-			$var=\Base::instance()->get($var);
+			$var=\F3\Base::instance()->get($var);
 		if ($func)
 			$var=call_user_func($func,$var);
 		foreach ($var as $key=>$val)
@@ -569,7 +569,7 @@ class Mapper extends \DB\Cursor {
 	*	@param $key string
 	**/
 	function copyto($key) {
-		$var=&\Base::instance()->ref($key);
+		$var=&\F3\Base::instance()->ref($key);
 		foreach ($this->fields+$this->adhoc as $key=>$field)
 			$var[$key]=$field['value'];
 	}
@@ -619,7 +619,7 @@ class Mapper extends \DB\Cursor {
 	*	@param $fields array|string
 	*	@param $ttl int
 	**/
-	function __construct(\DB\SQL $db,$table,$fields=NULL,$ttl=60) {
+	function __construct(\F3\DB\SQL $db,$table,$fields=NULL,$ttl=60) {
 		$this->db=$db;
 		$this->engine=$db->driver();
 		if ($this->engine=='oci')

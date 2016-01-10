@@ -20,6 +20,8 @@
 
 */
 
+namespace F3;
+
 //! Image manipulation tools
 class Image {
 

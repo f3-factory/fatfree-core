@@ -20,10 +20,10 @@
 
 */
 
-namespace Web;
+namespace F3\Web;
 
 //! Pingback 1.0 protocol (client and server) implementation
-class Pingback extends \Prefab {
+class Pingback extends \F3\Prefab {
 
 	protected
 		//! Transaction history
@@ -35,7 +35,7 @@ class Pingback extends \Prefab {
 	*	@param $url
 	**/
 	protected function enabled($url) {
-		$web=\Web::instance();
+		$web=\F3\Web::instance();
 		$req=$web->request($url);
 		$found=FALSE;
 		if ($req && $req['body']) {
@@ -62,8 +62,8 @@ class Pingback extends \Prefab {
 	*	@param $source string
 	**/
 	function inspect($source) {
-		$fw=\Base::instance();
-		$web=\Web::instance();
+		$fw=\F3\Base::instance();
+		$web=\F3\Web::instance();
 		$parts=parse_url($source);
 		if (empty($parts['scheme']) || empty($parts['host']) ||
 			$parts['host']==$fw->get('HOST')) {
@@ -108,7 +108,7 @@ class Pingback extends \Prefab {
 	*	@param $path string
 	**/
 	function listen($func,$path=NULL) {
-		$fw=\Base::instance();
+		$fw=\F3\Base::instance();
 		if (PHP_SAPI!='cli') {
 			header('X-Powered-By: '.$fw->get('PACKAGE'));
 			header('Content-Type: application/xml; '.
@@ -116,7 +116,7 @@ class Pingback extends \Prefab {
 		}
 		if (!$path)
 			$path=$fw->get('BASE');
-		$web=\Web::instance();
+		$web=\F3\Web::instance();
 		$args=xmlrpc_decode_request($fw->get('BODY'),$method,$charset);
 		$options=array('encoding'=>$charset);
 		if ($method=='pingback.ping' && isset($args[0],$args[1])) {

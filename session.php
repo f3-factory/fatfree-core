@@ -20,6 +20,8 @@
 
 */
 
+namespace F3;
+
 //! Cache-based session handler
 class Session {
 
@@ -176,7 +178,7 @@ class Session {
 			array($this,'cleanup')
 		);
 		register_shutdown_function('session_commit');
-		$fw=\Base::instance();
+		$fw=Base::instance();
 		$headers=$fw->get('HEADERS');
 		$this->_csrf=$fw->hash($fw->get('ROOT').$fw->get('BASE')).'.'.
 			$fw->hash(mt_rand());
