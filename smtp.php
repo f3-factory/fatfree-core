@@ -217,63 +217,64 @@ class SMTP extends Magic {
 		$this->dialog('MAIL FROM: '.strstr($headers['From'],'<'),$log);
 		foreach ($fw->split($headers['To'].
 			(isset($headers['Cc'])?(';'.$headers['Cc']):'').
-			(isset($headers['Bcc'])?(';'.$headers['Bcc']):'')) as $dst)
+			(isset($headers['Bcc'])?(';'.$headers['Bcc']):'')) as $dst) {
 			$this->dialog('RCPT TO: '.strstr($dst,'<'),$log);
-		$this->dialog('DATA',$log);
-		if ($this->attachments) {
-			// Replace Content-Type
-			$type=$headers['Content-Type'];
-			unset($headers['Content-Type']);
-			$enc=$headers['Content-Transfer-Encoding'];
-			unset($headers['Content-Transfer-Encoding']);
-			$hash=uniqid(NULL,TRUE);
-			// Send mail headers
-			$out='Content-Type: multipart/mixed; boundary="'.$hash.'"'.$eol;
-			foreach ($headers as $key=>$val)
-				if ($key!='Bcc')
-					$out.=$key.': '.$val.$eol;
-			$out.=$eol;
-			$out.='This is a multi-part message in MIME format'.$eol;
-			$out.=$eol;
-			$out.='--'.$hash.$eol;
-			$out.='Content-Type: '.$type.$eol;
-			$out.='Content-Transfer-Encoding: '.$enc.$eol;
-			$out.=$str.$eol;
-			$out.=$message.$eol;
-			foreach ($this->attachments as $attachment) {
-				if (is_array($attachment['filename']))
-					list($alias,$file)=each($attachment['filename']);
-				else
-					$alias=basename($file=$attachment['filename']);
-				$out.='--'.$hash.$eol;
-				$out.='Content-Type: application/octet-stream'.$eol;
-				$out.='Content-Transfer-Encoding: base64'.$eol;
-				if ($attachment['cid'])
-					$out.='Content-ID: '.$attachment['cid'].$eol;
-				$out.='Content-Disposition: attachment; '.
-					'filename="'.$alias.'"'.$eol;
+			$this->dialog('DATA',$log);
+			if ($this->attachments) {
+				// Replace Content-Type
+				$type=$headers['Content-Type'];
+				unset($headers['Content-Type']);
+				$enc=$headers['Content-Transfer-Encoding'];
+				unset($headers['Content-Transfer-Encoding']);
+				$hash=uniqid(NULL,TRUE);
+				// Send mail headers
+				$out='Content-Type: multipart/mixed; boundary="'.$hash.'"'.$eol;
+				foreach ($headers as $key=>$val)
+					if ($key!='Bcc')
+						$out.=$key.': '.$val.$eol;
 				$out.=$eol;
-				$out.=chunk_split(base64_encode(
-					file_get_contents($file))).$eol;
+				$out.='This is a multi-part message in MIME format'.$eol;
+				$out.=$eol;
+				$out.='--'.$hash.$eol;
+				$out.='Content-Type: '.$type.$eol;
+				$out.='Content-Transfer-Encoding: '.$enc.$eol;
+				$out.=$str.$eol;
+				$out.=$message.$eol;
+				foreach ($this->attachments as $attachment) {
+					if (is_array($attachment['filename']))
+						list($alias,$file)=each($attachment['filename']);
+					else
+						$alias=basename($file=$attachment['filename']);
+					$out.='--'.$hash.$eol;
+					$out.='Content-Type: application/octet-stream'.$eol;
+					$out.='Content-Transfer-Encoding: base64'.$eol;
+					if ($attachment['cid'])
+						$out.='Content-ID: '.$attachment['cid'].$eol;
+					$out.='Content-Disposition: attachment; '.
+						'filename="'.$alias.'"'.$eol;
+					$out.=$eol;
+					$out.=chunk_split(base64_encode(
+						file_get_contents($file))).$eol;
+				}
+				$out.=$eol;
+				$out.='--'.$hash.'--'.$eol;
+				$out.='.';
+				$this->dialog($out,FALSE);
 			}
-			$out.=$eol;
-			$out.='--'.$hash.'--'.$eol;
-			$out.='.';
-			$this->dialog($out,FALSE);
+			else {
+				// Send mail headers
+				$out='';
+				foreach ($headers as $key=>$val)
+					if ($key!='Bcc')
+						$out.=$key.': '.$val.$eol;
+				$out.=$eol;
+				$out.=$message.$eol;
+				$out.='.';
+				// Send message
+				$this->dialog($out);
+			}
+			$this->dialog('QUIT',$log);
 		}
-		else {
-			// Send mail headers
-			$out='';
-			foreach ($headers as $key=>$val)
-				if ($key!='Bcc')
-					$out.=$key.': '.$val.$eol;
-			$out.=$eol;
-			$out.=$message.$eol;
-			$out.='.';
-			// Send message
-			$this->dialog($out);
-		}
-		$this->dialog('QUIT',$log);
 		if ($socket)
 			fclose($socket);
 		return TRUE;
