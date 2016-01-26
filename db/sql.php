@@ -79,6 +79,14 @@ class SQL {
 	}
 
 	/**
+	*	Return transaction flag
+	*	@return bool
+	**/
+	function trans() {
+		return $this->trans;
+	}
+
+	/**
 	*	Map data type of argument to a PDO constant
 	*	@return int
 	*	@param $val scalar
