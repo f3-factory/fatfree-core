@@ -38,29 +38,41 @@ class Auth {
 		$args;
 
 	/**
-	*	Jig storage handler
-	*	@return bool
-	*	@param $id string
-	*	@param $pw string
+	 * Password compare function with optional hashing
+	 * @return bool
+	 * @param $db_pw string
+	 * @param $try_pw string
+	 **/
+	protected function _check_pw($db_pw, $try_pw) {
+		if (isset($this->args['pwhash']) && $this->args['pwhash'] === true)
+			return password_verify($try_pw, $db_pw);
+		else
+			return $db_pw === $try_pw;
+	}
+
+	/**
+	 *	Jig storage handler
+	 *	@return bool
+	 *	@param $id string
+	 *	@param $pw string
 	*	@param $realm string
 	**/
 	protected function _jig($id,$pw,$realm) {
-		return (bool)
-			call_user_func_array(
+		$loaded = (bool) call_user_func_array(
 				[$this->mapper,'load'],
 				[
 					array_merge(
 						[
-							'@'.$this->args['id'].'==? AND '.
-							'@'.$this->args['pw'].'==?'.
+							'@'.$this->args['id'].'==? '.
 							(isset($this->args['realm'])?
 								(' AND @'.$this->args['realm'].'==?'):''),
-							$id,$pw
+							$id
 						],
 						(isset($this->args['realm'])?[$realm]:[])
 					)
 				]
 			);
+		return $loaded && $this->_check_pw($this->mapper->{$this->args['pw']}, $pw);
 	}
 
 	/**
@@ -71,15 +83,14 @@ class Auth {
 	*	@param $realm string
 	**/
 	protected function _mongo($id,$pw,$realm) {
-		return (bool)
-			$this->mapper->load(
+		$loaded = (bool) $this->mapper->load(
 				[
-					$this->args['id']=>$id,
-					$this->args['pw']=>$pw
+					$this->args['id']=>$id
 				]+
 				(isset($this->args['realm'])?
 					[$this->args['realm']=>$realm]:[])
 			);
+		return $loaded && $this->_check_pw($this->mapper->{$this->args['pw']}, $pw);
 	}
 
 	/**
@@ -90,22 +101,21 @@ class Auth {
 	*	@param $realm string
 	**/
 	protected function _sql($id,$pw,$realm) {
-		return (bool)
-			call_user_func_array(
+		$loaded = (bool)call_user_func_array(
 				[$this->mapper,'load'],
 				[
 					array_merge(
 						[
-							$this->args['id'].'=? AND '.
-							$this->args['pw'].'=?'.
+							$this->args['id'].'=?'.
 							(isset($this->args['realm'])?
 								(' AND '.$this->args['realm'].'=?'):''),
-							$id,$pw
+							$id
 						],
 						(isset($this->args['realm'])?[$realm]:[])
 					)
 				]
 			);
+		return $loaded && $this->_check_pw($this->mapper->{$this->args['pw']}, $pw);
 	}
 
 	/**
