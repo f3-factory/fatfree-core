@@ -1300,7 +1300,8 @@ final class Base extends Prefab implements ArrayAccess {
 			$this->call($handler,array($url,$permanent))!==FALSE)
 			return;
 		if ($url[0]=='/')
-			$url=$this->hive['BASE'].$url;
+			$url=$this->hive['SCHEME'].'://'.
+				$this->hive['HOST'].$this->hive['BASE'].$url;
 		if (PHP_SAPI!='cli') {
 			header('Location: '.$url);
 			$this->status($permanent?301:302);
