@@ -1301,7 +1301,8 @@ final class Base extends Prefab implements ArrayAccess {
 			return;
 		if ($url[0]=='/')
 			$url=$this->hive['SCHEME'].'://'.
-				$this->hive['HOST'].$this->hive['BASE'].$url;
+				$this->hive['HOST'].($port=$this->hive['PORT'] && $port!=80 &&
+				$port!=443?(':'.$port):'').$this->hive['BASE'].$url;
 		if (PHP_SAPI!='cli') {
 			header('Location: '.$url);
 			$this->status($permanent?301:302);
