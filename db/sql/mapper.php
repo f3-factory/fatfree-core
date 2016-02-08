@@ -93,6 +93,8 @@ class Mapper extends \DB\Cursor {
 			if ($this->fields[$key]['value']!==$val ||
 				$this->fields[$key]['default']!==$val && is_null($val))
 				$this->fields[$key]['changed']=TRUE;
+			if (isset($this->trigger['onset']))
+				\Base::instance()->call($this->trigger['onset'],array($key,&$val,$this));
 			return $this->fields[$key]['value']=$val;
 		}
 		// adjust result on existing expressions
@@ -112,11 +114,15 @@ class Mapper extends \DB\Cursor {
 	function &get($key) {
 		if ($key=='_id')
 			return $this->_id;
-		elseif (array_key_exists($key,$this->fields))
-			return $this->fields[$key]['value'];
+		if (array_key_exists($key,$this->fields))
+			$val=$this->fields[$key]['value'];
 		elseif (array_key_exists($key,$this->adhoc))
-			return $this->adhoc[$key]['value'];
-		user_error(sprintf(self::E_Field,$key),E_USER_ERROR);
+			$val=$this->adhoc[$key]['value'];
+		else
+			user_error(sprintf(self::E_Field,$key),E_USER_ERROR);
+		if (isset($this->trigger['onget']))
+			\Base::instance()->call($this->trigger['onget'],array($key,&$val,$this));
+		return $val;
 	}
 
 	/**

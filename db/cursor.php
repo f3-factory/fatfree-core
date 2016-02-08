@@ -374,6 +374,24 @@ abstract class Cursor extends \Magic implements \IteratorAggregate {
 	}
 
 	/**
+	 *	Define onget trigger
+	 *	@return callback
+	 *	@param $func callback
+	 **/
+	function onget($func) {
+		return $this->trigger['onget']=$func;
+	}
+
+	/**
+	 *	Define onset trigger
+	 *	@return callback
+	 *	@param $func callback
+	 **/
+	function onset($func) {
+		return $this->trigger['onset']=$func;
+	}
+
+	/**
 	*	Reset cursor
 	*	@return NULL
 	**/
