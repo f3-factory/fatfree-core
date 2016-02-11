@@ -65,7 +65,8 @@ class Session {
 			return FALSE;
 		if ($data['ip']!=$this->_ip || $data['agent']!=$this->_agent) {
 			$fw=Base::instance();
-			if (!isset($this->onsuspect) || FALSE===$fw->call($this->onsuspect,array($this,$id))) {
+			if (!isset($this->onsuspect) ||
+				$fw->call($this->onsuspect,[$this,$id])===FALSE) {
 				//NB: `session_destroy` can't be called at that stage (`session_start` not completed)
 				$this->destroy($id);
 				$this->close();
@@ -86,12 +87,12 @@ class Session {
 		$fw=Base::instance();
 		$jar=$fw->get('JAR');
 		Cache::instance()->set($id.'.@',
-			array(
+			[
 				'data'=>$data,
 				'ip'=>$this->_ip,
 				'agent'=>$this->_agent,
 				'stamp'=>time()
-			),
+			],
 			$jar['expire']?($jar['expire']-time()):0
 		);
 		return TRUE;
@@ -168,12 +169,12 @@ class Session {
 	function __construct($onsuspect=NULL,$key=NULL) {
 		$this->onsuspect=$onsuspect;
 		session_set_save_handler(
-			array($this,'open'),
-			array($this,'close'),
-			array($this,'read'),
-			array($this,'write'),
-			array($this,'destroy'),
-			array($this,'cleanup')
+			[$this,'open'],
+			[$this,'close'],
+			[$this,'read'],
+			[$this,'write'],
+			[$this,'destroy'],
+			[$this,'cleanup']
 		);
 		register_shutdown_function('session_commit');
 		$fw=\Base::instance();

@@ -48,19 +48,19 @@ class Auth {
 	protected function _jig($id,$pw,$realm) {
 		return (bool)
 			call_user_func_array(
-				array($this->mapper,'load'),
-				array(
+				[$this->mapper,'load'],
+				[
 					array_merge(
-						array(
+						[
 							'@'.$this->args['id'].'==? AND '.
 							'@'.$this->args['pw'].'==?'.
 							(isset($this->args['realm'])?
 								(' AND @'.$this->args['realm'].'==?'):''),
 							$id,$pw
-						),
-						(isset($this->args['realm'])?array($realm):array())
+						],
+						(isset($this->args['realm'])?[$realm]:[])
 					)
-				)
+				]
 			);
 	}
 

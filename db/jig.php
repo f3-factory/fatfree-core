@@ -51,7 +51,7 @@ class Jig {
 	function &read($file) {
 		if (!$this->dir || !is_file($dst=$this->dir.$file)) {
 			if (!isset($this->data[$file]))
-				$this->data[$file]=array();
+				$this->data[$file]=[];
 			return $this->data[$file];
 		}
 		$fw=\Base::instance();
@@ -129,7 +129,7 @@ class Jig {
 	**/
 	function drop() {
 		if (!$this->dir)
-			$this->data=array();
+			$this->data=[];
 		elseif ($glob=@glob($this->dir.'/*',GLOB_NOSORT))
 			foreach ($glob as $file)
 				@unlink($file);

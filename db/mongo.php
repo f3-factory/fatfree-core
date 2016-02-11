@@ -92,7 +92,7 @@ class Mongo {
 	*	@param $args array
 	**/
 	function __call($func,array $args) {
-		return call_user_func_array(array($this->db,$func),$args);
+		return call_user_func_array([$this->db,$func],$args);
 	}
 
 	/**
@@ -104,7 +104,7 @@ class Mongo {
 	function __construct($dsn,$dbname,array $options=NULL) {
 		$this->uuid=\Base::instance()->hash($this->dsn=$dsn);
 		$class=class_exists('\MongoClient')?'\MongoClient':'\Mongo';
-		$this->db=new \MongoDB(new $class($dsn,$options?:array()),$dbname);
+		$this->db=new \MongoDB(new $class($dsn,$options?:[]),$dbname);
 		$this->setprofilinglevel(2);
 	}
 

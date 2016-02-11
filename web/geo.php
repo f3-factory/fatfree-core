@@ -34,14 +34,14 @@ class Geo extends \Prefab {
 		$ref=new \DateTimeZone($zone);
 		$loc=$ref->getLocation();
 		$trn=$ref->getTransitions($now=time(),$now);
-		$out=array(
+		$out=[
 			'offset'=>$ref->
 				getOffset(new \DateTime('now',new \DateTimeZone('GMT')))/3600,
 			'country'=>$loc['country_code'],
 			'latitude'=>$loc['latitude'],
 			'longitude'=>$loc['longitude'],
 			'dst'=>$trn[0]['isdst']
-		);
+		];
 		unset($ref);
 		return $out;
 	}
@@ -72,7 +72,7 @@ class Geo extends \Prefab {
 		if (($req=$web->request('http://www.geoplugin.net/json.gp'.
 			($public?('?ip='.$ip):''))) &&
 			$data=json_decode($req['body'],TRUE)) {
-			$out=array();
+			$out=[];
 			foreach ($data as $key=>$val)
 				if (!strpos($key,'currency') && $key!=='geoplugin_status'
 					&& $key!=='geoplugin_region')
@@ -91,10 +91,10 @@ class Geo extends \Prefab {
 	function weather($latitude,$longitude) {
 		$fw=\Base::instance();
 		$web=\Web::instance();
-		$query=array(
+		$query=[
 			'lat'=>$latitude,
 			'lon'=>$longitude
-		);
+		];
 		$req=$web->request(
 			'http://api.openweathermap.org/data/2.5/weather?'.
 				http_build_query($query));

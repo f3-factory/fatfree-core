@@ -138,9 +138,9 @@ class SQL {
 	function exec($cmds,$args=NULL,$ttl=0,$log=TRUE) {
 		$auto=FALSE;
 		if (is_null($args))
-			$args=array();
+			$args=[];
 		elseif (is_scalar($args))
-			$args=array(1=>$args);
+			$args=[1=>$args];
 		if (is_array($cmds)) {
 			if (count($args)<($count=count($cmds)))
 				// Apply arguments to SQL commands
@@ -152,8 +152,8 @@ class SQL {
 		}
 		else {
 			$count=1;
-			$cmds=array($cmds);
-			$args=array($args);
+			$cmds=[$cmds];
+			$args=[$args];
 		}
 		$fw=\Base::instance();
 		$cache=\Cache::instance();
@@ -169,7 +169,7 @@ class SQL {
 			if (!preg_replace('/(^\s+|[\s;]+$)/','',$cmd))
 				continue;
 			$now=microtime(TRUE);
-			$keys=$vals=array();
+			$keys=$vals=[];
 			if ($fw->get('CACHE') && $ttl && ($cached=$cache->exists(
 				$hash=$fw->hash($this->dsn.$cmd.
 				$fw->stringify($arg)).'.sql',$result)) &&
@@ -224,7 +224,7 @@ class SQL {
 					if (preg_match('/sqlite2?/',$this->engine))
 						foreach ($result as $pos=>$rec) {
 							unset($result[$pos]);
-							$result[$pos]=array();
+							$result[$pos]=[];
 							foreach ($rec as $key=>$val)
 								$result[$pos][trim($key,'\'"[]`')]=$val;
 						}
@@ -283,14 +283,14 @@ class SQL {
 		if (strpos($table,'.'))
 			list($schema,$table)=explode('.',$table);
 		// Supported engines
-		$cmd=array(
-			'sqlite2?'=>array(
+		$cmd=[
+			'sqlite2?'=>[
 				'PRAGMA table_info("'.$table.'");',
-				'name','type','dflt_value','notnull',0,'pk',TRUE),
-			'mysql'=>array(
+				'name','type','dflt_value','notnull',0,'pk',TRUE],
+			'mysql'=>[
 				'SHOW columns FROM `'.$this->dbname.'`.`'.$table.'`;',
-				'Field','Type','Default','Null','YES','Key','PRI'),
-			'mssql|sqlsrv|sybase|dblib|pgsql|odbc'=>array(
+				'Field','Type','Default','Null','YES','Key','PRI'],
+			'mssql|sqlsrv|sybase|dblib|pgsql|odbc'=>[
 				'SELECT '.
 					'c.column_name AS field,'.
 					'c.data_type AS type,'.
@@ -319,8 +319,8 @@ class SQL {
 						(' AND c.table_catalog='.
 							$this->quote($this->dbname)):'').
 				';',
-				'field','type','defval','nullable','YES','pkey','PRIMARY KEY'),
-			'oci'=>array(
+				'field','type','defval','nullable','YES','pkey','PRIMARY KEY'],
+			'oci'=>[
 				'SELECT c.column_name AS field, '.
 					'c.data_type AS type, '.
 					'c.data_default AS defval, '.
@@ -334,8 +334,8 @@ class SQL {
 						'AND constraint_type='.$this->quote('P').') AS pkey '.
 				'FROM all_tab_cols c '.
 				'WHERE c.table_name='.$this->quote($table),
-				'FIELD','TYPE','DEFVAL','NULLABLE','Y','PKEY','P')
-		);
+				'FIELD','TYPE','DEFVAL','NULLABLE','Y','PKEY','P']
+		];
 		if (is_string($fields))
 			$fields=\Base::instance()->split($fields);
 		foreach ($cmd as $key=>$val)
@@ -343,10 +343,10 @@ class SQL {
 				// Improve InnoDB performance on MySQL with
 				// SET GLOBAL innodb_stats_on_metadata=0;
 				// This requires SUPER privilege!
-				$rows=array();
+				$rows=[];
 				foreach ($this->exec($val[0],NULL,$ttl) as $row) {
 					if (!$fields || in_array($row[$val[1]],$fields))
-						$rows[$row[$val[1]]]=array(
+						$rows[$row[$val[1]]]=[
 							'type'=>$row[$val[2]],
 							'pdo_type'=>
 								preg_match('/int\b|integer/i',$row[$val[2]])?
@@ -362,7 +362,7 @@ class SQL {
 								$row[$val[3]]):$row[$val[3]],
 							'nullable'=>$row[$val[4]]==$val[5],
 							'pkey'=>$row[$val[6]]==$val[7]
-						);
+						];
 				}
 				return $rows;
 			}
@@ -430,11 +430,11 @@ class SQL {
 	*	@param $key
 	**/
 	function quotekey($key) {
-		$delims=array(
+		$delims=[
 			'mysql'=>'``',
 			'sqlite2?|pgsql|oci'=>'""',
 			'mssql|sqlsrv|odbc|sybase|dblib'=>'[]'
-		);
+		];
 		$use='';
 		foreach ($delims as $engine=>$delim)
 			if (preg_match('/'.$engine.'/',$this->engine)) {
@@ -451,7 +451,7 @@ class SQL {
 	*	@param $args array
 	**/
 	function __call($func,array $args) {
-		return call_user_func_array(array($this->pdo,$func),$args);
+		return call_user_func_array([$this->pdo,$func],$args);
 	}
 
 	/**
@@ -467,10 +467,10 @@ class SQL {
 		if (preg_match('/^.+?(?:dbname|database)=(.+?)(?=;|$)/is',$dsn,$parts))
 			$this->dbname=$parts[1];
 		if (!$options)
-			$options=array();
+			$options=[];
 		if (isset($parts[0]) && strstr($parts[0],':',TRUE)=='mysql')
-			$options+=array(\PDO::MYSQL_ATTR_INIT_COMMAND=>'SET NAMES '.
-				strtolower(str_replace('-','',$fw->get('ENCODING'))).';');
+			$options+=[\PDO::MYSQL_ATTR_INIT_COMMAND=>'SET NAMES '.
+				strtolower(str_replace('-','',$fw->get('ENCODING'))).';'];
 		$this->pdo=new \PDO($dsn,$user,$pw,$options);
 		$this->engine=$this->pdo->getattribute(\PDO::ATTR_DRIVER_NAME);
 	}

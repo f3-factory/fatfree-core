@@ -148,8 +148,8 @@ class SMTP extends Magic {
 		if (!is_file($file))
 			user_error(sprintf(self::E_Attach,$file),E_USER_ERROR);
 		if ($alias)
-			$file=array($alias=>$file);
-		$this->attachments[]=array('filename'=>$file,'cid'=>$cid);
+			$file=[$alias=>$file];
+		$this->attachments[]=['filename'=>$file,'cid'=>$cid];
 	}
 
 	/**
@@ -197,7 +197,7 @@ class SMTP extends Magic {
 			$this->dialog(base64_encode($this->pw),$log);
 		}
 		// Required headers
-		$reqd=array('From','To','Subject');
+		$reqd=['From','To','Subject'];
 		foreach ($reqd as $id)
 			if (empty($headers[$id]))
 				user_error(sprintf(self::E_Header,$id),E_USER_ERROR);
@@ -208,7 +208,7 @@ class SMTP extends Magic {
 			if (!in_array($key,$reqd) && (!$this->attachments ||
 				$key!='Content-Type' && $key!='Content-Transfer-Encoding'))
 				$str.=$key.': '.$val.$eol;
-			if (in_array($key,array('From','To','Cc','Bcc')) &&
+			if (in_array($key,['From','To','Cc','Bcc']) &&
 				!preg_match('/[<>]/',$val))
 				$val='<'.$val.'>';
 			unset($val);
@@ -289,11 +289,11 @@ class SMTP extends Magic {
 	*	@param $pw string
 	**/
 	function __construct($host='localhost',$port=25,$scheme=null,$user=null,$pw=null) {
-		$this->headers=array(
+		$this->headers=[
 			'MIME-Version'=>'1.0',
 			'Content-Type'=>'text/plain; '.
 				'charset='.Base::instance()->get('ENCODING')
-		);
+		];
 		$this->host=$host;
 		if (strtolower($this->scheme=strtolower($scheme))=='ssl')
 			$this->host='ssl://'.$host;

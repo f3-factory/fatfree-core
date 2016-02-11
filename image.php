@@ -332,24 +332,24 @@ class Image {
 	*	@param $blocks int
 	**/
 	function identicon($str,$size=64,$blocks=4) {
-		$sprites=array(
-			array(.5,1,1,0,1,1),
-			array(.5,0,1,0,.5,1,0,1),
-			array(.5,0,1,0,1,1,.5,1,1,.5),
-			array(0,.5,.5,0,1,.5,.5,1,.5,.5),
-			array(0,.5,1,0,1,1,0,1,1,.5),
-			array(1,0,1,1,.5,1,1,.5,.5,.5),
-			array(0,0,1,0,1,.5,0,0,.5,1,0,1),
-			array(0,0,.5,0,1,.5,.5,1,0,1,.5,.5),
-			array(.5,0,.5,.5,1,.5,1,1,.5,1,.5,.5,0,.5),
-			array(0,0,1,0,.5,.5,1,.5,.5,1,.5,.5,0,1),
-			array(0,.5,.5,1,1,.5,.5,0,1,0,1,1,0,1),
-			array(.5,0,1,0,1,1,.5,1,1,.75,.5,.5,1,.25),
-			array(0,.5,.5,0,.5,.5,1,0,1,.5,.5,1,.5,.5,0,1),
-			array(0,0,1,0,1,1,0,1,1,.5,.5,.25,.5,.75,0,.5,.5,.25),
-			array(0,.5,.5,.5,.5,0,1,0,.5,.5,1,.5,.5,1,.5,.5,0,1),
-			array(0,0,1,0,.5,.5,.5,0,0,.5,1,.5,.5,1,.5,.5,0,1)
-		);
+		$sprites=[
+			[.5,1,1,0,1,1],
+			[.5,0,1,0,.5,1,0,1],
+			[.5,0,1,0,1,1,.5,1,1,.5],
+			[0,.5,.5,0,1,.5,.5,1,.5,.5],
+			[0,.5,1,0,1,1,0,1,1,.5],
+			[1,0,1,1,.5,1,1,.5,.5,.5],
+			[0,0,1,0,1,.5,0,0,.5,1,0,1],
+			[0,0,.5,0,1,.5,.5,1,0,1,.5,.5],
+			[.5,0,.5,.5,1,.5,1,1,.5,1,.5,.5,0,.5],
+			[0,0,1,0,.5,.5,1,.5,.5,1,.5,.5,0,1],
+			[0,.5,.5,1,1,.5,.5,0,1,0,1,1,0,1],
+			[.5,0,1,0,1,1,.5,1,1,.75,.5,.5,1,.25],
+			[0,.5,.5,0,.5,.5,1,0,1,.5,.5,1,.5,.5,0,1],
+			[0,0,1,0,1,1,0,1,1,.5,.5,.25,.5,.75,0,.5,.5,.25],
+			[0,.5,.5,.5,.5,0,1,0,.5,.5,1,.5,.5,1,.5,.5,0,1],
+			[0,0,1,0,.5,.5,.5,0,0,.5,1,.5,.5,1,.5,.5,0,1]
+		];
 		$hash=sha1($str);
 		$this->data=imagecreatetruecolor($size,$size);
 		list($r,$g,$b)=$this->rgb(hexdec(substr($hash,-3)));
@@ -410,7 +410,7 @@ class Image {
 					$ssl?bin2hex(openssl_random_pseudo_bytes($len)):uniqid(),
 					-$len));
 				$block=$size*3;
-				$tmp=array();
+				$tmp=[];
 				for ($i=0,$width=0,$height=0;$i<$len;$i++) {
 					// Process at 2x magnification
 					$box=imagettfbbox($size*2,0,$path,$seed[$i]);
@@ -477,8 +477,7 @@ class Image {
 			header('Content-Type: image/'.$format);
 			header('X-Powered-By: '.Base::instance()->get('PACKAGE'));
 		}
-		call_user_func_array('image'.$format,
-			array_merge(array($this->data),$args));
+		call_user_func_array('image'.$format,array_merge([$this->data],$args));
 	}
 
 	/**
@@ -489,8 +488,7 @@ class Image {
 		$args=func_get_args();
 		$format=$args?array_shift($args):'png';
 		ob_start();
-		call_user_func_array('image'.$format,
-			array_merge(array($this->data),$args));
+		call_user_func_array('image'.$format,array_merge([$this->data],$args));
 		return ob_get_clean();
 	}
 

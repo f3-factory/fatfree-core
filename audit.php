@@ -47,7 +47,7 @@ class Audit extends Prefab {
 	*	@param $mx boolean
 	**/
 	function email($str,$mx=TRUE) {
-		$hosts=array();
+		$hosts=[];
 		return is_string(filter_var($str,FILTER_VALIDATE_EMAIL)) &&
 			(!$mx || getmxrr(substr($str,strrpos($str,'@')+1),$hosts));
 	}

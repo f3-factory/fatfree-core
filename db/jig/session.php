@@ -63,12 +63,13 @@ class Session extends Mapper {
 	*	@param $id string
 	**/
 	function read($id) {
-		$this->load(array('@session_id=?',$this->sid=$id));
+		$this->load(['@session_id=?',$this->sid=$id]);
 		if ($this->dry())
 			return FALSE;
 		if ($this->get('ip')!=$this->_ip || $this->get('agent')!=$this->_agent) {
 			$fw=\Base::instance();
-			if (!isset($this->onsuspect) || FALSE===$fw->call($this->onsuspect,array($this,$id))) {
+			if (!isset($this->onsuspect) ||
+				$fw->call($this->onsuspect,[$this,$id])===FALSE) {
 				//NB: `session_destroy` can't be called at that stage (`session_start` not completed)
 				$this->destroy($id);
 				$this->close();
@@ -101,7 +102,7 @@ class Session extends Mapper {
 	*	@param $id string
 	**/
 	function destroy($id) {
-		$this->erase(array('@session_id=?',$id));
+		$this->erase(['@session_id=?',$id]);
 		return TRUE;
 	}
 
@@ -111,7 +112,7 @@ class Session extends Mapper {
 	*	@param $max int
 	**/
 	function cleanup($max) {
-		$this->erase(array('@stamp+?<?',$max,time()));
+		$this->erase(['@stamp+?<?',$max,time()]);
 		return TRUE;
 	}
 
@@ -168,12 +169,12 @@ class Session extends Mapper {
 		parent::__construct($db,$file);
 		$this->onsuspect=$onsuspect;
 		session_set_save_handler(
-			array($this,'open'),
-			array($this,'close'),
-			array($this,'read'),
-			array($this,'write'),
-			array($this,'destroy'),
-			array($this,'cleanup')
+			[$this,'open'],
+			[$this,'close'],
+			[$this,'read'],
+			[$this,'write'],
+			[$this,'destroy'],
+			[$this,'cleanup']
 		);
 		register_shutdown_function('session_commit');
 		$fw=\Base::instance();

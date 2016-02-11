@@ -36,7 +36,7 @@ class F3 {
 	static function __callstatic($func,array $args) {
 		if (!self::$fw)
 			self::$fw=Base::instance();
-		return call_user_func_array(array(self::$fw,$func),$args);
+		return call_user_func_array([self::$fw,$func],$args);
 	}
 
 }

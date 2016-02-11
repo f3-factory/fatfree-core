@@ -79,15 +79,15 @@ class Pingback extends \Prefab {
 					// Find pingback-enabled resources
 					if ($permalink && $found=$this->enabled($permalink)) {
 						$req=$web->request($found,
-							array(
+							[
 								'method'=>'POST',
 								'header'=>'Content-Type: application/xml',
 								'content'=>xmlrpc_encode_request(
 									'pingback.ping',
-									array($source,$permalink),
-									array('encoding'=>$fw->get('ENCODING'))
+									[$source,$permalink],
+									['encoding'=>$fw->get('ENCODING')]
 								)
-							)
+							]
 						);
 						if ($req && $req['body'])
 							$this->log.=date('r').' '.
@@ -118,7 +118,7 @@ class Pingback extends \Prefab {
 			$path=$fw->get('BASE');
 		$web=\Web::instance();
 		$args=xmlrpc_decode_request($fw->get('BODY'),$method,$charset);
-		$options=array('encoding'=>$charset);
+		$options=['encoding'=>$charset];
 		if ($method=='pingback.ping' && isset($args[0],$args[1])) {
 			list($source,$permalink)=$args;
 			$doc=new \DOMDocument('1.0',$fw->get('ENCODING'));
@@ -138,8 +138,7 @@ class Pingback extends \Prefab {
 					$links=$doc->getelementsbytagname('a');
 					foreach ($links as $link) {
 						if ($link->getattribute('href')==$permalink) {
-							call_user_func_array($func,
-								array($source,$req['body']));
+							call_user_func_array($func,[$source,$req['body']]);
 							// Success
 							die(xmlrpc_encode_request(NULL,$source,$options));
 						}
