@@ -284,8 +284,6 @@ final class Base extends Prefab implements ArrayAccess {
 					break;
 				}
 			}
-		if ($parts[0]=='ALIASES')
-			$var=$this->build($var);
 		return $var;
 	}
 
