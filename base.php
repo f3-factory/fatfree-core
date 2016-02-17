@@ -333,6 +333,7 @@ final class Base extends Prefab implements ArrayAccess {
 				if ($ttl)
 					$jar['expire']=$time+$ttl;
 				call_user_func_array('setcookie',[$parts[1],$val]+$jar);
+				$_COOKIE[$parts[1]]=$val;
 				return $val;
 			}
 		}
