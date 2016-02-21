@@ -169,9 +169,11 @@ class SMTP extends Magic {
 		$headers=$this->headers;
 		// Connect to the server
 		$socket=&$this->socket;
-		$socket=@fsockopen($this->host,$this->port);
-		if (!$socket)
+		$socket=@fsockopen($this->host,$this->port,$errno,$errstr);
+		if (!$socket) {
+			$fw->error(500,$errstr);
 			return FALSE;
+		}
 		stream_set_blocking($socket,TRUE);
 		// Get server's initial response
 		$this->dialog(NULL,FALSE);
