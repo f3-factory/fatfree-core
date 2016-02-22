@@ -181,7 +181,7 @@ class SQL {
 						'/';
 				}
 				if ($log)
-					$this->log.=($stamp?date('r'):'').' ('.
+					$this->log.=($stamp?(date('r').' '):'').'('.
 						sprintf('%.1f',1e3*(microtime(TRUE)-$now)).'ms) '.
 						'[CACHED] '.
 						preg_replace($keys,$vals,
@@ -204,7 +204,7 @@ class SQL {
 						'/';
 				}
 				if ($log)
-					$this->log.=($stamp?date('r'):'').' ('.
+					$this->log.=($stamp?(date('r').' '):'').'('.
 						sprintf('%.1f',1e3*(microtime(TRUE)-$now)).'ms) '.
 						preg_replace($keys,$vals,
 							str_replace('?',chr(0).'?',$cmd),1).PHP_EOL;
