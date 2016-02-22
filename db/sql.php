@@ -285,10 +285,10 @@ class SQL {
 		// Supported engines
 		$cmd=[
 			'sqlite2?'=>[
-				'PRAGMA table_info("'.$table.'");',
+				'PRAGMA table_info("'.$table.'")',
 				'name','type','dflt_value','notnull',0,'pk',TRUE],
 			'mysql'=>[
-				'SHOW columns FROM `'.$this->dbname.'`.`'.$table.'`;',
+				'SHOW columns FROM `'.$this->dbname.'`.`'.$table.'`',
 				'Field','Type','Default','Null','YES','Key','PRI'],
 			'mssql|sqlsrv|sybase|dblib|pgsql|odbc'=>[
 				'SELECT '.
@@ -317,8 +317,7 @@ class SQL {
 					'c.table_name='.$this->quote($table).
 					($this->dbname?
 						(' AND c.table_catalog='.
-							$this->quote($this->dbname)):'').
-				';',
+							$this->quote($this->dbname)):''),
 				'field','type','defval','nullable','YES','pkey','PRIMARY KEY'],
 			'oci'=>[
 				'SELECT c.column_name AS field, '.
