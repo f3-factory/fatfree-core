@@ -134,8 +134,9 @@ class SQL {
 	*	@param $args string|array
 	*	@param $ttl int
 	*	@param $log bool
+	*	@param $stamp bool
 	**/
-	function exec($cmds,$args=NULL,$ttl=0,$log=TRUE) {
+	function exec($cmds,$args=NULL,$ttl=0,$log=TRUE,$stamp=FALSE) {
 		$auto=FALSE;
 		if (is_null($args))
 			$args=[];
@@ -180,7 +181,7 @@ class SQL {
 						'/';
 				}
 				if ($log)
-					$this->log.=date('r').' ('.
+					$this->log.=($stamp?date('r'):'').' ('.
 						sprintf('%.1f',1e3*(microtime(TRUE)-$now)).'ms) '.
 						'[CACHED] '.
 						preg_replace($keys,$vals,
@@ -203,7 +204,7 @@ class SQL {
 						'/';
 				}
 				if ($log)
-					$this->log.=date('r').' ('.
+					$this->log.=($stamp?date('r'):'').' ('.
 						sprintf('%.1f',1e3*(microtime(TRUE)-$now)).'ms) '.
 						preg_replace($keys,$vals,
 							str_replace('?',chr(0).'?',$cmd),1).PHP_EOL;
