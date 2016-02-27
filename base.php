@@ -1288,13 +1288,13 @@ final class Base extends Prefab implements ArrayAccess {
 	function reroute($url=NULL,$permanent=FALSE) {
 		if (!$url)
 			$url=$this->hive['REALM'];
-		if (preg_match('/^(?:@(\w+)(?:(\(.+?)\))*(\?.+))/',$url,$parts)) {
+		if (preg_match('/^(?:@(\w+)(?:(\(.+?)\))*(\?.+)*)/',$url,$parts)) {
 			if (empty($this->hive['ALIASES'][$parts[1]]))
 				user_error(sprintf(self::E_Named,$parts[1]),E_USER_ERROR);
 			$url=$this->hive['ALIASES'][$parts[1]];
 		}
 		$url=$this->build($url,isset($parts[2])?$this->parse($parts[2]):[]).
-			isset($parts[3])?$parts[3]:'';
+			(isset($parts[3])?$parts[3]:'');
 		if (($handler=$this->hive['ONREROUTE']) &&
 			$this->call($handler,[$url,$permanent])!==FALSE)
 			return;
