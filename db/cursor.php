@@ -247,6 +247,9 @@ abstract class Cursor extends \Magic implements \IteratorAggregate {
 	*	@return int|bool
 	**/
 	function erase() {
+		if(gettype($this->query)=='object' && get_class($this->query)=='SplFixedArray'){$this->query = $this->query->toArray();}
+		//convert SplFixedArray to primitive array to be able to use array_slice
+		
 		$this->query=array_slice($this->query,0,$this->ptr,TRUE)+
 			array_slice($this->query,$this->ptr,NULL,TRUE);
 		$this->skip(0);

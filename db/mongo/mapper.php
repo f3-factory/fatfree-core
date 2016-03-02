@@ -169,9 +169,14 @@ class Mapper extends \DB\Cursor {
 				// Save to cache backend
 				$cache->set($hash,$result,$ttl);
 		}
-		$out=array();
-		foreach ($result as $doc)
-			$out[]=$this->factory($doc);
+		
+		$resultSize = count($result);
+		$out = (class_exists('SplFixedArray') && $resultSize>0) ? new \SplFixedArray($resultSize) : array();
+		//important: empty SplFixedArray should not be created, since empty(new \SplFixedArray(0)) does not return true
+		
+		for($c=0;$c<$resultSize;$c++){
+			$out[$c]=$this->factory($result[$c]);
+		}
 		return $out;
 	}
 
