@@ -2019,7 +2019,7 @@ final class Base extends Prefab implements ArrayAccess {
 		@ini_set('magic_quotes_gpc',0);
 		@ini_set('register_globals',0);
 		// Intercept errors/exceptions; PHP5.3-compatible
-		error_reporting((E_ALL|E_STRICT)&~(E_NOTICE|E_USER_NOTICE));
+		$check=error_reporting((E_ALL|E_STRICT)&~(E_NOTICE|E_USER_NOTICE));
 		$fw=$this;
 		set_exception_handler(
 			function($obj) use($fw) {
@@ -2173,7 +2173,7 @@ final class Base extends Prefab implements ArrayAccess {
 				$global=>preg_match('/SERVER|ENV/',$global)?$sync:[]
 			];
 		}
-		if ($error=error_get_last())
+		if ($check && $error=error_get_last())
 			// Error detected
 			$this->error(500,
 				sprintf(self::E_Fatal,$error['message']),[$error]);
