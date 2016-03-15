@@ -55,9 +55,11 @@ class Image {
 	/**
 	*	Convert RGB hex triad to array
 	*	@return array|FALSE
-	*	@param $color int
+	*	@param $color int|string
 	**/
 	function rgb($color) {
+		if (is_string($color))
+			$color=hexdec($color);
 		$hex=str_pad($hex=dechex($color),$color<4096?3:6,'0',STR_PAD_LEFT);
 		if (($len=strlen($hex))>6)
 			user_error(sprintf(self::E_Color,'0x'.$hex),E_USER_ERROR);
