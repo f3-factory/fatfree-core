@@ -1390,7 +1390,7 @@ final class Base extends Prefab implements ArrayAccess {
 		preg_match('/^'.
 			preg_replace('/((\\\{)?@(\w+\b)(?(2)\\\}))/','(?P<\3>[^\/\?]+)',
 			str_replace('\*','([^\?]+)',preg_quote($pattern,'/'))).
-				'\/?(?:\?.*)?$/'.$case.'um',$url,$args);
+				'\/?$/'.$case.'um',$url,$args);
 		return $args;
 	}
 
@@ -1413,7 +1413,7 @@ final class Base extends Prefab implements ArrayAccess {
 		array_multisort($paths,SORT_DESC,$keys,$vals);
 		$this->hive['ROUTES']=array_combine($keys,$vals);
 		// Convert to BASE-relative URL
-		$req=$this->rel(urldecode($this->hive['URI']));
+		$req=$this->rel(urldecode($this->hive['PATH']));
 		if ($cors=(isset($this->hive['HEADERS']['Origin']) &&
 			$this->hive['CORS']['origin'])) {
 			$cors=$this->hive['CORS'];
