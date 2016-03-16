@@ -826,7 +826,7 @@ final class Base extends Prefab implements ArrayAccess {
 		$conv=localeconv();
 		return preg_replace_callback(
 			'/\{(?P<pos>\d+)\s*(?:,\s*(?P<type>\w+)\s*'.
-			'(?:,\s*(?P<mod>(?:\w+(?:\s*\{.+?\}\s*,?)?)*)'.
+			'(?:,\s*(?P<mod>(?:\w+(?:\s*\{.+?\}\s*,?\s*)?)*)'.
 			'(?:,\s*(?P<prop>.+?))?)?)?\}/',
 			function($expr) use($args,$conv) {
 				extract($expr);
@@ -1436,11 +1436,10 @@ final class Base extends Prefab implements ArrayAccess {
 				continue;
 			if ($this->hive['VERB']!='OPTIONS' &&
 				isset($route[$this->hive['VERB']])) {
-				$parts=parse_url($req);
 				if ($this->hive['VERB']=='GET' &&
-					preg_match('/.+\/$/',$parts['path']))
-					$this->reroute(substr($parts['path'],0,-1).
-						(isset($parts['query'])?('?'.$parts['query']):''));
+					preg_match('/.+\/$/',$this->hive['PATH']))
+					$this->reroute(substr($this->hive['PATH'],0,-1).
+						($this->hive['QUERY']?('?'.$this->hive['QUERY']):''));
 				list($handler,$ttl,$kbps,$alias)=$route[$this->hive['VERB']];
 				if (is_bool(strpos($pattern,'/*')))
 					foreach (array_keys($args) as $key)
@@ -2024,7 +2023,7 @@ final class Base extends Prefab implements ArrayAccess {
 		@ini_set('magic_quotes_gpc',0);
 		@ini_set('register_globals',0);
 		// Intercept errors/exceptions; PHP5.3-compatible
-		error_reporting((E_ALL|E_STRICT)&~(E_NOTICE|E_USER_NOTICE));
+		$check=error_reporting((E_ALL|E_STRICT)&~(E_NOTICE|E_USER_NOTICE));
 		$fw=$this;
 		set_exception_handler(
 			function($obj) use($fw) {
@@ -2178,7 +2177,7 @@ final class Base extends Prefab implements ArrayAccess {
 				$global=>preg_match('/SERVER|ENV/',$global)?$sync:[]
 			];
 		}
-		if ($error=error_get_last())
+		if ($check && $error=error_get_last())
 			// Error detected
 			$this->error(500,
 				sprintf(self::E_Fatal,$error['message']),[$error]);
