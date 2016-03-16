@@ -224,12 +224,17 @@ final class Base extends Prefab implements ArrayAccess {
 							((function_exists($expr[1])?
 								('.'.$expr[1]):
 								('['.var_export($expr[1],TRUE).']')).'('):
-							('['.var_export(
-								isset($expr[3])?
-									trim($fw->compile($expr[3])):
-									(ctype_digit($expr[2])?
+							('['.
+								(isset($expr[3])?
+									($expr[3]?
+										var_export(
+											trim($fw->compile($expr[3])),
+											TRUE):
+										''):
+									var_export(ctype_digit($expr[2])?
 										(int)$expr[2]:
-										$expr[2]),TRUE).']');
+										$expr[2],TRUE)).
+							']');
 					},
 					$var[1]
 				);
@@ -2648,9 +2653,13 @@ class Preview extends View {
 	*	@param $hive array
 	*	@param $ttl int
 	**/
-	function render($file,$mime='text/html',array $hive=NULL,$ttl=0) {
+	function render($file,$mime=NULL,array $hive=NULL,$ttl=0) {
 		$fw=Base::instance();
 		$cache=Cache::instance();
+		if ($mime)
+			$this->mime=$mime;
+		elseif (!$this->mime)
+			$this->mime='text/html';
 		if (!is_dir($tmp=$fw->get('TEMP')))
 			mkdir($tmp,Base::MODE,TRUE);
 		foreach ($fw->split($fw->get('UI')) as $dir) {
@@ -2673,8 +2682,8 @@ class Preview extends View {
 				if (isset($_COOKIE[session_name()]))
 					@session_start();
 				$fw->sync('SESSION');
-				if ($mime && PHP_SAPI!='cli' && !headers_sent())
-					header('Content-Type: '.($this->mime=$mime).'; '.
+				if (PHP_SAPI!='cli' && !headers_sent())
+					header('Content-Type: '.$this->mime.'; '.
 						'charset='.$fw->get('ENCODING'));
 				$data=$this->sandbox($hive);
 				if(isset($this->trigger['afterrender']))
