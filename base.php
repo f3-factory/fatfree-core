@@ -226,7 +226,7 @@ final class Base extends Prefab implements ArrayAccess {
 								('['.var_export($expr[1],TRUE).']')).'('):
 							('['.
 								(isset($expr[3])?
-									($expr[3]?
+									(strlen($expr[3])?
 										var_export(
 											trim($fw->compile($expr[3])),
 											TRUE):
@@ -2153,7 +2153,7 @@ final class Base extends Prefab implements ArrayAccess {
 			'SCHEME'=>$scheme,
 			'SERIALIZER'=>extension_loaded($ext='igbinary')?$ext:'php',
 			'TEMP'=>'tmp/',
-			'TIME'=>microtime(TRUE),
+			'TIME'=>&$_SERVER['REQUEST_TIME_FLOAT'],
 			'TZ'=>@date_default_timezone_get(),
 			'UI'=>'./',
 			'UNLOAD'=>NULL,
