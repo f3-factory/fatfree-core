@@ -97,8 +97,6 @@ class Geo extends \Prefab {
 			'lon'=>$longitude,
 			'APPID'=>$key
 		];
-		var_dump('http://api.openweathermap.org/data/2.5/weather?'.
-				http_build_query($query));
 		return ($req=$web->request(
 			'http://api.openweathermap.org/data/2.5/weather?'.
 				http_build_query($query)))?
