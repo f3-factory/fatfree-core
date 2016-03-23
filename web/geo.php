@@ -95,7 +95,8 @@ class Geo extends \Prefab {
 		$query=[
 			'lat'=>$latitude,
 			'lon'=>$longitude,
-			'APPID'=>$key
+			'APPID'=>$key,
+			'units'=>'metric'
 		];
 		return ($req=$web->request(
 			'http://api.openweathermap.org/data/2.5/weather?'.
