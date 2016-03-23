@@ -87,16 +87,17 @@ class Geo extends \Prefab {
 	*	@return array|FALSE
 	*	@param $latitude float
 	*	@param $longitude float
+	*	@param $key string
 	**/
-	function weather($latitude,$longitude) {
+	function weather($latitude,$longitude,$key) {
 		$fw=\Base::instance();
 		$web=\Web::instance();
 		$query=[
 			'lat'=>$latitude,
-			'lon'=>$longitude
+			'lon'=>$longitude,
+			'APPID'=>$key
 		];
-		$req=$web->request(
-			'http://api.openweathermap.org/data/2.5/weather?'.
+		var_dump('http://api.openweathermap.org/data/2.5/weather?'.
 				http_build_query($query));
 		return ($req=$web->request(
 			'http://api.openweathermap.org/data/2.5/weather?'.
