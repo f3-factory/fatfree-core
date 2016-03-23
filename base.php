@@ -1566,7 +1566,8 @@ final class Base extends Prefab implements ArrayAccess {
 		if (!$args)
 			$args=[];
 		$time=time();
-		$limit=max(0,min($timeout,$max=ini_get('max_execution_time')-1));
+		$max=ini_get('max_execution_time');
+		$limit=max(0,($max?min($timeout,$max):$timeout)-1);
 		$out='';
 		// Turn output buffering on
 		ob_start();
@@ -1574,15 +1575,18 @@ final class Base extends Prefab implements ArrayAccess {
 		while (
 			// No error occurred
 			!$this->hive['ERROR'] &&
+			// Got time left?
+			time()-$time+1<$limit &&
+			// Executed from command line?
+			(PHP_SAPI=='cli' ||
 			// Still alive?
 			!connection_aborted() &&
-			// Got time left?
-			(time()-$time+1<$limit) &&
 			// Restart session
-			@session_start() &&
+			@session_start()) &&
 			// CAUTION: Callback will kill host if it never becomes truthy!
 			!($out=$this->call($func,$args))) {
-			session_commit();
+			if (PHP_SAPI!='cli')
+				session_commit();
 			// Hush down
 			sleep(1);
 		}
