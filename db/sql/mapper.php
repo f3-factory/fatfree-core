@@ -208,16 +208,15 @@ class Mapper extends \DB\Cursor {
 		$db=$this->db;
 		$sql='SELECT '.$fields.' FROM '.$this->table;
 		$args=[];
-		if ($filter) {
-			if (is_array($filter)) {
-				$args=isset($filter[1]) && is_array($filter[1])?
-					$filter[1]:
-					array_slice($filter,1,NULL,TRUE);
-				$args=is_array($args)?$args:[1=>$args];
-				list($filter)=$filter;
-			}
-			$sql.=' WHERE '.$filter;
+		if (is_array($filter)) {
+			$args=isset($filter[1]) && is_array($filter[1])?
+				$filter[1]:
+				array_slice($filter,1,NULL,TRUE);
+			$args=is_array($args)?$args:[1=>$args];
+			list($filter)=$filter;
 		}
+		if ($filter)
+			$sql.=' WHERE '.$filter;
 		if ($options['group']) {
 			$sql.=' GROUP BY '.implode(',',array_map(
 				function($str) use($db) {
