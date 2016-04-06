@@ -1577,14 +1577,12 @@ final class Base extends Prefab implements ArrayAccess {
 			!$this->hive['ERROR'] &&
 			// Got time left?
 			time()-$time+1<$limit &&
-			// Executed from command line?
-			(PHP_SAPI=='cli' ||
 			// Still alive?
 			!connection_aborted() &&
 			// Restart session
-			@session_start()) &&
+			@session_start() &&
 			// CAUTION: Callback will kill host if it never becomes truthy!
-			!($out=$this->call($func,$args))) {
+			!$out=$this->call($func,$args)) {
 			if (PHP_SAPI!='cli')
 				session_commit();
 			// Hush down
@@ -1627,7 +1625,7 @@ final class Base extends Prefab implements ArrayAccess {
 					$parts[1]=call_user_func($parts[1].'::instance');
 				else {
 					$ref=new ReflectionClass($parts[1]);
-					$parts[1]=method_exists($parts[1],'__construct')?
+					$parts[1]=method_exists($parts[1],'__construct') && $args?
 						$ref->newinstanceargs($args):
 						$ref->newinstance();
 				}

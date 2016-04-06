@@ -210,9 +210,12 @@ class SMTP extends Magic {
 			if (!in_array($key,$reqd) && (!$this->attachments ||
 				$key!='Content-Type' && $key!='Content-Transfer-Encoding'))
 				$str.=$key.': '.$val.$eol;
-			if (in_array($key,['From','To','Cc','Bcc']) &&
-				!preg_match('/[<>]/',$val))
-				$val='<'.$val.'>';
+			$email='';
+			if (in_array($key,['From','To','Cc','Bcc']))
+				foreach (explode(',',$val) as $raw)
+					if (!preg_match('/[<>]/',$raw))
+						$email.=($email?',':'').'<'.$raw.'>';
+			$val=$email;
 			unset($val);
 		}
 		// Start message dialog
