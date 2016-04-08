@@ -95,6 +95,10 @@ class Mongo {
 		return call_user_func_array([$this->db,$func],$args);
 	}
 
+	//! Prohibit cloning
+	private function __clone() {
+	}
+
 	/**
 	*	Instantiate class
 	*	@param $dsn string

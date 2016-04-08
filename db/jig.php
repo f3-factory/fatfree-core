@@ -135,6 +135,10 @@ class Jig {
 				@unlink($file);
 	}
 
+	//! Prohibit cloning
+	private function __clone() {
+	}
+
 	/**
 	*	Instantiate class
 	*	@param $dir string

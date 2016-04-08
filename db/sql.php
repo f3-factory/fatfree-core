@@ -454,6 +454,10 @@ class SQL {
 		return call_user_func_array([$this->pdo,$func],$args);
 	}
 
+	//! Prohibit cloning
+	private function __clone() {
+	}
+
 	/**
 	*	Instantiate class
 	*	@param $dsn string
