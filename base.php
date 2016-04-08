@@ -1235,6 +1235,7 @@ final class Base extends Prefab implements ArrayAccess {
 		foreach ($headers?:[] as $key=>$val)
 			$_SERVER['HTTP_'.strtr(strtoupper($key),'-','_')]=$val;
 		$this->hive['VERB']=$verb;
+		$this->hive['PATH']=$url['path'];
 		$this->hive['URI']=$this->hive['BASE'].$url['path'];
 		if ($GLOBALS['_GET'])
 			$this->hive['URI'].='?'.http_build_query($GLOBALS['_GET']);
