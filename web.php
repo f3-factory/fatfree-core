@@ -152,6 +152,11 @@ class Web extends Prefab {
 			}
 			// Send 1KiB and reset timer
 			echo fread($handle,1024);
+            
+            // With big files you need to flush.
+            ob_flush();
+            flush();              
+            
 		}
 		fclose($handle);
 		return $size;
