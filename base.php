@@ -1452,14 +1452,17 @@ final class Base extends Prefab implements ArrayAccess {
 				$this->hive['ALIAS']=$alias;
 				$this->hive['PATTERN']=$pattern;
 				if ($cors && $cors['expose'])
-					header('Access-Control-Expose-Headers: '.(is_array($cors['expose'])?
-						implode(',',$cors['expose']):$cors['expose']));
+					header('Access-Control-Expose-Headers: '.
+						(is_array($cors['expose'])?
+							implode(',',$cors['expose']):$cors['expose']));
 				if (is_string($handler)) {
 					// Replace route pattern tokens in handler if any
 					$handler=preg_replace_callback('/({)?@(\w+\b)(?(1)})/',
 						function($id) use($args) {
 							$pid=count($id)>2?2:1;
-							return isset($args[$id[$pid]])?$args[$id[$pid]]:$id[0];
+							return isset($args[$id[$pid]])?
+								$args[$id[$pid]]:
+								$id[0];
 						},
 						$handler
 					);
