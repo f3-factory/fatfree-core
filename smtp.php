@@ -122,9 +122,26 @@ class SMTP extends Magic {
 	**/
 	protected function dialog($cmd=NULL,$log=TRUE,$mock=FALSE) {
 		$reply='';
-		if (!$mock) {
+		if ($mock) {
+			$host=str_replace('ssl://','',$this->host);
+			switch ($cmd) {
+			case NULL:
+				$reply='220 '.$host.' ESMTP ready'."\n";
+				break;
+			case 'DATA':
+				$reply='354 Go ahead'."\n";
+				break;
+			case 'QUIT':
+				$reply='221 '.$host.' closing connection'."\n";
+				break;
+			default:
+				$reply='250 OK'."\n";
+				break;
+			}
+		}
+		else {
 			$socket=&$this->socket;
-			if (!is_null($cmd))
+			if ($cmd)
 				fputs($socket,$cmd."\r\n");
 			while (!feof($socket) && ($info=stream_get_meta_data($socket)) &&
 				!$info['timed_out'] && $str=fgets($socket,4096)) {
@@ -134,7 +151,8 @@ class SMTP extends Magic {
 			}
 		}
 		if ($log) {
-			$this->log.=$cmd."\n";
+			if ($cmd)
+				$this->log.=$cmd."\n";
 			$this->log.=str_replace("\r",'',$reply);
 		}
 		return $reply;
@@ -293,8 +311,6 @@ class SMTP extends Magic {
 			// Send message
 			$this->dialog($out,TRUE,$mock);
 		}
-		if ($log)
-			$this->log.="\n";
 		$this->dialog('QUIT',$log,$mock);
 		if (!$mock && $socket)
 			fclose($socket);
