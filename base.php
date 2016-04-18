@@ -2498,9 +2498,9 @@ class View extends Prefab {
 	protected function sandbox(array $hive=NULL) {
 		$this->level++;
 		$fw=Base::instance();
-		$implicit=false;
-		if ($hive === null) {
-			$implicit=true;
+		$implicit=FALSE;
+		if (is_null($hive)) {
+			$implicit=TRUE;
 			$hive=$fw->hive();
 		}
 		if ($this->level<2 || $implicit) {
@@ -2509,7 +2509,7 @@ class View extends Prefab {
 			if (isset($hive['ALIASES']))
 				$hive['ALIASES']=$fw->build($hive['ALIASES']);
 		}
-		unset($fw, $implicit);
+		unset($fw,$implicit);
 		extract($hive);
 		unset($hive);
 		ob_start();
