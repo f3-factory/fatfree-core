@@ -118,17 +118,20 @@ class SMTP extends Magic {
 	*	@return string
 	*	@param $cmd string
 	*	@param $log bool
+	*	@param $mock bool
 	**/
-	protected function dialog($cmd=NULL,$log=TRUE) {
-		$socket=&$this->socket;
-		if (!is_null($cmd))
-			fputs($socket,$cmd."\r\n");
+	protected function dialog($cmd=NULL,$log=TRUE,$mock=FALSE) {
 		$reply='';
-		while (!feof($socket) && ($info=stream_get_meta_data($socket)) &&
-			!$info['timed_out'] && $str=fgets($socket,4096)) {
-			$reply.=$str;
-			if (preg_match('/(?:^|\n)\d{3} .+?\r\n/s',$reply))
-				break;
+		if (!$mock) {
+			$socket=&$this->socket;
+			if (!is_null($cmd))
+				fputs($socket,$cmd."\r\n");
+			while (!feof($socket) && ($info=stream_get_meta_data($socket)) &&
+				!$info['timed_out'] && $str=fgets($socket,4096)) {
+				$reply.=$str;
+				if (preg_match('/(?:^|\n)\d{3} .+?\r\n/s',$reply))
+					break;
+			}
 		}
 		if ($log) {
 			$this->log.=$cmd."\n";
@@ -157,8 +160,9 @@ class SMTP extends Magic {
 	*	@return bool
 	*	@param $message string
 	*	@param $log bool
+	*	@param $mock bool
 	**/
-	function send($message,$log=TRUE) {
+	function send($message,$log=TRUE,$mock=FALSE) {
 		if ($this->scheme=='ssl' && !extension_loaded('openssl'))
 			return FALSE;
 		// Message should not be blank
@@ -168,22 +172,25 @@ class SMTP extends Magic {
 		// Retrieve headers
 		$headers=$this->headers;
 		// Connect to the server
-		$socket=&$this->socket;
-		$socket=@fsockopen($this->host,$this->port,$errno,$errstr);
-		if (!$socket) {
-			$fw->error(500,$errstr);
-			return FALSE;
+		if (!$mock) {
+			$socket=&$this->socket;
+			$socket=@fsockopen($this->host,$this->port,$errno,$errstr);
+			if (!$socket) {
+				$fw->error(500,$errstr);
+				return FALSE;
+			}
+			stream_set_blocking($socket,TRUE);
 		}
-		stream_set_blocking($socket,TRUE);
 		// Get server's initial response
-		$this->dialog(NULL,FALSE);
+		$this->dialog(NULL,TRUE,$mock);
 		// Announce presence
-		$reply=$this->dialog('EHLO '.$fw->get('HOST'),$log);
+		$reply=$this->dialog('EHLO '.$fw->get('HOST'),$log,$mock);
 		if (strtolower($this->scheme)=='tls') {
-			$this->dialog('STARTTLS',$log);
-			stream_socket_enable_crypto(
-				$socket,TRUE,STREAM_CRYPTO_METHOD_TLS_CLIENT);
-			$reply=$this->dialog('EHLO '.$fw->get('HOST'),$log);
+			$this->dialog('STARTTLS',$log,$mock);
+			if (!$mock)
+				stream_socket_enable_crypto(
+					$socket,TRUE,STREAM_CRYPTO_METHOD_TLS_CLIENT);
+			$reply=$this->dialog('EHLO '.$fw->get('HOST'),$log,$mock);
 		}
 		if (preg_match('/8BITMIME/',$reply))
 			$headers['Content-Transfer-Encoding']='8bit';
@@ -194,9 +201,9 @@ class SMTP extends Magic {
 		}
 		if ($this->user && $this->pw && preg_match('/AUTH/',$reply)) {
 			// Authenticate
-			$this->dialog('AUTH LOGIN',$log);
-			$this->dialog(base64_encode($this->user),$log);
-			$this->dialog(base64_encode($this->pw),$log);
+			$this->dialog('AUTH LOGIN',$log,$mock);
+			$this->dialog(base64_encode($this->user),$log,$mock);
+			$this->dialog(base64_encode($this->pw),$log,$mock);
 		}
 		// Required headers
 		$reqd=['From','To','Subject'];
@@ -207,24 +214,33 @@ class SMTP extends Magic {
 		$str='';
 		// Stringify headers
 		foreach ($headers as $key=>&$val) {
-			if (!in_array($key,$reqd) && (!$this->attachments ||
-				$key!='Content-Type' && $key!='Content-Transfer-Encoding'))
+			if (!in_array($key,$reqd) &&
+				(!$this->attachments ||
+				$key!='Content-Type' &&
+				$key!='Content-Transfer-Encoding'))
 				$str.=$key.': '.$val.$eol;
-			$email='';
-			if (in_array($key,['From','To','Cc','Bcc']))
-				foreach (explode(',',$val) as $raw)
-					if (!preg_match('/[<>]/',$raw))
-						$email.=($email?',':'').'<'.$raw.'>';
-			$val=$email;
+			if (in_array($key,['From','To','Cc','Bcc'])) {
+				$email='';
+				preg_match_all('/(?:".+?" )?(?:<.+?>|[^ ,]+)/',
+					$val,$matches,PREG_SET_ORDER);
+				foreach ($matches as $raw)
+					$email.=($email?', ':'').
+						(preg_match('/<.+?>/',$raw[0])?
+							$raw[0]:
+							('<'.$raw[0].'>'));
+				$val=$email;
+			}
 			unset($val);
 		}
 		// Start message dialog
-		$this->dialog('MAIL FROM: '.strstr($headers['From'],'<'),$log);
 		foreach ($fw->split($headers['To'].
 			(isset($headers['Cc'])?(';'.$headers['Cc']):'').
 			(isset($headers['Bcc'])?(';'.$headers['Bcc']):'')) as $dst) {
-			$this->dialog('RCPT TO: '.strstr($dst,'<'),$log);
-			$this->dialog('DATA',$log);
+			$this->dialog('MAIL FROM: '.
+				strstr($headers['From'],'<'),$log,$mock);
+			$this->dialog('RCPT TO: '.
+				strstr($dst,'<'),$log,$mock);
+			$this->dialog('DATA',$log,$mock);
 			if ($this->attachments) {
 				// Replace Content-Type
 				$type=$headers['Content-Type'];
@@ -235,7 +251,7 @@ class SMTP extends Magic {
 				// Send mail headers
 				$out='Content-Type: multipart/mixed; boundary="'.$hash.'"'.$eol;
 				foreach ($headers as $key=>$val)
-					if ($key!='Bcc')
+					if ($key!='Bcc' || $dst==$val)
 						$out.=$key.': '.$val.$eol;
 				$out.=$eol;
 				$out.='This is a multi-part message in MIME format'.$eol;
@@ -264,23 +280,25 @@ class SMTP extends Magic {
 				$out.=$eol;
 				$out.='--'.$hash.'--'.$eol;
 				$out.='.';
-				$this->dialog($out,FALSE);
+				$this->dialog($out,TRUE,$mock);
 			}
 			else {
 				// Send mail headers
 				$out='';
 				foreach ($headers as $key=>$val)
-					if ($key!='Bcc')
+					if ($key!='Bcc' || $dst==$val)
 						$out.=$key.': '.$val.$eol;
 				$out.=$eol;
 				$out.=$message.$eol;
 				$out.='.';
 				// Send message
-				$this->dialog($out);
+				$this->dialog($out,TRUE,$mock);
 			}
-			$this->dialog('QUIT',$log);
+			if ($log)
+				$this->log.="\n";
 		}
-		if ($socket)
+		$this->dialog('QUIT',$log,$mock);
+		if (!$mock && $socket)
 			fclose($socket);
 		return TRUE;
 	}
@@ -293,7 +311,8 @@ class SMTP extends Magic {
 	*	@param $user string
 	*	@param $pw string
 	**/
-	function __construct($host='localhost',$port=25,$scheme=null,$user=null,$pw=null) {
+	function __construct(
+		$host='localhost',$port=25,$scheme=NULL,$user=NULL,$pw=NULL) {
 		$this->headers=[
 			'MIME-Version'=>'1.0',
 			'Content-Type'=>'text/plain; '.
