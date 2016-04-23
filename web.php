@@ -536,8 +536,8 @@ class Web extends Prefab {
 				$result=$cache->get($hash);
 				$result['cached']=TRUE;
 			}
-			elseif (preg_match('/Cache-Control: max-age=(.+?)'.
-				preg_quote($eol).'/',implode($eol,$result['headers']),$exp))
+			elseif (preg_match('/Cache-Control:(?:.*)max-age=(\d+)(?:,?.*'.
+				preg_quote($eol).')/',implode($eol,$result['headers']),$exp))
 				$cache->set($hash,$result,$exp[1]);
 		}
 		return $result;
