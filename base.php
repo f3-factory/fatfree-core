@@ -669,7 +669,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $str string
 	**/
 	function snakecase($str) {
-		return strtolower(preg_replace('/[[:upper:]]/','_\0',$str));
+		return strtolower(preg_replace('/(?!^)[[:upper:]]/','_\0',$str));
 	}
 
 	/**
