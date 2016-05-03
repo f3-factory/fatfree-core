@@ -2378,7 +2378,8 @@ class Cache extends Prefab {
 					wincache_ucache_delete($item['key_name']);
 				return TRUE;
 			case 'xcache':
-				return TRUE; /* Not supported */
+				xcache_unset_by_prefix($this->prefix.'.');
+				return TRUE;
 			case 'folder':
 				if ($glob=@glob($parts[1].'*'))
 					foreach ($glob as $file)
