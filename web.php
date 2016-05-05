@@ -566,7 +566,8 @@ class Web extends Prefab {
 		foreach ($fw->split($path,FALSE) as $dir)
 			foreach ($files as $file)
 				if (is_file($save=$fw->fixslashes($dir.$file)) &&
-					is_bool(strpos($save,'../'))) {
+					is_bool(strpos($save,'../')) &&
+					preg_match('/\.(css|js)$/i')) {
 					if ($fw->get('CACHE') &&
 						($cached=$cache->exists(
 							$hash=$fw->hash($save).'.'.$ext[0],$data)) &&
