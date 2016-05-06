@@ -36,7 +36,7 @@ class Geo extends \Prefab {
 		$trn=$ref->getTransitions($now=time(),$now);
 		$out=[
 			'offset'=>$ref->
-				getOffset(new \DateTime('now',new \DateTimeZone('GMT')))/3600,
+				getOffset(new \DateTime('now',new \DateTimeZone('UTC')))/3600,
 			'country'=>$loc['country_code'],
 			'latitude'=>$loc['latitude'],
 			'longitude'=>$loc['longitude'],
