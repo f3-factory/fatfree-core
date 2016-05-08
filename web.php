@@ -567,7 +567,7 @@ class Web extends Prefab {
 			foreach ($files as $file)
 				if (is_file($save=$fw->fixslashes($dir.$file)) &&
 					is_bool(strpos($save,'../')) &&
-					preg_match('/\.(css|js)$/i')) {
+					preg_match('/\.(css|js)$/i',$file)) {
 					if ($fw->get('CACHE') &&
 						($cached=$cache->exists(
 							$hash=$fw->hash($save).'.'.$ext[0],$data)) &&
@@ -676,8 +676,6 @@ class Web extends Prefab {
 						$dst.=$data;
 					}
 				}
-				else
-					file_put_contents('x.log',$dir.$file."\n",FILE_APPEND);
 		if (PHP_SAPI!='cli' && $header)
 			header('Content-Type: '.$mime.'; charset='.$fw->get('ENCODING'));
 		return $dst;
