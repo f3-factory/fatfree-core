@@ -950,7 +950,8 @@ final class Base extends Prefab implements ArrayAccess {
 		$this->languages=array_unique($this->languages);
 		$locales=[];
 		$windows=preg_match('/^win/i',PHP_OS);
-		foreach ($this->languages as $locale) {
+		// Work around PHP's Turkish locale bug
+		foreach (preg_grep('/^(?!tr)/i',$this->languages) as $locale) {
 			if ($windows) {
 				$parts=explode('-',$locale);
 				$locale=@constant('ISO::LC_'.$parts[0]);
@@ -961,8 +962,6 @@ final class Base extends Prefab implements ArrayAccess {
 			$locales[]=$locale;
 			$locales[]=$locale.'.'.ini_get('default_charset');
 		}
-		// Work around PHP's Turkish locale bug
-		$locales=preg_grep('/^(?!tr)/',$locales);
 		setlocale(LC_ALL,str_replace('-','_',$locales));
 		return implode(',',$this->languages);
 	}
