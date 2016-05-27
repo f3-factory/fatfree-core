@@ -355,10 +355,10 @@ final class Base extends Prefab implements ArrayAccess {
 		case 'LANGUAGE':
 			if (!isset($lang))
 				$val=$this->language($val);
-			$lex=$this->lexicon($this->hive['LOCALES']);
+			$lex=$this->lexicon($this->hive['LOCALES'],$ttl);
 		case 'LOCALES':
-			if (isset($lex) || $lex=$this->lexicon($val))
-				$this->mset($lex,$this->hive['PREFIX'],$ttl);
+			if (isset($lex) || $lex=$this->lexicon($val,$ttl))
+				$this->mset($lex,$this->hive['PREFIX']);
 			break;
 		case 'TZ':
 			date_default_timezone_set($val);
@@ -970,10 +970,16 @@ final class Base extends Prefab implements ArrayAccess {
 	*	Return lexicon entries
 	*	@return array
 	*	@param $path string
+	*	@param $ttl int
 	**/
-	function lexicon($path) {
+	function lexicon($path,$ttl=0) {
+		$languages=$this->languages?:explode(',',$this->fallback);
+		$cache=Cache::instance();
+		if ($cache->exists(
+			$hash=$this->hash(implode(',',$languages)).'.dic',$lex))
+			return $lex;
 		$lex=[];
-		foreach ($this->languages?:explode(',',$this->fallback) as $lang)
+		foreach ($languages as $lang)
 			foreach ($this->split($path) as $dir)
 				if ((is_file($file=($base=$dir.$lang).'.php') ||
 					is_file($file=$base.'.php')) &&
@@ -998,6 +1004,8 @@ final class Base extends Prefab implements ArrayAccess {
 									'/\\\\\h*\r?\n/','',$match['rval']));
 					}
 				}
+		if ($ttl)
+			$cache->set($hash,$lex,$ttl);
 		return $lex;
 	}
 
