@@ -1287,9 +1287,8 @@ final class Base extends Prefab implements ArrayAccess {
 		foreach ($this->split($parts[1]) as $verb) {
 			if (!preg_match('/'.self::VERBS.'/',$verb))
 				$this->error(501,$verb.' '.$this->hive['URI']);
-			if ($verb=='GET' || $type!=self::REQ_CLI)
-				$this->hive['ROUTES'][$parts[3]][$type][strtoupper($verb)]=
-					[$handler,$ttl,$kbps,$alias];
+			$this->hive['ROUTES'][$parts[3]][$type][strtoupper($verb)]=
+				[$handler,$ttl,$kbps,$alias];
 		}
 	}
 
