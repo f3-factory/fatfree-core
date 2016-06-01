@@ -2055,12 +2055,28 @@ final class Base extends Prefab implements ArrayAccess {
 			$_SERVER['SERVER_NAME']=gethostname();
 		if (PHP_SAPI=='cli') {
 			// Emulate HTTP request
-			if (isset($_SERVER['argc']) && $_SERVER['argc']<2) {
+			$_SERVER['REQUEST_METHOD']='GET';
+			if (!isset($_SERVER['argv'][1])) {
 				$_SERVER['argc']++;
 				$_SERVER['argv'][1]='/';
 			}
-			$_SERVER['REQUEST_METHOD']='GET';
-			$_SERVER['REQUEST_URI']=$_SERVER['argv'][1];
+			if (substr($_SERVER['argv'][1],0,1)=='/')
+				$_SERVER['REQUEST_URI']=$_SERVER['argv'][1];
+			else {
+				$req=$opts='';
+				foreach($_SERVER['argv'] as $i=>$arg) {
+					if (!$i) continue;
+					if (preg_match('/^\-(\-)?(\w+)(?:\=(.*))?$/',$arg,$m)) {
+						foreach($m[1]?[$m[2]]:str_split($m[2]) as $k)
+							$opts.=($opts?'&':'').$k.'=';
+						if (isset($m[3]))
+							$opts.=$m[3];
+					} else
+						$req.='/'.$arg;
+				}
+				$_SERVER['REQUEST_URI']=($req?:'/').'?'.$opts;
+				parse_str($opts,$GLOBALS['_GET']);
+			}
 		}
 		$headers=[];
 		if (PHP_SAPI!='cli')
