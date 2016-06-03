@@ -102,10 +102,11 @@ final class Base extends Prefab implements ArrayAccess {
 		//! Syntax highlighting stylesheet
 		CSS='code.css';
 
-	//@{ HTTP request types
+	//@{ Request types
 	const
 		REQ_SYNC=1,
-		REQ_AJAX=2;
+		REQ_AJAX=2,
+		REQ_CLI=4;
 	//@}
 
 	//@{ Error messages
@@ -1264,7 +1265,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $kbps int
 	**/
 	function route($pattern,$handler,$ttl=0,$kbps=0) {
-		$types=['sync','ajax'];
+		$types=['sync','ajax','cli'];
 		$alias=null;
 		if (is_array($pattern)) {
 			foreach ($pattern as $item)
@@ -1282,9 +1283,7 @@ final class Base extends Prefab implements ArrayAccess {
 		}
 		if (empty($parts[3]))
 			user_error(sprintf(self::E_Pattern,$pattern),E_USER_ERROR);
-		$type=empty($parts[5])?
-			self::REQ_SYNC|self::REQ_AJAX:
-			constant('self::REQ_'.strtoupper($parts[5]));
+		$type=empty($parts[5])?0:constant('self::REQ_'.strtoupper($parts[5]));
 		foreach ($this->split($parts[1]) as $verb) {
 			if (!preg_match('/'.self::VERBS.'/',$verb))
 				$this->error(501,$verb.' '.$this->hive['URI']);
@@ -1436,11 +1435,9 @@ final class Base extends Prefab implements ArrayAccess {
 				continue;
 			ksort($args);
 			$route=NULL;
-			if (isset(
-				$routes[$ptr=$this->hive['AJAX']+1][$this->hive['VERB']]))
+			$ptr=PHP_SAPI=='cli'?self::REQ_CLI:$this->hive['AJAX']+1;
+			if (isset($routes[$ptr][$this->hive['VERB']]) || isset($routes[$ptr=0]))
 				$route=$routes[$ptr];
-			elseif (isset($routes[self::REQ_SYNC|self::REQ_AJAX]))
-				$route=$routes[self::REQ_SYNC|self::REQ_AJAX];
 			if (!$route)
 				continue;
 			if ($this->hive['VERB']!='OPTIONS' &&
@@ -2055,12 +2052,28 @@ final class Base extends Prefab implements ArrayAccess {
 			$_SERVER['SERVER_NAME']=gethostname();
 		if (PHP_SAPI=='cli') {
 			// Emulate HTTP request
-			if (isset($_SERVER['argc']) && $_SERVER['argc']<2) {
+			$_SERVER['REQUEST_METHOD']='GET';
+			if (!isset($_SERVER['argv'][1])) {
 				$_SERVER['argc']++;
 				$_SERVER['argv'][1]='/';
 			}
-			$_SERVER['REQUEST_METHOD']='GET';
-			$_SERVER['REQUEST_URI']=$_SERVER['argv'][1];
+			if (substr($_SERVER['argv'][1],0,1)=='/')
+				$_SERVER['REQUEST_URI']=$_SERVER['argv'][1];
+			else {
+				$req=$opts='';
+				foreach($_SERVER['argv'] as $i=>$arg) {
+					if (!$i) continue;
+					if (preg_match('/^\-(\-)?(\w+)(?:\=(.*))?$/',$arg,$m)) {
+						foreach($m[1]?[$m[2]]:str_split($m[2]) as $k)
+							$opts.=($opts?'&':'').$k.'=';
+						if (isset($m[3]))
+							$opts.=$m[3];
+					} else
+						$req.='/'.$arg;
+				}
+				$_SERVER['REQUEST_URI']=($req?:'/').'?'.$opts;
+				parse_str($opts,$GLOBALS['_GET']);
+			}
 		}
 		$headers=[];
 		if (PHP_SAPI!='cli')
