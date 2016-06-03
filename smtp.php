@@ -223,6 +223,10 @@ class SMTP extends Magic {
 			$this->dialog(base64_encode($this->user),$log,$mock);
 			$this->dialog(base64_encode($this->pw),$log,$mock);
 		}
+		if (empty($headers['Message-ID']))
+			$headers['Message-ID']='<'.uniqid('',TRUE).'@'.$this->host.'>';
+		if (empty($headers['Date'))
+			$headers['Date']=date('r');
 		// Required headers
 		$reqd=['From','To','Subject'];
 		foreach ($reqd as $id)
