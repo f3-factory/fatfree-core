@@ -79,7 +79,7 @@ class Auth {
 					$this->args['pw']=>$pw
 				]+
 				(isset($this->args['realm'])?
-					[$this->args['realm']=>$realm):[]]
+					[$this->args['realm']=>$realm]:[])
 			);
 	}
 
