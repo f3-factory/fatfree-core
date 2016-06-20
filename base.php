@@ -1058,8 +1058,10 @@ final class Base extends Prefab implements ArrayAccess {
 	function expire($secs=0) {
 		if (PHP_SAPI!='cli') {
 			header('X-Content-Type-Options: nosniff');
-			header('X-Frame-Options: '.$this->hive['XFRAME']);
-			header('X-Powered-By: '.$this->hive['PACKAGE']);
+			if ($this->hive['PACKAGE'])
+				header('X-Powered-By: '.$this->hive['PACKAGE']);
+			if ($this->hive['XFRAME'])
+				header('X-Frame-Options: '.$this->hive['XFRAME']);
 			header('X-XSS-Protection: 1; mode=block');
 			if ($secs) {
 				$time=microtime(TRUE);
