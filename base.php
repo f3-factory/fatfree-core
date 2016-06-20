@@ -1397,7 +1397,7 @@ final class Base extends Prefab implements ArrayAccess {
 		$case=$this->hive['CASELESS']?'i':'';
 		preg_match('/^'.
 			preg_replace('/((\\\{)?@(\w+\b)(?(2)\\\}))/','(?P<\3>[^\/\?]+)',
-			str_replace('\*','([^\?]+)',preg_quote($pattern,'/'))).
+			str_replace('\*','([^\?]*)',preg_quote($pattern,'/'))).
 				'\/?$/'.$case.'um',$url,$args);
 		return $args;
 	}
@@ -1415,8 +1415,12 @@ final class Base extends Prefab implements ArrayAccess {
 			user_error(self::E_Routes,E_USER_ERROR);
 		// Match specific routes first
 		$paths=[];
-		foreach ($keys=array_keys($this->hive['ROUTES']) as $key)
-			$paths[]=str_replace('@','*@',$key);
+		foreach ($keys=array_keys($this->hive['ROUTES']) as $key) {
+			$path=str_replace('@','*@',$key);
+			if (substr($path,-1)!='*')
+				$path.='+';
+			$paths[]=$path;
+		}
 		$vals=array_values($this->hive['ROUTES']);
 		array_multisort($paths,SORT_DESC,$keys,$vals);
 		$this->hive['ROUTES']=array_combine($keys,$vals);
