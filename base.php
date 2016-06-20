@@ -1184,6 +1184,7 @@ final class Base extends Prefab implements ArrayAccess {
 			'text'=>$text,
 			'trace'=>$trace
 		];
+		$this->expire(-1);
 		$handler=$this->hive['ONERROR'];
 		$this->hive['ONERROR']=NULL;
 		$eol="\n";
