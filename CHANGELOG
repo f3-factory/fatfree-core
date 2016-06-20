@@ -1,5 +1,47 @@
 CHANGELOG
 
+3.6.0 (TBA)
+*	NEW: [cli] request type
+*	NEW: console-friendly CLI mode
+*	NEW: lexicon caching
+*	NEW: Silent operator skips startup error check (#125)
+*	NEW: DB\SQL->trans()
+*	Changed: PHP 5.4 is now the minimum version requirement
+*	Changed: Prevent database wrappers from being cloned
+*	Changed: Router works on PATH instead of URI (#126) NB: PARAMS.0 no longuer contains the query string
+*	Changed: Removed ALIASES autobuilding (#118)
+*	Cache control delta-seconds integer fix
+*	Added turkish locale bug workaround
+*	Optimize Web->receive (bcosca/fatfree#930)
+*	Geo->tzinfo Update to UTC
+*	Implement Xcache reset (bcosca/fatfree#928)
+*	SMTP: Improve server emulation responses
+*	SMTP: Optimize transmission envelope
+*	SMTP: Implement mock transmission
+*	SMTP: Various bug fixes and feature improvements
+*	Web->send flush while sending big files
+*	SQL mapper: allow array filter with empty string
+*	Geo->weather: force metric units
+*	Base->until: Implement CLI interoperability
+*	Image->rgb: allow hex strings
+*	Base->format: looser plural syntax
+*	Optimized reroute regex
+*	Permit reroute to named routes with URL query segment
+*	Added timestamp toggle to db log
+*	SQL->schema: Remove unnecessary line terminators
+*	Sync COOKIE global on set()
+*	RFC2616: Use absolute URIs for Location header
+*	Image->captcha: Check if GD module supports TrueType
+*	Matrix->calendar: Check if calendar extension is loaded
+*	Fix Web->minify arbitrary file download vulnerability
+*	Fix Web->request cache control max-age detection (bcosca/fatfree#908)
+*	Bug fix: snakeCase returns word starting with underscore (bcosca/fatfree#927)
+*	Bug fix: mock does not populate PATH variable
+*	Bug fix: Geo->weather API key (#129)
+*	Bug fix: Incorrect compilation of array element with zero index
+*	Bug fix: Compilation of array construct is incorrect
+*	Bug fix: Trailing slash redirection on UTF-8 paths (#121)
+
 3.5.1 (31 December 2015)
 *	NEW: ttl attribute in <include> template tag
 *	NEW: allow anonymous function for template filter
