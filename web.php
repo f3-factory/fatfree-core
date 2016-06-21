@@ -125,8 +125,9 @@ class Web extends Prefab {
 	*	@param $kbps int
 	*	@param $force bool
 	*	@param $name string
+	*	@param $flush bool 
 	**/
-	function send($file,$mime=NULL,$kbps=0,$force=TRUE,$name=NULL) {
+	function send($file,$mime=NULL,$kbps=0,$force=TRUE,$name=NULL,$flush=TRUE) {
 		if (!is_file($file))
 			return FALSE;
 		$size=filesize($file);
@@ -153,8 +154,10 @@ class Web extends Prefab {
 			}
 			// Send 1KiB and reset timer
 			echo fread($handle,1024);
-			ob_flush();
-			flush();
+			if ($flush) {
+				ob_flush();
+				flush();
+			}
 		}
 		fclose($handle);
 		return $size;
