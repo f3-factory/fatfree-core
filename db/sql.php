@@ -156,6 +156,8 @@ class SQL {
 			$cmds=[$cmds];
 			$args=[$args];
 		}
+		if ($this->log===FALSE)
+			$log=FALSE;
 		$fw=\Base::instance();
 		$cache=\Cache::instance();
 		$result=FALSE;
