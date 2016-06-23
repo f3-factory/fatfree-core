@@ -34,8 +34,8 @@ class Session {
 		$_ip,
 		//! Suspect callback
 		$onsuspect,
-        //! Cache instance
-        $_cache;
+		//! Cache instance
+		$_cache;
 
 	/**
 	*	Open session
