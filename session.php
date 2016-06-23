@@ -33,7 +33,9 @@ class Session {
 		//! IP,
 		$_ip,
 		//! Suspect callback
-		$onsuspect;
+		$onsuspect,
+        //! Cache instance
+        $_cache;
 
 	/**
 	*	Open session
@@ -61,7 +63,7 @@ class Session {
 	**/
 	function read($id) {
 		$this->sid=$id;
-		if (!$data=Cache::instance()->get($id.'.@'))
+		if (!$data=$this->_cache->get($id.'.@'))
 			return FALSE;
 		if ($data['ip']!=$this->_ip || $data['agent']!=$this->_agent) {
 			$fw=Base::instance();
@@ -86,7 +88,7 @@ class Session {
 	function write($id,$data) {
 		$fw=Base::instance();
 		$jar=$fw->get('JAR');
-		Cache::instance()->set($id.'.@',
+		$this->_cache->set($id.'.@',
 			[
 				'data'=>$data,
 				'ip'=>$this->_ip,
@@ -104,7 +106,7 @@ class Session {
 	*	@param $id string
 	**/
 	function destroy($id) {
-		Cache::instance()->clear($id.'.@');
+		$this->_cache->clear($id.'.@');
 		return TRUE;
 	}
 
@@ -114,7 +116,7 @@ class Session {
 	*	@param $max int
 	**/
 	function cleanup($max) {
-		Cache::instance()->reset('.@',$max);
+		$this->_cache->reset('.@',$max);
 		return TRUE;
 	}
 
@@ -149,7 +151,7 @@ class Session {
 	function stamp() {
 		if (!$this->sid)
 			session_start();
-		return Cache::instance()->exists($this->sid.'.@',$data)?
+		return $this->_cache->exists($this->sid.'.@',$data)?
 			$data['stamp']:FALSE;
 	}
 
@@ -166,8 +168,9 @@ class Session {
 	*	@param $onsuspect callback
 	*	@param $key string
 	**/
-	function __construct($onsuspect=NULL,$key=NULL) {
+	function __construct($onsuspect=NULL,$key=NULL,$cache=null) {
 		$this->onsuspect=$onsuspect;
+		$this->_cache=$cache?:Cache::instance();
 		session_set_save_handler(
 			[$this,'open'],
 			[$this,'close'],
