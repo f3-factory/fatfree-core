@@ -1045,7 +1045,7 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function status($code) {
 		$reason=@constant('self::HTTP_'.$code);
-		if (PHP_SAPI!='cli' && !headers_sent())
+		if (!$this->hive['CLI'] && !headers_sent())
 			header($_SERVER['SERVER_PROTOCOL'].' '.$code.' '.$reason);
 		return $reason;
 	}
@@ -1056,7 +1056,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $secs int
 	**/
 	function expire($secs=0) {
-		if (PHP_SAPI!='cli') {
+		if (!$this->hive['CLI']) {
 			header('X-Content-Type-Options: nosniff');
 			if ($this->hive['PACKAGE'])
 				header('X-Powered-By: '.$this->hive['PACKAGE']);
@@ -1177,7 +1177,7 @@ final class Base extends Prefab implements ArrayAccess {
 		foreach (explode("\n",$trace) as $nexus)
 			if ($nexus)
 				error_log($nexus);
-		if ($highlight=PHP_SAPI!='cli' && !$this->hive['AJAX'] &&
+		if ($highlight=!$this->hive['CLI'] && !$this->hive['AJAX'] &&
 			$this->hive['HIGHLIGHT'] && is_file($css=__DIR__.'/'.self::CSS))
 			$trace=$this->highlight($trace);
 		$this->hive['ERROR']=[
@@ -1193,7 +1193,7 @@ final class Base extends Prefab implements ArrayAccess {
 		if ((!$handler ||
 			$this->call($handler,[$this,$this->hive['PARAMS']],
 				'beforeroute,afterroute')===FALSE) &&
-			!$prior && PHP_SAPI!='cli' && !$this->hive['QUIET'])
+			!$prior && !$this->hive['CLI'] && !$this->hive['QUIET'])
 			echo $this->hive['AJAX']?
 				json_encode($this->hive['ERROR']):
 				('<!DOCTYPE html>'.$eol.
@@ -1318,7 +1318,7 @@ final class Base extends Prefab implements ArrayAccess {
 			$url=$this->hive['SCHEME'].'://'.
 				$this->hive['HOST'].(($port=$this->hive['PORT']) && $port!=80 &&
 				$port!=443?(':'.$port):'').$this->hive['BASE'].$url;
-		if (PHP_SAPI!='cli') {
+		if (!$this->hive['CLI']) {
 			header('Location: '.$url);
 			$this->status($permanent?301:302);
 			die;
@@ -1442,7 +1442,7 @@ final class Base extends Prefab implements ArrayAccess {
 				continue;
 			ksort($args);
 			$route=NULL;
-			$ptr=PHP_SAPI=='cli'?self::REQ_CLI:$this->hive['AJAX']+1;
+			$ptr=$this->hive['CLI']?self::REQ_CLI:$this->hive['AJAX']+1;
 			if (isset($routes[$ptr][$this->hive['VERB']]) || isset($routes[$ptr=0]))
 				$route=$routes[$ptr];
 			if (!$route)
@@ -1502,7 +1502,7 @@ final class Base extends Prefab implements ArrayAccess {
 						}
 						// Retrieve from cache backend
 						list($headers,$body,$result)=$data;
-						if (PHP_SAPI!='cli')
+						if (!$this->hive['CLI'])
 							array_walk($headers,'header');
 						$this->expire($cached[0]+$ttl-$now);
 					}
@@ -1551,7 +1551,7 @@ final class Base extends Prefab implements ArrayAccess {
 		if (!$allowed)
 			// URL doesn't match any route
 			$this->error(404);
-		elseif (PHP_SAPI!='cli') {
+		elseif (!$this->hive['CLI']) {
 			// Unhandled HTTP method
 			header('Allow: '.implode(',',array_unique($allowed)));
 			if ($cors) {
@@ -1599,7 +1599,7 @@ final class Base extends Prefab implements ArrayAccess {
 			@session_start() &&
 			// CAUTION: Callback will kill host if it never becomes truthy!
 			!$out=$this->call($func,$args)) {
-			if (PHP_SAPI!='cli')
+			if (!$this->hive['CLI'])
 				session_commit();
 			// Hush down
 			sleep(1);
@@ -2057,7 +2057,7 @@ final class Base extends Prefab implements ArrayAccess {
 		);
 		if (!isset($_SERVER['SERVER_NAME']))
 			$_SERVER['SERVER_NAME']=gethostname();
-		if (PHP_SAPI=='cli') {
+		if ($cli=PHP_SAPI=='cli') {
 			// Emulate HTTP request
 			$_SERVER['REQUEST_METHOD']='GET';
 			if (!isset($_SERVER['argv'][1])) {
@@ -2083,7 +2083,7 @@ final class Base extends Prefab implements ArrayAccess {
 			}
 		}
 		$headers=[];
-		if (PHP_SAPI!='cli')
+		if (!$cli)
 			foreach (array_keys($_SERVER) as $key)
 				if (substr($key,0,5)=='HTTP_')
 					$headers[strtr(ucwords(strtolower(strtr(
@@ -2105,7 +2105,7 @@ final class Base extends Prefab implements ArrayAccess {
 		}
 		$_SERVER['DOCUMENT_ROOT']=realpath($_SERVER['DOCUMENT_ROOT']);
 		$base='';
-		if (PHP_SAPI!='cli')
+		if (!$cli)
 			$base=rtrim($this->fixslashes(
 				dirname($_SERVER['SCRIPT_NAME'])),'/');
 		$uri=parse_url($_SERVER['REQUEST_URI']);
@@ -2136,6 +2136,7 @@ final class Base extends Prefab implements ArrayAccess {
 			'BODY'=>NULL,
 			'CACHE'=>FALSE,
 			'CASELESS'=>TRUE,
+			'CLI'=>$cli,
 			'CONFIG'=>NULL,
 			'CORS'=>[
 				'headers'=>'',
@@ -2557,7 +2558,7 @@ class View extends Prefab {
 				if (isset($_COOKIE[session_name()]))
 					@session_start();
 				$fw->sync('SESSION');
-				if ($mime && PHP_SAPI!='cli' && !headers_sent())
+				if ($mime && !$fw->get('CLI') && !headers_sent())
 					header('Content-Type: '.$mime.'; '.
 						'charset='.$fw->get('ENCODING'));
 				$data=$this->sandbox($hive);
@@ -2708,7 +2709,7 @@ class Preview extends View {
 				if (isset($_COOKIE[session_name()]))
 					@session_start();
 				$fw->sync('SESSION');
-				if (PHP_SAPI!='cli' && !headers_sent())
+				if (!$fw->get('CLI') && !headers_sent())
 					header('Content-Type: '.$this->mime.'; '.
 						'charset='.$fw->get('ENCODING'));
 				$data=$this->sandbox($hive);
