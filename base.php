@@ -2439,12 +2439,7 @@ class Cache extends Prefab {
 			elseif (preg_match('/^memcache=(.+)/',$dsn,$parts) &&
 				extension_loaded('memcache'))
 				foreach ($fw->split($parts[1]) as $server) {
-					$port=11211;
-					$parts=explode(':',$server,2);
-					if (count($parts)>1)
-						list($host,$port)=$parts;
-					else
-						$host=$parts[0];
+					list($host,$port)=explode(':',$server)+[1=>11211];
 					if (empty($this->ref))
 						$this->ref=@memcache_connect($host,$port)?:NULL;
 					else
