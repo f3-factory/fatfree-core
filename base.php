@@ -1225,7 +1225,7 @@ final class Base extends Prefab implements ArrayAccess {
 		array $args=NULL,array $headers=NULL,$body=NULL) {
 		if (!$args)
 			$args=[];
-		$types=['sync','ajax'];
+		$types=['sync','ajax','cli'];
 		preg_match('/([\|\w]+)\h+(?:@(\w+)(?:(\(.+?)\))*|([^\h]+))'.
 			'(?:\h+\[('.implode('|',$types).')\])?/',$pattern,$parts);
 		$verb=strtoupper($parts[1]);
@@ -1256,6 +1256,8 @@ final class Base extends Prefab implements ArrayAccess {
 			$this->hive['BODY']=$body?:http_build_query($args);
 		$this->hive['AJAX']=isset($parts[5]) &&
 			preg_match('/ajax/i',$parts[5]);
+		$this->hive['CLI']=isset($parts[5]) &&
+			preg_match('/cli/i',$parts[5]);
 		return $this->run();
 	}
 
