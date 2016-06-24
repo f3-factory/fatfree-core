@@ -424,10 +424,11 @@ class Mapper extends \DB\Cursor {
 			if ($this->engine!='oci')
 				$this->_id=$this->db->lastinsertid($seq);
 			// Reload to obtain default and auto-increment field values
-			$this->load($inc?
-				[$inc.'=?',$this->db->value(
-					$this->fields[$inc]['pdo_type'],$this->_id)]:
-				[$filter,$nkeys]);
+			if ($inc || $filter)
+				$this->load($inc?
+					[$inc.'=?',$this->db->value(
+						$this->fields[$inc]['pdo_type'],$this->_id)]:
+					[$filter,$nkeys]);
 			if (isset($this->trigger['afterinsert']))
 				\Base::instance()->call($this->trigger['afterinsert'],
 					[$this,$pkeys]);
