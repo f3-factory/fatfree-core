@@ -124,8 +124,10 @@ class Web extends Prefab {
 	*	@param $mime string
 	*	@param $kbps int
 	*	@param $force bool
+	*	@param $name string
+	*	@param $flush bool 
 	**/
-	function send($file,$mime=NULL,$kbps=0,$force=TRUE) {
+	function send($file,$mime=NULL,$kbps=0,$force=TRUE,$name=NULL,$flush=TRUE) {
 		if (!is_file($file))
 			return FALSE;
 		$size=filesize($file);
@@ -133,7 +135,7 @@ class Web extends Prefab {
 			header('Content-Type: '.($mime?:$this->mime($file)));
 			if ($force)
 				header('Content-Disposition: attachment; '.
-					'filename="'.basename($file).'"');
+					'filename="'.($name!==NULL?$name:basename($file)).'"');
 			header('Accept-Ranges: bytes');
 			header('Content-Length: '.$size);
 			header('X-Powered-By: '.Base::instance()->get('PACKAGE'));
@@ -152,8 +154,10 @@ class Web extends Prefab {
 			}
 			// Send 1KiB and reset timer
 			echo fread($handle,1024);
-			ob_flush();
-			flush();
+			if ($flush) {
+				ob_flush();
+				flush();
+			}
 		}
 		fclose($handle);
 		return $size;
