@@ -70,7 +70,7 @@ abstract class Magic implements ArrayAccess {
 	**/
 	function offsetset($key,$val) {
 		return Base::instance()->visible($this,$key)?
-			($this->key=$val):$this->set($key,$val);
+			($this->$key=$val):$this->set($key,$val);
 	}
 
 	/**
