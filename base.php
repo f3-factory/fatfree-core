@@ -1421,7 +1421,7 @@ final class Base extends Prefab implements ArrayAccess {
 		// Match specific routes first
 		$paths=[];
 		foreach ($keys=array_keys($this->hive['ROUTES']) as $key) {
-			$path=str_replace('@','*@',$key);
+			$path=preg_replace('/@\w+/','*@',$key);
 			if (substr($path,-1)!='*')
 				$path.='+';
 			$paths[]=$path;
