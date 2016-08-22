@@ -21,7 +21,9 @@
 */
 
 //! Custom logger
-class Log {
+class Log extends \Psr\Log\AbstractLogger {
+
+	protected static $levels;
 
 	protected
 		//! File name
@@ -64,4 +66,39 @@ class Log {
 		$this->file=$dir.$file;
 	}
 
+	/**
+	 * Logs with an arbitrary level.
+	 * @param string $level
+	 * @param string $message
+	 * @param array $context
+	 */
+	public function log($level,$message,array $context=array()) {
+		if (self::getLogLevel($level)===null)
+			throw new \Psr\Log\InvalidArgumentException("'$level' is not a valid log level");
+		$this->write(strtoupper($level).' '.$this->interpolate((string)$message,$context));
+	}
+
+	/**
+	 * Interpolates context values into the message placeholders.
+	 * @param string $message
+	 * @param array $context
+	 */
+	protected function interpolate($message,array $context=array())
+	{
+		$replace=array();
+		foreach ($context as $key=>$val) {
+			$replace['{'.$key.'}']=(string)$val;
+		}
+		return strtr($message,$replace);
+	}
+
+	public static function getLogLevel($level=null) {
+		if (!self::$levels) {
+			$reflection=new ReflectionClass('\Psr\Log\LogLevel');
+			self::$levels=array_flip($reflection->getConstants());
+		}
+		if ($level===null)
+			return self::$levels;
+		return isset(self::$levels[$level])?self::$levels[$level]:null;
+	}
 }
