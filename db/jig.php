@@ -110,7 +110,9 @@ class Jig {
 	*	@return string
 	**/
 	function log() {
-		return $this->log;
+		if ($flag)
+			return $this->log;
+		$this->log=FALSE;
 	}
 
 	/**

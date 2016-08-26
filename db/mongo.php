@@ -61,18 +61,21 @@ class Mongo {
 	*	@return string
 	**/
 	function log() {
-		$cursor=$this->selectcollection('system.profile')->find();
-		foreach (iterator_to_array($cursor) as $frame)
-			if (!preg_match('/\.system\..+$/',$frame['ns']))
-				$this->log.=date('r',$frame['ts']->sec).' ('.
-					sprintf('%.1f',$frame['millis']).'ms) '.
-					$frame['ns'].' ['.$frame['op'].'] '.
-					(empty($frame['query'])?
-						'':json_encode($frame['query'])).
-					(empty($frame['command'])?
-						'':json_encode($frame['command'])).
-					PHP_EOL;
-		return $this->log;
+		if ($flag) {
+		    $cursor=$this->selectcollection('system.profile')->find();
+		    foreach (iterator_to_array($cursor) as $frame)
+			    if (!preg_match('/\.system\..+$/',$frame['ns']))
+				    $this->log.=date('r',$frame['ts']->sec).' ('.
+					    sprintf('%.1f',$frame['millis']).'ms) '.
+					    $frame['ns'].' ['.$frame['op'].'] '.
+					    (empty($frame['query'])?
+						    '':json_encode($frame['query'])).
+					    (empty($frame['command'])?
+						    '':json_encode($frame['command'])).
+					    PHP_EOL;
+		    return $this->log;
+        }
+		$this->log=FALSE;
 	}
 
 	/**
