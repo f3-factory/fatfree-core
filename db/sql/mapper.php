@@ -370,6 +370,18 @@ class Mapper extends \DB\Cursor {
 	}
 
 	/**
+	*	Save mapped record
+	*	@return NULL
+	**/
+    function save() {
+        foreach($this->fields as $key => $value)
+            if (!$this->fields[$key]["changed"] &&
+                $this->fields[$key]["old_value"]!==$this->fields[$key]["value"])
+                $this->fields[$key]["changed"]=TRUE;
+        parent::save();
+    }
+
+	/**
 	*	Insert new record
 	*	@return object
 	**/
