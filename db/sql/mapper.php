@@ -458,6 +458,7 @@ class Mapper extends \DB\Cursor {
 				$pairs.=($pairs?',':'').$this->db->quotekey($key).'=?';
 				$args[$ctr+1]=[$field['value'],$field['pdo_type']];
 				$ctr++;
+				$field["changed"]=FALSE;
 			}
 		foreach ($this->fields as $key=>$field)
 			if ($field['pkey']) {
