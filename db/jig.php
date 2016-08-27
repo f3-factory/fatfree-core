@@ -106,7 +106,8 @@ class Jig {
 	}
 
 	/**
-	*	Return profiler results
+	*	Return profiler results (or disable logging)
+	*	@param $flag bool
 	*	@return string
 	**/
 	function log($flag=TRUE) {

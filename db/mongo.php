@@ -57,7 +57,8 @@ class Mongo {
 	}
 
 	/**
-	*	Return MongoDB profiler results
+	*	Return MongoDB profiler results (or disable logging)
+	*	@param $flag bool
 	*	@return string
 	**/
 	function log($flag=TRUE) {
