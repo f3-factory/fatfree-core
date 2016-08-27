@@ -60,7 +60,7 @@ class Mongo {
 	*	Return MongoDB profiler results
 	*	@return string
 	**/
-	function log() {
+	function log($flag=TRUE) {
 		if ($flag) {
 		    $cursor=$this->selectcollection('system.profile')->find();
 		    foreach (iterator_to_array($cursor) as $frame)

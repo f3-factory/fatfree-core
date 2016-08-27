@@ -109,7 +109,7 @@ class Jig {
 	*	Return profiler results
 	*	@return string
 	**/
-	function log() {
+	function log($flag=TRUE) {
 		if ($flag)
 			return $this->log;
 		$this->log=FALSE;
