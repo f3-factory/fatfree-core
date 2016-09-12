@@ -1421,7 +1421,7 @@ final class Base extends Prefab implements ArrayAccess {
 		// Match specific routes first
 		$paths=[];
 		foreach ($keys=array_keys($this->hive['ROUTES']) as $key) {
-			$path=str_replace('@','*@',$key);
+			$path=preg_replace('/@\w+/','*@',$key);
 			if (substr($path,-1)!='*')
 				$path.='+';
 			$paths[]=$path;
@@ -2188,6 +2188,7 @@ final class Base extends Prefab implements ArrayAccess {
 			'ROOT'=>$_SERVER['DOCUMENT_ROOT'],
 			'ROUTES'=>[],
 			'SCHEME'=>$scheme,
+			'SEED'=>$this->hash($_SERVER['SERVER_NAME'].$base),
 			'SERIALIZER'=>extension_loaded($ext='igbinary')?$ext:'php',
 			'TEMP'=>'tmp/',
 			'TIME'=>&$_SERVER['REQUEST_TIME_FLOAT'],
@@ -2459,7 +2460,7 @@ class Cache extends Prefab {
 				!is_dir($parts[1]))
 				mkdir($parts[1],Base::MODE,TRUE);
 		}
-		$this->prefix=$fw->hash($_SERVER['SERVER_NAME'].$fw->get('BASE'));
+		$this->prefix=$fw->get('SEED');
 		return $this->dsn=$dsn;
 	}
 
