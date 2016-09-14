@@ -125,7 +125,7 @@ class Web extends Prefab {
 	*	@param $kbps int
 	*	@param $force bool
 	*	@param $name string
-	*	@param $flush bool 
+	*	@param $flush bool
 	**/
 	function send($file,$mime=NULL,$kbps=0,$force=TRUE,$name=NULL,$flush=TRUE) {
 		if (!is_file($file))
@@ -291,11 +291,17 @@ class Web extends Prefab {
 				return strlen($line);
 			}
 		);
+		curl_setopt($curl,CURLOPT_SSL_VERIFYHOST,TRUE);
 		curl_setopt($curl,CURLOPT_SSL_VERIFYPEER,FALSE);
 		ob_start();
 		curl_exec($curl);
+		$err=curl_error($curl);
 		curl_close($curl);
 		$body=ob_get_clean();
+		if ($err) {
+			user_error($err,E_USER_ERROR);
+			return FALSE;
+		}
 		if ($options['follow_location'] &&
 			preg_match('/^Location: (.+)$/m',implode(PHP_EOL,$headers),$loc)) {
 			$options['max_redirects']--;
