@@ -229,7 +229,8 @@ class Basket extends Magic {
 	**/
 	function __construct($key='basket') {
 		$this->key=$key;
-		@session_start();
+		if (session_status()!=PHP_SESSION_ACTIVE)
+			session_start();
 		Base::instance()->sync('SESSION');
 		$this->reset();
 	}
