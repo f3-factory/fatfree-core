@@ -479,7 +479,10 @@ class Image {
 			header('Content-Type: image/'.$format);
 			header('X-Powered-By: '.Base::instance()->get('PACKAGE'));
 		}
-		call_user_func_array('image'.$format,array_merge([$this->data,NULL],$args));
+		call_user_func_array(
+			'image'.$format,
+			array_merge([$this->data,NULL],$args)
+		);
 	}
 
 	/**
@@ -490,7 +493,10 @@ class Image {
 		$args=func_get_args();
 		$format=$args?array_shift($args):'png';
 		ob_start();
-		call_user_func_array('image'.$format,array_merge([$this->data,NULL],$args));
+		call_user_func_array(
+			'image'.$format,
+			array_merge([$this->data,NULL],$args)
+		);
 		return ob_get_clean();
 	}
 
