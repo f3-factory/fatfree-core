@@ -255,7 +255,8 @@ final class Base extends Prefab implements ArrayAccess {
 		$null=NULL;
 		$parts=$this->cut($key);
 		if ($parts[0]=='SESSION') {
-			@session_start();
+			if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
+				session_start();
 			$this->sync('SESSION');
 		}
 		elseif (!preg_match('/^\w+$/',$parts[0]))
@@ -423,7 +424,8 @@ final class Base extends Prefab implements ArrayAccess {
 			}
 		}
 		elseif ($parts[0]=='SESSION') {
-			@session_start();
+			if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
+				session_start();
 			if (empty($parts[1])) {
 				// End session
 				session_unset();
@@ -1598,7 +1600,8 @@ final class Base extends Prefab implements ArrayAccess {
 			// Still alive?
 			!connection_aborted() &&
 			// Restart session
-			@session_start() &&
+			!headers_sent() &&
+			(session_status()==PHP_SESSION_ACTIVE || session_start()) &&
 			// CAUTION: Callback will kill host if it never becomes truthy!
 			!$out=$this->call($func,$args)) {
 			if (!$this->hive['CLI'])
@@ -1615,7 +1618,8 @@ final class Base extends Prefab implements ArrayAccess {
 	*	Disconnect HTTP client
 	**/
 	function abort() {
-		@session_start();
+		if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
+			session_start();
 		session_commit();
 		$out='';
 		while (ob_get_level())
@@ -1931,8 +1935,10 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function unload($cwd) {
 		chdir($cwd);
-		if (!$error=error_get_last())
-			@session_commit();
+		if (!headers_sent() &&
+			session_status()!=PHP_SESSION_ACTIVE &&
+			!$error=error_get_last())
+			session_start();
 		$handler=$this->hive['UNLOAD'];
 		if ((!$handler || $this->call($handler,$this)===FALSE) &&
 			$error && in_array($error['type'],
@@ -2558,8 +2564,9 @@ class View extends Prefab {
 			return $data;
 		foreach ($fw->split($fw->get('UI').';./') as $dir)
 			if (is_file($this->view=$fw->fixslashes($dir.$file))) {
-				if (isset($_COOKIE[session_name()]))
-					@session_start();
+				if (isset($_COOKIE[session_name()]) &&
+					!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
+					session_start();
 				$fw->sync('SESSION');
 				if ($mime && !$fw->get('CLI') && !headers_sent())
 					header('Content-Type: '.$mime.'; '.
@@ -2710,8 +2717,9 @@ class Preview extends View {
 						$text=$this->parse($text);
 					$fw->write($this->view,$this->build($text));
 				}
-				if (isset($_COOKIE[session_name()]))
-					@session_start();
+				if (isset($_COOKIE[session_name()]) &&
+					!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
+					session_start();
 				$fw->sync('SESSION');
 				if (!$fw->get('CLI') && !headers_sent())
 					header('Content-Type: '.$this->mime.'; '.
