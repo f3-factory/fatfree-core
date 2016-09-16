@@ -1167,8 +1167,9 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $code int
 	*	@param $text string
 	*	@param $trace array
+	*	@param $level int
 	**/
-	function error($code,$text='',array $trace=NULL) {
+	function error($code,$text='',array $trace=NULL,$level=0) {
 		$prior=$this->hive['ERROR'];
 		$header=$this->status($code);
 		$req=$this->hive['VERB'].' '.$this->hive['PATH'];
@@ -1186,7 +1187,8 @@ final class Base extends Prefab implements ArrayAccess {
 			'status'=>$header,
 			'code'=>$code,
 			'text'=>$text,
-			'trace'=>$trace
+			'trace'=>$trace,
+			'level'=>$level
 		];
 		$this->expire(-1);
 		$handler=$this->hive['ONERROR'];
@@ -2058,9 +2060,9 @@ final class Base extends Prefab implements ArrayAccess {
 			}
 		);
 		set_error_handler(
-			function($code,$text) use($fw) {
-				if ($code & error_reporting())
-					$fw->error(500,$text);
+			function($level,$text) use($fw) {
+				if ($level & error_reporting())
+					$fw->error(500,$text,NULL,$level);
 			}
 		);
 		if (!isset($_SERVER['SERVER_NAME']))
