@@ -440,7 +440,7 @@ class Web extends Prefab {
 		foreach ($flags as $key=>$val)
 			if ($val)
 				return $this->wrapper=$key;
-		user_error(E_Request,E_USER_ERROR);
+		user_error(self::E_Request,E_USER_ERROR);
 	}
 
 	/**
