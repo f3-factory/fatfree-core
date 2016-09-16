@@ -1937,10 +1937,9 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function unload($cwd) {
 		chdir($cwd);
-		if (!headers_sent() &&
-			session_status()!=PHP_SESSION_ACTIVE &&
+		if (session_status()==PHP_SESSION_ACTIVE &&
 			!$error=error_get_last())
-			session_start();
+			session_commit();
 		$handler=$this->hive['UNLOAD'];
 		if ((!$handler || $this->call($handler,$this)===FALSE) &&
 			$error && in_array($error['type'],
