@@ -456,15 +456,13 @@ class Mapper extends \DB\Cursor {
 		foreach ($this->fields as $key=>$field)
 			if ($field['changed']) {
 				$pairs.=($pairs?',':'').$this->db->quotekey($key).'=?';
-				$args[$ctr+1]=[$field['value'],$field['pdo_type']];
-				$ctr++;
+				$args[++$ctr]=[$field['value'],$field['pdo_type']];
 			}
 		foreach ($this->fields as $key=>$field)
 			if ($field['pkey']) {
 				$filter.=($filter?' AND ':' WHERE ').
 					$this->db->quotekey($key).'=?';
-				$args[$ctr+1]=[$field['previous'],$field['pdo_type']];
-				$ctr++;
+				$args[++$ctr]=[$field['previous'],$field['pdo_type']];
 			}
 		if ($pairs) {
 			$sql='UPDATE '.$this->table.' SET '.$pairs.$filter;
@@ -473,6 +471,11 @@ class Mapper extends \DB\Cursor {
 				\Base::instance()->call($this->trigger['afterupdate'],
 					[$this,$pkeys]);
 		}
+		// reset changed flag after calling afterupdate
+		foreach ($this->fields as $key=>&$field) {
+				$field["changed"]=FALSE;
+				unset($field);
+			}
 		return $this;
 	}
 
