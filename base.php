@@ -184,14 +184,17 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@return string
 	*	@param $name string
 	*	@param $params array|string
+	*	@param $query string|array
 	**/
-	function alias($name,$params=[]) {
+	function alias($name,$params=[],$query=NULL) {
 		if (!is_array($params))
 			$params=$this->parse($params);
 		if (empty($this->hive['ALIASES'][$name]))
 			user_error(sprintf(self::E_Named,$name),E_USER_ERROR);
 		$url=$this->build($this->hive['ALIASES'][$name],$params);
-		return $url;
+		if (is_array($query))
+			$query=http_build_query($query);
+		return $url.($query?('?'.$query):'');
 	}
 
 	/**
@@ -1311,7 +1314,7 @@ final class Base extends Prefab implements ArrayAccess {
 		if (!$url)
 			$url=$this->hive['REALM'];
 		if (is_array($url))
-			$url=$this->alias($url[0],$url[1]);
+			$url=call_user_func_array([$this,'alias'],$url);
 		elseif (preg_match('/^(?:@(\w+)(?:(\(.+?)\))*(\?.+)*)/',$url,$parts)) {
 			if (empty($this->hive['ALIASES'][$parts[1]]))
 				user_error(sprintf(self::E_Named,$parts[1]),E_USER_ERROR);
