@@ -225,7 +225,7 @@ class SMTP extends Magic {
 		}
 		if (empty($headers['Message-ID']))
 			$headers['Message-ID']='<'.uniqid('',TRUE).'@'.$this->host.'>';
-		if (empty($headers['Date'))
+		if (empty($headers['Date']))
 			$headers['Date']=date('r');
 		// Required headers
 		$reqd=['From','To','Subject'];
