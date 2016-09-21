@@ -2716,8 +2716,8 @@ class Preview extends View {
 					filemtime($this->view)<filemtime($view)) {
 					// Remove PHP code and comments
 					$text=preg_replace(
-						'/(?<!["\'])\h*<\?(?:php|\s*=).+?\?>\h*'.
-						'(?!["\'])|\{\*.+?\*\}/is','',
+						'/\h*<\?(?!xml)(?:php|\s*=)?.+?\?>\h*'.
+						'|\{\*.+?\*\}/is','',
 						$fw->read($view));
 					if (method_exists($this,'parse'))
 						$text=$this->parse($text);
