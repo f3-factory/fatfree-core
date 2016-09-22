@@ -210,7 +210,7 @@ class Web extends Prefab {
 				(!$func || $fw->call($func,[$file])!==FALSE) &&
 				rename($tmp,$file['name']);
 		}
-		$fetch=function($arr)use(&$fetch){
+		$fetch=function($arr) use(&$fetch){
 			if (!is_array($arr))
 				return [$arr];
 			$data=[];
@@ -221,8 +221,8 @@ class Web extends Prefab {
 		$out=[];
 		foreach ($_FILES as $name=>$item) {
 			$files=[];
-			foreach($item as $k=>$mix)
-				foreach($fetch($mix) as $i=>$val)
+			foreach ($item as $k=>$mix)
+				foreach ($fetch($mix) as $i=>$val)
 					$files[$i][$k]=$val;
 			foreach ($files as $file) {
 				if (empty($file['name']))
