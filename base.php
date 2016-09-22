@@ -1937,13 +1937,12 @@ final class Base extends Prefab implements ArrayAccess {
 
 	/**
 	*	Execute framework/application shutdown sequence
-	*	@return NULL
 	*	@param $cwd string
 	**/
 	function unload($cwd) {
 		chdir($cwd);
-		if (session_status()==PHP_SESSION_ACTIVE &&
-			!$error=error_get_last())
+		if (!($error=error_get_last()) &&
+			session_status()==PHP_SESSION_ACTIVE)
 			session_commit();
 		$handler=$this->hive['UNLOAD'];
 		if ((!$handler || $this->call($handler,$this)===FALSE) &&
