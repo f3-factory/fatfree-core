@@ -228,7 +228,9 @@ class Image {
 	*	@param $crop bool
 	*	@param $enlarge bool
 	**/
-	function resize($width,$height,$crop=TRUE,$enlarge=TRUE) {
+	function resize($width,$height=NULL,$crop=TRUE,$enlarge=TRUE) {
+		if (is_null($height))
+			$height=$width;
 		// Adjust dimensions; retain aspect ratio
 		$ratio=($origw=imagesx($this->data))/($origh=imagesy($this->data));
 		if (!$crop) {
