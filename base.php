@@ -2170,7 +2170,7 @@ final class Base extends Prefab implements ArrayAccess {
 			'FALLBACK'=>$this->fallback,
 			'FRAGMENT'=>isset($uri['fragment'])?$uri['fragment']:'',
 			'HALT'=>TRUE,
-			'HIGHLIGHT'=>TRUE,
+			'HIGHLIGHT'=>FALSE,
 			'HOST'=>$_SERVER['SERVER_NAME'],
 			'IP'=>$this->ip(),
 			'JAR'=>$jar,
