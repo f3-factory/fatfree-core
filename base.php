@@ -253,8 +253,9 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@return mixed
 	*	@param $key string
 	*	@param $add bool
+	*	@param $var mixed
 	**/
-	function &ref($key,$add=TRUE) {
+	function &ref($key,$add=TRUE,&$var=NULL) {
 		$null=NULL;
 		$parts=$this->cut($key);
 		if ($parts[0]=='SESSION') {
@@ -265,10 +266,12 @@ final class Base extends Prefab implements ArrayAccess {
 		elseif (!preg_match('/^\w+$/',$parts[0]))
 			user_error(sprintf(self::E_Hive,$this->stringify($key)),
 				E_USER_ERROR);
-		if ($add)
-			$var=&$this->hive;
-		else
-			$var=$this->hive;
+		if (is_null($var)) {
+			if ($add)
+				$var=&$this->hive;
+			else
+				$var=$this->hive;
+		}
 		$obj=FALSE;
 		foreach ($parts as $part)
 			if ($part=='->')
