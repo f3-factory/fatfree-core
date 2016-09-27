@@ -2099,11 +2099,15 @@ final class Base extends Prefab implements ArrayAccess {
 			}
 		}
 		$headers=[];
-		if (!$cli)
-			foreach (array_keys($_SERVER) as $key)
-				if (substr($key,0,5)=='HTTP_')
-					$headers[strtr(ucwords(strtolower(strtr(
-						substr($key,5),'_',' '))),' ','-')]=&$_SERVER[$key];
+		if (!$cli) {
+			if (function_exists('apache_request_headers'))
+				$headers=getallheaders();
+			else
+				foreach (array_keys($_SERVER) as $key)
+					if (substr($key,0,5)=='HTTP_')
+						$headers[strtr(ucwords(strtolower(strtr(
+							substr($key,5),'_',' '))),' ','-')]=&$_SERVER[$key];
+		}
 		if (isset($headers['X-HTTP-Method-Override']))
 			$_SERVER['REQUEST_METHOD']=$headers['X-HTTP-Method-Override'];
 		elseif ($_SERVER['REQUEST_METHOD']=='POST' && isset($_POST['_method']))
