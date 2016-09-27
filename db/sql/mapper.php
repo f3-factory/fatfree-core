@@ -90,9 +90,11 @@ class Mapper extends \DB\Cursor {
 		if (array_key_exists($key,$this->fields)) {
 			$val=is_null($val) && $this->fields[$key]['nullable']?
 				NULL:$this->db->value($this->fields[$key]['pdo_type'],$val);
-			if ($this->fields[$key]['value']!==$val ||
-				$this->fields[$key]['default']!==$val && is_null($val))
+			if ($this->fields[$key]['old_value']!==$val ||
+				$this->fields[$key]['default']!==$val && is_null($val)) {
 				$this->fields[$key]['changed']=TRUE;
+				$this->fields[$key]['old_value']=$val;
+            }
 			return $this->fields[$key]['value']=$val;
 		}
 		// adjust result on existing expressions
@@ -163,6 +165,7 @@ class Mapper extends \DB\Cursor {
 			else
 				continue;
 			$mapper->{$var}[$key]['value']=$val;
+			$mapper->{$var}[$key]['old_value']=$val;
 			if ($var=='fields' && $mapper->{$var}[$key]['pkey'])
 				$mapper->{$var}[$key]['previous']=$val;
 		}
@@ -538,6 +541,7 @@ class Mapper extends \DB\Cursor {
 	function reset() {
 		foreach ($this->fields as &$field) {
 			$field['value']=NULL;
+			$field['old_value']=NULL;
 			$field['changed']=FALSE;
 			if ($field['pkey'])
 				$field['previous']=NULL;
