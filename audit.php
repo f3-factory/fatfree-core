@@ -166,7 +166,8 @@ class Audit extends Prefab {
 				return 'Discover';
 			if (preg_match('/^(?:2131|1800|35\d{3})\d{11}$/',$id))
 				return 'JCB';
-			if (preg_match('/^5[1-5][0-9]{14}$/',$id))
+			if (preg_match('/^5[1-5][0-9]{14}$|'.
+				'^(222[1-9]|2[3-6]\d{2}|27[0-1]\d|2720)\d{12}$/',$id))
 				return 'MasterCard';
 			if (preg_match('/^4[0-9]{12}(?:[0-9]{3})?$/',$id))
 				return 'Visa';
