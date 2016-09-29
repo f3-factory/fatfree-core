@@ -90,7 +90,7 @@ class Mapper extends \DB\Cursor {
 		if (array_key_exists($key,$this->fields)) {
 			$val=is_null($val) && $this->fields[$key]['nullable']?
 				NULL:$this->db->value($this->fields[$key]['pdo_type'],$val);
-			if ($this->fields[$key]['value']!==$val ||
+			if ($this->fields[$key]['initial']!==$val ||
 				$this->fields[$key]['default']!==$val && is_null($val))
 				$this->fields[$key]['changed']=TRUE;
 			return $this->fields[$key]['value']=$val;
@@ -163,6 +163,7 @@ class Mapper extends \DB\Cursor {
 			else
 				continue;
 			$mapper->{$var}[$key]['value']=$val;
+			$mapper->{$var}[$key]['initial']=$val;
 			if ($var=='fields' && $mapper->{$var}[$key]['pkey'])
 				$mapper->{$var}[$key]['previous']=$val;
 		}
@@ -352,6 +353,7 @@ class Mapper extends \DB\Cursor {
 		$dry=$this->dry();
 		foreach ($this->fields as $key=>&$field) {
 			$field['value']=$dry?NULL:$out->fields[$key]['value'];
+			$field['initial']=$field['value'];
 			$field['changed']=FALSE;
 			if ($field['pkey'])
 				$field['previous']=$dry?NULL:$out->fields[$key]['value'];
@@ -473,7 +475,8 @@ class Mapper extends \DB\Cursor {
 		}
 		// reset changed flag after calling afterupdate
 		foreach ($this->fields as $key=>&$field) {
-				$field["changed"]=FALSE;
+				$field['changed']=FALSE;
+				$field['initial']=$field['value'];
 				unset($field);
 			}
 		return $this;
@@ -538,6 +541,7 @@ class Mapper extends \DB\Cursor {
 	function reset() {
 		foreach ($this->fields as &$field) {
 			$field['value']=NULL;
+			$field['initial']=NULL;
 			$field['changed']=FALSE;
 			if ($field['pkey'])
 				$field['previous']=NULL;
