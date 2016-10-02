@@ -572,11 +572,12 @@ class Image {
 
 	/**
 	*	Load string
-	*	@return object
+	*	@return object|FALSE
 	*	@param $str string
 	**/
 	function load($str) {
-		$this->data=imagecreatefromstring($str);
+		if (!$this->data=@imagecreatefromstring($str))
+			return FALSE;
 		imagesavealpha($this->data,TRUE);
 		$this->save();
 		return $this;
