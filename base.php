@@ -2100,7 +2100,7 @@ final class Base extends Prefab implements ArrayAccess {
 		}
 		$headers=[];
 		if (!$cli) {
-			if (function_exists('apache_request_headers'))
+			if (function_exists('getallheaders'))
 				$headers=getallheaders();
 			else
 				foreach (array_keys($_SERVER) as $key)
