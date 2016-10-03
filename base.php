@@ -856,68 +856,65 @@ final class Base extends Prefab implements ArrayAccess {
 									return str_replace('#',$args[$pos],$data);
 							}
 						case 'number':
-							if (isset($mod))
-								switch ($mod) {
-									case 'integer':
-										return number_format(
-											$args[$pos],0,'',$thousands_sep);
-									case 'currency':
-										$int=$cstm=false;
-										if (isset($prop) && $cstm=!$int=($prop=='int'))
-											$currency_symbol=$prop;
-										if (!$cstm && function_exists('money_format'))
-											return money_format(
-												'%'.($int?'i':'n'),$args[$pos]);
-										$fmt=[
-											0=>'(nc)',1=>'(n c)',
-											2=>'(nc)',10=>'+nc',
-											11=>'+n c',12=>'+ nc',
-											20=>'nc+',21=>'n c+',
-											22=>'nc +',30=>'n+c',
-											31=>'n +c',32=>'n+ c',
-											40=>'nc+',41=>'n c+',
-											42=>'nc +',100=>'(cn)',
-											101=>'(c n)',102=>'(cn)',
-											110=>'+cn',111=>'+c n',
-											112=>'+ cn',120=>'cn+',
-											121=>'c n+',122=>'cn +',
-											130=>'+cn',131=>'+c n',
-											132=>'+ cn',140=>'c+n',
-											141=>'c+ n',142=>'c +n'
-										];
-										if ($args[$pos]<0) {
-											$sgn=$negative_sign;
-											$pre='n';
-										}
-										else {
-											$sgn=$positive_sign;
-											$pre='p';
-										}
-										return str_replace(
-											['+','n','c'],
-											[$sgn,number_format(
-												abs($args[$pos]),
-												$frac_digits,
-												$decimal_point,
-												$thousands_sep),
-												$int?$int_curr_symbol
-													:$currency_symbol],
-											$fmt[(int)(
-												(${$pre.'_cs_precedes'}%2).
-												(${$pre.'_sign_posn'}%5).
-												(${$pre.'_sep_by_space'}%3)
-											)]
-										);
-									case 'percent':
-										return number_format(
-											$args[$pos]*100,0,$decimal_point,
-											$thousands_sep).'%';
-									default:
-										return number_format(
-											$args[$pos],isset($prop)?$prop:2,
-											$decimal_point,$thousands_sep);
-								}
-							break;
+							switch ($mod) {
+								case 'integer':
+									return number_format(
+										$args[$pos],0,'',$thousands_sep);
+								case 'currency':
+									$int=$cstm=false;
+									if (isset($prop) && $cstm=!$int=($prop=='int'))
+										$currency_symbol=$prop;
+									if (!$cstm && function_exists('money_format'))
+										return money_format(
+											'%'.($int?'i':'n'),$args[$pos]);
+									$fmt=[
+										0=>'(nc)',1=>'(n c)',
+										2=>'(nc)',10=>'+nc',
+										11=>'+n c',12=>'+ nc',
+										20=>'nc+',21=>'n c+',
+										22=>'nc +',30=>'n+c',
+										31=>'n +c',32=>'n+ c',
+										40=>'nc+',41=>'n c+',
+										42=>'nc +',100=>'(cn)',
+										101=>'(c n)',102=>'(cn)',
+										110=>'+cn',111=>'+c n',
+										112=>'+ cn',120=>'cn+',
+										121=>'c n+',122=>'cn +',
+										130=>'+cn',131=>'+c n',
+										132=>'+ cn',140=>'c+n',
+										141=>'c+ n',142=>'c +n'
+									];
+									if ($args[$pos]<0) {
+										$sgn=$negative_sign;
+										$pre='n';
+									}
+									else {
+										$sgn=$positive_sign;
+										$pre='p';
+									}
+									return str_replace(
+										['+','n','c'],
+										[$sgn,number_format(
+											abs($args[$pos]),
+											$frac_digits,
+											$decimal_point,
+											$thousands_sep),
+											$int?$int_curr_symbol
+												:$currency_symbol],
+										$fmt[(int)(
+											(${$pre.'_cs_precedes'}%2).
+											(${$pre.'_sign_posn'}%5).
+											(${$pre.'_sep_by_space'}%3)
+										)]
+									);
+								case 'percent':
+									return number_format(
+										$args[$pos]*100,0,$decimal_point,
+										$thousands_sep).'%';
+							}
+							return number_format(
+								$args[$pos],isset($prop)?$prop:2,
+								$decimal_point,$thousands_sep);
 						case 'date':
 							if (empty($mod) || $mod=='short')
 								$prop='%x';
