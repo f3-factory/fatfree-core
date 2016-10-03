@@ -912,7 +912,7 @@ final class Base extends Prefab implements ArrayAccess {
 										return number_format(
 											$args[$pos]*100,0,$decimal_point,
 											$thousands_sep).'%';
-									case 'decimal':
+									default:
 										return number_format(
 											$args[$pos],isset($prop)?$prop:2,
 											$decimal_point,$thousands_sep);
@@ -1122,14 +1122,14 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
-	*	Return filtered, formatted stack trace
+	*	Return filtered stack trace as a formatted string (or array)
 	*	@return string|array
 	*	@param $trace array|NULL
 	*	@param $format bool
 	**/
-	function trace(array $trace=NULL, $format=TRUE) {
+	function trace(array $trace=NULL,$format=TRUE) {
 		if (!$trace) {
-			$trace=debug_backtrace(FALSE);
+			$trace=debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
 			$frame=$trace[0];
 			if (isset($frame['file']) && $frame['file']==__FILE__)
 				array_shift($trace);
