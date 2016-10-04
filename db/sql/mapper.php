@@ -224,7 +224,7 @@ class Mapper extends \DB\Cursor {
 					return preg_replace_callback(
 						'/\b(\w+)\h*(HAVING.+|$)/i',
 						function($parts) use($db) {
-							return $db->quotekey($parts[1]);
+							return $db->quotekey($parts[1]).(isset($parts[2])?(' '.$parts[2]):'');
 						},
 						$str
 					);
