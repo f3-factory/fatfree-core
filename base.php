@@ -879,7 +879,9 @@ final class Base extends Prefab implements ArrayAccess {
 				extract($conv);
 				if (!array_key_exists($pos,$args))
 					return $expr[0];
-				if (isset($type))
+				if (isset($type)) {
+					if (isset($this->hive['FORMATS'][$type]))
+						return $this->call($this->hive['FORMATS'][$type],[$args[$pos],$mod,$prop]);
 					switch ($type) {
 						case 'plural':
 							preg_match_all('/(?<tag>\w+)'.
@@ -968,6 +970,7 @@ final class Base extends Prefab implements ArrayAccess {
 						default:
 							return $expr[0];
 					}
+				}
 				return $args[$pos];
 			},
 			$val
@@ -2259,6 +2262,7 @@ final class Base extends Prefab implements ArrayAccess {
 			'EXCEPTION'=>NULL,
 			'EXEMPT'=>NULL,
 			'FALLBACK'=>$this->fallback,
+			'FORMATS'=>[],
 			'FRAGMENT'=>isset($uri['fragment'])?$uri['fragment']:'',
 			'HALT'=>TRUE,
 			'HIGHLIGHT'=>FALSE,
