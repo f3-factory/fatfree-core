@@ -371,15 +371,10 @@ class Image {
 			for ($i=$j,$x=$blocks-1-$j;$i<$x;$i++) {
 				$sprite=imagecreatetruecolor($dim,$dim);
 				imagefill($sprite,0,0,IMG_COLOR_TRANSPARENT);
-				if ($block=$sprites[
-					hexdec($hash[($j*$blocks+$i)*2])%$ctr]) {
-					for ($k=0,$pts=count($block);$k<$pts;$k++)
-						$block[$k]*=$dim;
-					imagefilledpolygon($sprite,$block,$pts/2,$fg);
-				}
-				$sprite=imagerotate($sprite,
-					90*(hexdec($hash[($j*$blocks+$i)*2+1])%4),
-					imagecolorallocatealpha($sprite,0,0,0,127));
+				$block=$sprites[hexdec($hash[($j*$blocks+$i)*2])%$ctr];
+				for ($k=0,$pts=count($block);$k<$pts;$k++)
+					$block[$k]*=$dim;
+				imagefilledpolygon($sprite,$block,$pts/2,$fg);
 				for ($k=0;$k<4;$k++) {
 					imagecopyresampled($this->data,$sprite,
 						$i*$dim/2,$j*$dim/2,0,0,$dim/2,$dim/2,$dim,$dim);
