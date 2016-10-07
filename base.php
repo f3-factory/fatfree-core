@@ -2097,8 +2097,14 @@ final class Base extends Prefab implements ArrayAccess {
 		}
 		$headers=[];
 		if (!$cli) {
-			if (function_exists('getallheaders'))
+			if (function_exists('getallheaders')) {
 				$headers=getallheaders();
+				foreach (array_keys($headers) as $key) {
+					$tmp=strtoupper(strtr($key,'-','_'));
+					if (isset($_SERVER['HTTP_'.$tmp]))
+						$headers[$key]=&$_SERVER['HTTP_'.$tmp];
+				}
+			}
 			else
 				foreach (array_keys($_SERVER) as $key)
 					if (substr($key,0,5)=='HTTP_')
@@ -2113,7 +2119,7 @@ final class Base extends Prefab implements ArrayAccess {
 			isset($headers['X-Forwarded-Proto']) &&
 			$headers['X-Forwarded-Proto']=='https'?'https':'http';
 		// Create hive early on to expose header methods
-		$this->hive=['HEADERS'=>$headers];
+		$this->hive=['HEADERS'=>&$headers];
 		if (function_exists('apache_setenv')) {
 			// Work around Apache pre-2.4 VirtualDocumentRoot bug
 			$_SERVER['DOCUMENT_ROOT']=str_replace($_SERVER['SCRIPT_NAME'],'',
