@@ -2160,7 +2160,6 @@ final class Base extends Prefab implements ArrayAccess {
 			'CACHE'=>FALSE,
 			'CASELESS'=>TRUE,
 			'CLI'=>$cli,
-			'CONFIG'=>NULL,
 			'CORS'=>[
 				'headers'=>'',
 				'origin'=>FALSE,
