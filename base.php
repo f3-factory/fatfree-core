@@ -1804,8 +1804,9 @@ final class Base extends Prefab implements ArrayAccess {
 						$func=isset($parts['func'])?$parts['func']:NULL;
 						$custom=(strtolower($parts['section'])!='globals');
 						if ($func)
-							$args=[$this->call($func,
-								count($args)>1?[$args]:$args)];
+							$args=[$this->call($func,$args)];
+						if (count($args)>1)
+							$args=[$args];
 						call_user_func_array(
 							[$this,'set'],
 							array_merge(
@@ -1813,7 +1814,7 @@ final class Base extends Prefab implements ArrayAccess {
 									($custom?($parts['section'].'.'):'').
 									$match['lval']
 								],
-								count($args)>1?[$args]:$args
+								$args
 							)
 						);
 					}
