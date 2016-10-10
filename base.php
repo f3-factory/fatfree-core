@@ -1783,6 +1783,11 @@ final class Base extends Prefab implements ArrayAccess {
 								str_getcsv($match['rval'])));
 					}
 					else {
+						preg_match('/^([^\|]*)(?:\|\h*(\d+))?/s',
+							preg_replace(
+								'/\\\\\h*(\r?\n)/','\1',$match['rval']),
+							$rval
+						);
 						$args=array_map(
 							function($val) {
 								if (is_numeric($val))
@@ -1791,13 +1796,11 @@ final class Base extends Prefab implements ArrayAccess {
 								if (preg_match('/^\w+$/i',$val) &&
 									defined($val))
 									return constant($val);
-								return trim(preg_replace(
-									['/\\\\"/','/\\\\\h*(\r?\n)/'],
-									['"','\1'],$val));
+								return trim(preg_replace('/\\\\"/','"',$val));
 							},
 							// Mark quoted strings with 0x00 whitespace
 							str_getcsv(preg_replace('/(?<!\\\\)(")(.*?)\1/',
-								"\\1\x00\\2\\1",$match['rval']))
+								"\\1\x00\\2\\1",trim($rval[1])))
 						);
 						preg_match('/^(?<section>[^:]+)(?:\:(?<func>.+))?/',
 							$sec,$parts);
@@ -1807,6 +1810,8 @@ final class Base extends Prefab implements ArrayAccess {
 							$args=[$this->call($func,$args)];
 						if (count($args)>1)
 							$args=[$args];
+						if (isset($rval[2]))
+							$args=array_merge($args,[$rval[2]]);
 						call_user_func_array(
 							[$this,'set'],
 							array_merge(
