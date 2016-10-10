@@ -54,6 +54,13 @@ class OAuth2 extends \Magic {
 		];
 		if ($token)
 			array_push($options['header'],'Authorization: Bearer '.$token);
+		elseif ($method=='POST')
+			array_push($options['header'],'Authorization: Basic '.
+				base64_encode(
+					$this->args['client_id'].':'.
+					$this->args['client_secret']
+				)
+			);
 		$response=$web->request($uri,$options);
 		return $response &&
 			preg_grep('/HTTP\/1\.\d 200/',$response['headers'])?
