@@ -2061,7 +2061,10 @@ final class Base extends Prefab implements ArrayAccess {
 		set_exception_handler(
 			function($obj) use($fw) {
 				$fw->hive['EXCEPTION']=$obj;
-				$fw->error(500,$obj->getmessage(),$obj->gettrace());
+				$fw->error(500,
+					$obj->getmessage().' '.
+					'['.$obj->getFile().':'.$obj->getLine().']',
+					$obj->gettrace());
 			}
 		);
 		set_error_handler(
