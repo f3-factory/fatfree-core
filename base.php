@@ -597,6 +597,20 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
+	 *	Extend hive array variable with default values from $src
+	 *	@return array
+	 *	@param $key string
+	 *	@param $src string|array
+	 **/
+	function extend($key,$src) {
+		$ref=&$this->ref($key);
+		if (!$ref)
+			$ref=[];
+		$ref+=is_string($src)?$this->hive[$src]:$src;
+		return $ref;
+	}
+
+	/**
 	*	Convert backslashes to slashes
 	*	@return string
 	*	@param $str string
