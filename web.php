@@ -298,11 +298,8 @@ class Web extends Prefab {
 		$err=curl_error($curl);
 		curl_close($curl);
 		$body=ob_get_clean();
-		if ($err) {
-			user_error($err,E_USER_ERROR);
-			return FALSE;
-		}
-		if ($options['follow_location'] &&
+		if (!$err &&
+			$options['follow_location'] &&
 			preg_match('/^Location: (.+)$/m',implode(PHP_EOL,$headers),$loc)) {
 			$options['max_redirects']--;
 			return $this->request($loc[1],$options);
@@ -311,7 +308,8 @@ class Web extends Prefab {
 			'body'=>$body,
 			'headers'=>$headers,
 			'engine'=>'cURL',
-			'cached'=>FALSE
+			'cached'=>FALSE,
+			'error'=>$err
 		];
 	}
 
@@ -328,24 +326,32 @@ class Web extends Prefab {
 			stream_context_create(['http'=>$options]));
 		$headers=isset($http_response_header)?
 			$http_response_header:[];
-		$match=NULL;
-		foreach ($headers as $header)
-			if (preg_match('/Content-Encoding: (.+)/',$header,$match))
-				break;
-		if ($match)
-			switch ($match[1]) {
-				case 'gzip':
-					$body=gzdecode($body);
+		$err='';
+		if (is_string($body)) {
+			$match=NULL;
+			foreach ($headers as $header)
+				if (preg_match('/Content-Encoding: (.+)/',$header,$match))
 					break;
-				case 'deflate':
-					$body=gzuncompress($body);
-					break;
-			}
+			if ($match)
+				switch ($match[1]) {
+					case 'gzip':
+						$body=gzdecode($body);
+						break;
+					case 'deflate':
+						$body=gzuncompress($body);
+						break;
+				}
+		}
+		else {
+			$tmp=error_get_last();
+			$err=$tmp['message'];
+		}
 		return [
 			'body'=>$body,
 			'headers'=>$headers,
 			'engine'=>'stream',
-			'cached'=>FALSE
+			'cached'=>FALSE,
+			'error'=>$err
 		];
 	}
 
@@ -372,53 +378,53 @@ class Web extends Prefab {
 			$parts['path']='/';
 		if (empty($parts['query']))
 			$parts['query']='';
-		$socket=@fsockopen($parts['host'],$parts['port']);
-		if (!$socket)
-			return FALSE;
-		stream_set_blocking($socket,TRUE);
-		stream_set_timeout($socket,isset($options['timeout'])?
-			$options['timeout']:ini_get('default_socket_timeout'));
-		fputs($socket,$options['method'].' '.$parts['path'].
-			($parts['query']?('?'.$parts['query']):'').' HTTP/1.0'.$eol
-		);
-		fputs($socket,implode($eol,$options['header']).$eol.$eol);
-		if (isset($options['content']))
-			fputs($socket,$options['content'].$eol);
-		// Get response
-		$content='';
-		while (!feof($socket) &&
-			($info=stream_get_meta_data($socket)) &&
-			!$info['timed_out'] && !connection_aborted() &&
-			$str=fgets($socket,4096))
-			$content.=$str;
-		fclose($socket);
-		$html=explode($eol.$eol,$content,2);
-		$body=isset($html[1])?$html[1]:'';
-		$headers=array_merge($headers,$current=explode($eol,$html[0]));
-		$match=NULL;
-		foreach ($current as $header)
-			if (preg_match('/Content-Encoding: (.+)/',$header,$match))
-				break;
-		if ($match)
-			switch ($match[1]) {
-				case 'gzip':
-					$body=gzdecode($body);
+		if ($socket=@fsockopen($parts['host'],$parts['port'],$code,$err)) {
+			stream_set_blocking($socket,TRUE);
+			stream_set_timeout($socket,isset($options['timeout'])?
+				$options['timeout']:ini_get('default_socket_timeout'));
+			fputs($socket,$options['method'].' '.$parts['path'].
+				($parts['query']?('?'.$parts['query']):'').' HTTP/1.0'.$eol
+			);
+			fputs($socket,implode($eol,$options['header']).$eol.$eol);
+			if (isset($options['content']))
+				fputs($socket,$options['content'].$eol);
+			// Get response
+			$content='';
+			while (!feof($socket) &&
+				($info=stream_get_meta_data($socket)) &&
+				!$info['timed_out'] && !connection_aborted() &&
+				$str=fgets($socket,4096))
+				$content.=$str;
+			fclose($socket);
+			$html=explode($eol.$eol,$content,2);
+			$body=isset($html[1])?$html[1]:'';
+			$headers=array_merge($headers,$current=explode($eol,$html[0]));
+			$match=NULL;
+			foreach ($current as $header)
+				if (preg_match('/Content-Encoding: (.+)/',$header,$match))
 					break;
-				case 'deflate':
-					$body=gzuncompress($body);
-					break;
+			if ($match)
+				switch ($match[1]) {
+					case 'gzip':
+						$body=gzdecode($body);
+						break;
+					case 'deflate':
+						$body=gzuncompress($body);
+						break;
+				}
+			if ($options['follow_location'] &&
+				preg_match('/Location: (.+?)'.preg_quote($eol).'/',
+				$html[0],$loc)) {
+				$options['max_redirects']--;
+				return $this->request($loc[1],$options);
 			}
-		if ($options['follow_location'] &&
-			preg_match('/Location: (.+?)'.preg_quote($eol).'/',
-			$html[0],$loc)) {
-			$options['max_redirects']--;
-			return $this->request($loc[1],$options);
 		}
 		return [
 			'body'=>$body,
 			'headers'=>$headers,
 			'engine'=>'socket',
-			'cached'=>FALSE
+			'cached'=>FALSE,
+			'error'=>$err
 		];
 	}
 
