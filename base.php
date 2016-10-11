@@ -584,10 +584,16 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@return array
 	*	@param $key string
 	*	@param $src string|array
+	*	@param $keep bool
 	**/
-	function merge($key,$src) {
+	function merge($key,$src,$keep=FALSE) {
 		$ref=&$this->ref($key);
-		return array_merge($ref,is_string($src)?$this->hive[$src]:$src);
+		if (!$ref)
+			$ref=[];
+		$out=array_merge($ref,is_string($src)?$this->hive[$src]:$src);
+		if ($keep)
+			$ref=$out;
+		return $out;
 	}
 
 	/**
