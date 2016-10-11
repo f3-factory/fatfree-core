@@ -2118,15 +2118,16 @@ final class Base extends Prefab implements ArrayAccess {
 						$headers[$key]=&$_SERVER['HTTP_'.$tmp];
 				}
 			}
-			else
+			else {
+				if (isset($_SERVER['CONTENT_LENGTH']))
+					$headers['Content-Length']=&$_SERVER['CONTENT_LENGTH'];
+				if (isset($_SERVER['CONTENT_TYPE']))
+					$headers['Content-Type']=&$_SERVER['CONTENT_TYPE'];
 				foreach (array_keys($_SERVER) as $key)
 					if (substr($key,0,5)=='HTTP_')
 						$headers[strtr(ucwords(strtolower(strtr(
 							substr($key,5),'_',' '))),' ','-')]=&$_SERVER[$key];
-					elseif ($key == "CONTENT_LENGTH")
-						$headers['Content-Length']=&$_SERVER[$key];
-					elseif ($key == "CONTENT_TYPE")
-						$headers['Content-Type']=&$_SERVER[$key];
+			}
 		}
 		if (isset($headers['X-HTTP-Method-Override']))
 			$_SERVER['REQUEST_METHOD']=$headers['X-HTTP-Method-Override'];
