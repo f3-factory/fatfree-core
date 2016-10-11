@@ -762,14 +762,12 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $func callback
 	*	@param $stack array
 	**/
-	function recursive($arg,$func,$stack=NULL) {
+	function recursive($arg,$func,$stack=[]) {
 		if ($stack) {
 			foreach ($stack as $node)
 				if ($arg===$node)
 					return $arg;
 		}
-		else
-			$stack=[];
 		switch (gettype($arg)) {
 			case 'object':
 				$ref=new ReflectionClass($arg);
