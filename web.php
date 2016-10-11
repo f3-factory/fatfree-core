@@ -538,7 +538,13 @@ class Web extends Prefab {
 						'If-Modified-Since: '.$mod[1]);
 			}
 		}
-		$result=$this->{'_'.$this->wrapper}($url,$options);
+		$req=[$options['method'].' '.$url];
+		foreach ($options['header'] as $header)
+			array_push($req,$header);
+		$result=array_merge(
+			['request'=>$req],
+			$this->{'_'.$this->wrapper}($url,$options)
+		);
 		if ($result && isset($cache)) {
 			if (preg_match('/HTTP\/1\.\d 304/',
 				implode($eol,$result['headers']))) {
