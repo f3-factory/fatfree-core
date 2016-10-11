@@ -692,7 +692,7 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
-	*	Extract values of associative array whose keys start with the given prefix
+	*	Extract values of array whose keys start with the given prefix
 	*	@return array
 	*	@param $arr array
 	*	@param $prefix string
@@ -858,9 +858,11 @@ final class Base extends Prefab implements ArrayAccess {
 										$args[$pos],0,'',$thousands_sep);
 								case 'currency':
 									$int=$cstm=false;
-									if (isset($prop) && $cstm=!$int=($prop=='int'))
+									if (isset($prop) &&
+										$cstm=!$int=($prop=='int'))
 										$currency_symbol=$prop;
-									if (!$cstm && function_exists('money_format'))
+									if (!$cstm &&
+										function_exists('money_format'))
 										return money_format(
 											'%'.($int?'i':'n'),$args[$pos]);
 									$fmt=[
@@ -1321,10 +1323,13 @@ final class Base extends Prefab implements ArrayAccess {
 		if (($handler=$this->hive['ONREROUTE']) &&
 			$this->call($handler,[$url,$permanent])!==FALSE)
 			return;
-		if ($url[0]=='/')
+		if ($url[0]=='/') {
+			$port=$this->hive['PORT'];
+			if (in_array($port,[80,443]))
+				$port='';
 			$url=$this->hive['SCHEME'].'://'.
-				$this->hive['HOST'].(($port=$this->hive['PORT']) && $port!=80 &&
-				$port!=443?(':'.$port):'').$this->hive['BASE'].$url;
+				$this->hive['HOST'].$port.$this->hive['BASE'].$url;
+		}
 		if (!$this->hive['CLI']) {
 			header('Location: '.$url);
 			$this->status($permanent?301:302);
@@ -1450,7 +1455,8 @@ final class Base extends Prefab implements ArrayAccess {
 			ksort($args);
 			$route=NULL;
 			$ptr=$this->hive['CLI']?self::REQ_CLI:$this->hive['AJAX']+1;
-			if (isset($routes[$ptr][$this->hive['VERB']]) || isset($routes[$ptr=0]))
+			if (isset($routes[$ptr][$this->hive['VERB']]) ||
+				isset($routes[$ptr=0]))
 				$route=$routes[$ptr];
 			if (!$route)
 				continue;
@@ -1760,8 +1766,10 @@ final class Base extends Prefab implements ArrayAccess {
 			foreach ($matches as $match) {
 				if ($match['section']) {
 					$sec=$match['section'];
-					if (preg_match('/^(?!(?:global|config|route|map|redirect)s\b)'.
-						'((?:\.?\w)+)/i',$sec,$msec) && !$this->exists($msec[0]))
+					if (preg_match(
+						'/^(?!(?:global|config|route|map|redirect)s\b)'.
+						'((?:\.?\w)+)/i',$sec,$msec) &&
+						!$this->exists($msec[0]))
 						$this->set($msec[0],NULL);
 				}
 				else {
@@ -2396,7 +2404,8 @@ class Cache extends Prefab {
 			case 'apcu':
 				$info=apc_cache_info('user');
 				if (!empty($info['cache_list'])) {
-					$key=array_key_exists('info',$info['cache_list'][0])?'info':'key';
+					$key=array_key_exists('info',
+						$info['cache_list'][0])?'info':'key';
 					$mtkey=array_key_exists('mtime',$info['cache_list'][0])?
 						'mtime':'modification_time';
 					foreach ($info['cache_list'] as $item)
