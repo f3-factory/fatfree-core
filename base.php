@@ -588,10 +588,16 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@return array
 	*	@param $key string
 	*	@param $src string|array
+	*	@param $keep bool
 	**/
-	function merge($key,$src) {
+	function merge($key,$src,$keep=FALSE) {
 		$ref=&$this->ref($key);
-		return array_merge($ref,is_string($src)?$this->hive[$src]:$src);
+		if (!$ref)
+			$ref=[];
+		$out=array_merge($ref,is_string($src)?$this->hive[$src]:$src);
+		if ($keep)
+			$ref=$out;
+		return $out;
 	}
 
 	/**
@@ -856,64 +862,65 @@ final class Base extends Prefab implements ArrayAccess {
 									return str_replace('#',$args[$pos],$data);
 							}
 						case 'number':
-							switch ($mod) {
-								case 'integer':
-									return number_format(
-										$args[$pos],0,'',$thousands_sep);
-								case 'currency':
-									$int=$cstm=false;
-									if (isset($prop) &&
-										$cstm=!$int=($prop=='int'))
-										$currency_symbol=$prop;
-									if (!$cstm &&
-										function_exists('money_format'))
-										return money_format(
-											'%'.($int?'i':'n'),$args[$pos]);
-									$fmt=[
-										0=>'(nc)',1=>'(n c)',
-										2=>'(nc)',10=>'+nc',
-										11=>'+n c',12=>'+ nc',
-										20=>'nc+',21=>'n c+',
-										22=>'nc +',30=>'n+c',
-										31=>'n +c',32=>'n+ c',
-										40=>'nc+',41=>'n c+',
-										42=>'nc +',100=>'(cn)',
-										101=>'(c n)',102=>'(cn)',
-										110=>'+cn',111=>'+c n',
-										112=>'+ cn',120=>'cn+',
-										121=>'c n+',122=>'cn +',
-										130=>'+cn',131=>'+c n',
-										132=>'+ cn',140=>'c+n',
-										141=>'c+ n',142=>'c +n'
-									];
-									if ($args[$pos]<0) {
-										$sgn=$negative_sign;
-										$pre='n';
-									}
-									else {
-										$sgn=$positive_sign;
-										$pre='p';
-									}
-									return str_replace(
-										['+','n','c'],
-										[$sgn,number_format(
-											abs($args[$pos]),
-											$frac_digits,
-											$decimal_point,
-											$thousands_sep),
-											$int?$int_curr_symbol
-												:$currency_symbol],
-										$fmt[(int)(
-											(${$pre.'_cs_precedes'}%2).
-											(${$pre.'_sign_posn'}%5).
-											(${$pre.'_sep_by_space'}%3)
-										)]
-									);
-								case 'percent':
-									return number_format(
-										$args[$pos]*100,0,$decimal_point,
-										$thousands_sep).'%';
-							}
+							if (isset($mod))
+								switch ($mod) {
+									case 'integer':
+										return number_format(
+											$args[$pos],0,'',$thousands_sep);
+									case 'currency':
+										$int=$cstm=false;
+										if (isset($prop) &&
+											$cstm=!$int=($prop=='int'))
+											$currency_symbol=$prop;
+										if (!$cstm &&
+											function_exists('money_format'))
+											return money_format(
+												'%'.($int?'i':'n'),$args[$pos]);
+										$fmt=[
+											0=>'(nc)',1=>'(n c)',
+											2=>'(nc)',10=>'+nc',
+											11=>'+n c',12=>'+ nc',
+											20=>'nc+',21=>'n c+',
+											22=>'nc +',30=>'n+c',
+											31=>'n +c',32=>'n+ c',
+											40=>'nc+',41=>'n c+',
+											42=>'nc +',100=>'(cn)',
+											101=>'(c n)',102=>'(cn)',
+											110=>'+cn',111=>'+c n',
+											112=>'+ cn',120=>'cn+',
+											121=>'c n+',122=>'cn +',
+											130=>'+cn',131=>'+c n',
+											132=>'+ cn',140=>'c+n',
+											141=>'c+ n',142=>'c +n'
+										];
+										if ($args[$pos]<0) {
+											$sgn=$negative_sign;
+											$pre='n';
+										}
+										else {
+											$sgn=$positive_sign;
+											$pre='p';
+										}
+										return str_replace(
+											['+','n','c'],
+											[$sgn,number_format(
+												abs($args[$pos]),
+												$frac_digits,
+												$decimal_point,
+												$thousands_sep),
+												$int?$int_curr_symbol
+													:$currency_symbol],
+											$fmt[(int)(
+												(${$pre.'_cs_precedes'}%2).
+												(${$pre.'_sign_posn'}%5).
+												(${$pre.'_sep_by_space'}%3)
+											)]
+										);
+									case 'percent':
+										return number_format(
+											$args[$pos]*100,0,$decimal_point,
+											$thousands_sep).'%';
+								}
 							return number_format(
 								$args[$pos],isset($prop)?$prop:2,
 								$decimal_point,$thousands_sep);
@@ -1329,8 +1336,7 @@ final class Base extends Prefab implements ArrayAccess {
 			return;
 		if ($url[0]=='/') {
 			$port=$this->hive['PORT'];
-			if (in_array($port,[80,443]))
-				$port='';
+			$port=in_array($port,[80,443])?'':':'.$port;
 			$url=$this->hive['SCHEME'].'://'.
 				$this->hive['HOST'].$port.$this->hive['BASE'].$url;
 		}
@@ -2122,11 +2128,16 @@ final class Base extends Prefab implements ArrayAccess {
 						$headers[$key]=&$_SERVER['HTTP_'.$tmp];
 				}
 			}
-			else
+			else {
+				if (isset($_SERVER['CONTENT_LENGTH']))
+					$headers['Content-Length']=&$_SERVER['CONTENT_LENGTH'];
+				if (isset($_SERVER['CONTENT_TYPE']))
+					$headers['Content-Type']=&$_SERVER['CONTENT_TYPE'];
 				foreach (array_keys($_SERVER) as $key)
 					if (substr($key,0,5)=='HTTP_')
 						$headers[strtr(ucwords(strtolower(strtr(
 							substr($key,5),'_',' '))),' ','-')]=&$_SERVER[$key];
+			}
 		}
 		if (isset($headers['X-HTTP-Method-Override']))
 			$_SERVER['REQUEST_METHOD']=$headers['X-HTTP-Method-Override'];
