@@ -1799,7 +1799,6 @@ final class Base extends Prefab implements ArrayAccess {
 					else {
 						$rval=preg_replace(
 							'/\\\\\h*(\r?\n)/','\1',$match['rval']);
-						var_dump($match);
 						$ttl=NULL;
 						if (preg_match('/^(.+)\|\h*(\d+)$/',$rval,$tmp)) {
 							array_shift($tmp);
