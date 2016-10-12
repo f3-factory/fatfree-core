@@ -38,7 +38,7 @@ class Pingback extends \Prefab {
 		$web=\Web::instance();
 		$req=$web->request($url);
 		$found=FALSE;
-		if ($req && $req['body']) {
+		if ($req['body']) {
 			// Look for pingback header
 			foreach ($req['headers'] as $header)
 				if (preg_match('/^X-Pingback:\h*(.+)/',$header,$href)) {
@@ -71,7 +71,7 @@ class Pingback extends \Prefab {
 			$doc=new \DOMDocument('1.0',$fw->get('ENCODING'));
 			$doc->stricterrorchecking=FALSE;
 			$doc->recover=TRUE;
-			if ($req && @$doc->loadhtml($req['body'])) {
+			if (@$doc->loadhtml($req['body'])) {
 				// Parse anchor tags
 				$links=$doc->getelementsbytagname('a');
 				foreach ($links as $link) {
@@ -89,7 +89,7 @@ class Pingback extends \Prefab {
 								)
 							]
 						);
-						if ($req && $req['body'])
+						if ($req['body'])
 							$this->log.=date('r').' '.
 								$permalink.' [permalink:'.$found.']'.PHP_EOL.
 								$req['body'].PHP_EOL;
