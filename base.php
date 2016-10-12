@@ -366,7 +366,11 @@ final class Base extends Prefab implements ArrayAccess {
 			$lex=$this->lexicon($this->hive['LOCALES'],$ttl);
 		case 'LOCALES':
 			if (isset($lex) || $lex=$this->lexicon($val,$ttl))
-				$this->mset($lex,$this->hive['PREFIX'],$ttl);
+				foreach ($lex as $lkey=>$lval) {
+					$lref=&$this->ref($this->hive['PREFIX'].$lkey);
+					$lref=$lval;
+					unset($lref);
+				}
 			break;
 		case 'TZ':
 			date_default_timezone_set($val);
