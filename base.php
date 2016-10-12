@@ -1799,10 +1799,11 @@ final class Base extends Prefab implements ArrayAccess {
 					else {
 						$rval=preg_replace(
 							'/\\\\\h*(\r?\n)/','\1',$match['rval']);
+						var_dump($match);
 						$ttl=NULL;
-						if (preg_match('/(.+)\|\h*(\d+)/',$rval,$match)) {
-							array_shift($match);
-							list($rval,$ttl)=$match;
+						if (preg_match('/^(.+)\|\h*(\d+)$/',$rval,$tmp)) {
+							array_shift($tmp);
+							list($rval,$ttl)=$tmp;
 						}
 						$args=array_map(
 							function($val) {
@@ -1828,6 +1829,7 @@ final class Base extends Prefab implements ArrayAccess {
 							$args=[$args];
 						if (isset($ttl))
 							$args=array_merge($args,[$ttl]);
+						var_dump($args);
 						call_user_func_array(
 							[$this,'set'],
 							array_merge(
