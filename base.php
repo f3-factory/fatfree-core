@@ -1828,7 +1828,6 @@ final class Base extends Prefab implements ArrayAccess {
 							$args=[$args];
 						if (isset($ttl))
 							$args=array_merge($args,[$ttl]);
-						var_dump($args);
 						call_user_func_array(
 							[$this,'set'],
 							array_merge(
