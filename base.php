@@ -1644,6 +1644,7 @@ final class Base extends Prefab implements ArrayAccess {
 		while (ob_get_level())
 			$out=ob_get_clean().$out;
 		header('Content-Length: '.strlen($out));
+		header('Connection: close');
 		echo $out;
 		flush();
 		if (function_exists('fastcgi_finish_request'))
