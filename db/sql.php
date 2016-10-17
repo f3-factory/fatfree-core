@@ -49,9 +49,7 @@ class SQL {
 		//! Number of rows affected by query
 		$rows=0,
 		//! SQL log
-		$log,
-		//! last used hash keys
-		$hash=[];
+		$log;
 
 	/**
 	*	Begin SQL transaction
@@ -266,21 +264,7 @@ class SQL {
 		}
 		if ($this->trans && $auto)
 			$this->commit();
-		if (isset($hash))
-			$this->hash[]=$hash;
 		return $result;
-	}
-
-	/**
-	*	Return last used cache hash keys
-	*	@param bool $clear
-	*	@return array
-	*/
-	function hash($clear=FALSE) {
-		$cache_keys=$this->hash;
-		if ($clear)
-			$this->hash=[];
-		return $cache_keys;
 	}
 
 	/**
