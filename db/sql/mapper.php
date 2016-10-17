@@ -197,7 +197,7 @@ class Mapper extends \DB\Cursor {
 	*	@param $fields string
 	*	@param $filter string|array
 	*	@param $options array
-	*	@param $ttl int
+	*	@param $ttl int|array
 	**/
 	function select($fields,$filter=NULL,array $options=NULL,$ttl=0) {
 		if (!$options)
@@ -299,7 +299,7 @@ class Mapper extends \DB\Cursor {
 	*	@return static[]
 	*	@param $filter string|array
 	*	@param $options array
-	*	@param $ttl int
+	*	@param $ttl int|array
 	**/
 	function find($filter=NULL,array $options=NULL,$ttl=0) {
 		if (!$options)
@@ -324,7 +324,7 @@ class Mapper extends \DB\Cursor {
 	*	Count records that match criteria
 	*	@return int
 	*	@param $filter string|array
-	*	@param $ttl int
+	*	@param $ttl int|array
 	**/
 	function count($filter=NULL,$ttl=0) {
 		$sql='SELECT COUNT(*) AS '.
@@ -626,7 +626,7 @@ class Mapper extends \DB\Cursor {
 	*	@param $db object
 	*	@param $table string
 	*	@param $fields array|string
-	*	@param $ttl int
+	*	@param $ttl int|array
 	**/
 	function __construct(\DB\SQL $db,$table,$fields=NULL,$ttl=60) {
 		$this->db=$db;

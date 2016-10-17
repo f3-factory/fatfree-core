@@ -141,11 +141,14 @@ class SQL {
 	*	@return array|int|FALSE
 	*	@param $cmds string|array
 	*	@param $args string|array
-	*	@param $ttl int
+	*	@param $ttl int|array
 	*	@param $log bool
 	*	@param $stamp bool
 	**/
 	function exec($cmds,$args=NULL,$ttl=0,$log=TRUE,$stamp=FALSE) {
+		$tag='';
+		if (is_array($ttl))
+			list($ttl,$tag)=$ttl;
 		$auto=FALSE;
 		if (is_null($args))
 			$args=[];
@@ -184,7 +187,7 @@ class SQL {
 			$keys=$vals=[];
 			if ($fw->get('CACHE') && $ttl && ($cached=$cache->exists(
 				$hash=$fw->hash($this->dsn.$cmd.
-				$fw->stringify($arg)).'.sql',$result)) &&
+				$fw->stringify($arg)).($tag?'.'.$tag:'').'.sql',$result)) &&
 				$cached[0]+$ttl>microtime(TRUE)) {
 				foreach ($arg as $key=>$val) {
 					$vals[]=$fw->stringify(is_array($val)?$val[0]:$val);
@@ -291,7 +294,7 @@ class SQL {
 	*	@return array|FALSE
 	*	@param $table string
 	*	@param $fields array|string
-	*	@param $ttl int
+	*	@param $ttl int|array
 	**/
 	function schema($table,$fields=NULL,$ttl=0) {
 		if (strpos($table,'.'))
