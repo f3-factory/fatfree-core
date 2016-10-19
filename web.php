@@ -303,8 +303,10 @@ class Web extends Prefab {
 			preg_match('/^Location: (.+)$/m',implode(PHP_EOL,$headers),$loc)) {
 			$options['max_redirects']--;
 			if($loc[1][0] == '/') {
-				$parsed_url = parse_url($url);
-				$loc[1] = $parsed_url['scheme'] . '://' . $parsed_url['host'] . $loc[1];
+				$parts=parse_url($url);
+				$loc[1]=$parts['scheme'].'://'.$parts['host'].
+					((isset($parts['port']) && !in_array($parts['port'],[80,443]))
+						?':'.$parts['port']:'').$loc[1];
 			}
 			return $this->request($loc[1],$options);
 		}
