@@ -2183,7 +2183,6 @@ final class Base extends Prefab implements ArrayAccess {
 				dirname($_SERVER['SCRIPT_NAME'])),'/');
 		$uri=parse_url($_SERVER['REQUEST_URI']);
 		$path=preg_replace('/^'.preg_quote($base,'/').'/','',$uri['path']);
-		session_cache_limiter('private_no_expire');
 		call_user_func_array('session_set_cookie_params',
 			$jar=[
 				'expire'=>0,
