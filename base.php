@@ -1101,8 +1101,10 @@ final class Base extends Prefab implements ArrayAccess {
 				header('Cache-Control: max-age='.(int)$secs);
 				header('Last-Modified: '.gmdate('r'));
 			}
-			else
+			else {
 				header('Cache-Control: no-cache, no-store, must-revalidate');
+				header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+			}
 		}
 	}
 
@@ -2181,6 +2183,7 @@ final class Base extends Prefab implements ArrayAccess {
 				dirname($_SERVER['SCRIPT_NAME'])),'/');
 		$uri=parse_url($_SERVER['REQUEST_URI']);
 		$path=preg_replace('/^'.preg_quote($base,'/').'/','',$uri['path']);
+		session_cache_limiter('private_no_expire');
 		call_user_func_array('session_set_cookie_params',
 			$jar=[
 				'expire'=>0,
