@@ -210,7 +210,7 @@ class Web extends Prefab {
 				(!$func || $fw->call($func,[$file])!==FALSE) &&
 				rename($tmp,$file['name']);
 		}
-		$fetch=function($arr) use(&$fetch){
+		$fetch=function($arr) use(&$fetch) {
 			if (!is_array($arr))
 				return [$arr];
 			$data=[];
