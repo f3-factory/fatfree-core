@@ -1077,7 +1077,7 @@ final class Base extends Prefab implements ArrayAccess {
 				header('X-Frame-Options: '.$this->hive['XFRAME']);
 			header('X-XSS-Protection: 1; mode=block');
 			header('X-Content-Type-Options: nosniff');
-			if ($secs) {
+			if ($this->hive['VERB']=='GET' && $secs) {
 				$time=microtime(TRUE);
 				header_remove('Pragma');
 				header('Expires: '.gmdate('r',$time+$secs));
