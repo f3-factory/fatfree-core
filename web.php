@@ -291,7 +291,7 @@ class Web extends Prefab {
 				return strlen($line);
 			}
 		);
-		curl_setopt($curl,CURLOPT_SSL_VERIFYHOST,TRUE);
+		curl_setopt($curl,CURLOPT_SSL_VERIFYHOST,2);
 		curl_setopt($curl,CURLOPT_SSL_VERIFYPEER,FALSE);
 		ob_start();
 		curl_exec($curl);
@@ -302,6 +302,12 @@ class Web extends Prefab {
 			$options['follow_location'] &&
 			preg_match('/^Location: (.+)$/m',implode(PHP_EOL,$headers),$loc)) {
 			$options['max_redirects']--;
+			if($loc[1][0] == '/') {
+				$parts=parse_url($url);
+				$loc[1]=$parts['scheme'].'://'.$parts['host'].
+					((isset($parts['port']) && !in_array($parts['port'],[80,443]))
+						?':'.$parts['port']:'').$loc[1];
+			}
 			return $this->request($loc[1],$options);
 		}
 		return [
