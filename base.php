@@ -429,7 +429,7 @@ final class Base extends Prefab implements ArrayAccess {
 				$jar=$this->hive['JAR'];
 				$jar['expire']=strtotime('-1 year');
 				call_user_func_array('setcookie',
-					array_merge([$parts[1],''],$jar));
+					array_merge([$parts[1],NULL],$jar));
 				unset($_COOKIE[$parts[1]]);
 			}
 		}
