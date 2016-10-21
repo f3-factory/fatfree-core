@@ -20,7 +20,6 @@
 
 */
 
-
 //! Authorization/authentication plug-in
 class Auth {
 
