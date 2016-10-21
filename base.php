@@ -1828,11 +1828,11 @@ final class Base extends Prefab implements ArrayAccess {
 							function($val) {
 								if (is_numeric($val))
 									return $val+0;
-								$val=ltrim($val);
+								$val=trim($val);
 								if (preg_match('/^\w+$/i',$val) &&
 									defined($val))
 									return constant($val);
-								return trim(preg_replace('/\\\\"/','"',$val));
+								return preg_replace('/\\\\"/','"',$val);
 							},
 							// Mark quoted strings with 0x00 whitespace
 							str_getcsv(preg_replace('/(?<!\\\\)(")(.*?)\1/',
