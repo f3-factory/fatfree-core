@@ -383,10 +383,9 @@ final class Base extends Prefab implements ArrayAccess {
 			$jar['expire']-=$time;
 			call_user_func_array('session_set_cookie_params',$jar);
 		}
-		$cache=Cache::instance();
-		if ($cache->exists($hash=$this->hash($key).'.var') || $ttl)
+		if ($ttl)
 			// Persist the key-value pair
-			$cache->set($hash,$val,$ttl);
+			Cache::instance()->set($this->hash($key).'.var',$val,$ttl);
 		return $ref;
 	}
 
