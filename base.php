@@ -2191,7 +2191,7 @@ final class Base extends Prefab implements ArrayAccess {
 				'path'=>$base?:'/',
 				'domain'=>is_int(strpos($_SERVER['SERVER_NAME'],'.')) &&
 					!filter_var($_SERVER['SERVER_NAME'],FILTER_VALIDATE_IP)?
-					$_SERVER['SERVER_NAME']:'',
+					$_SERVER['SERVER_NAME']:gethostname(),
 				'secure'=>($scheme=='https'),
 				'httponly'=>TRUE
 			]
