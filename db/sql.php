@@ -358,9 +358,6 @@ class SQL {
 			$fields=\Base::instance()->split($fields);
 		foreach ($cmd as $key=>$val)
 			if (preg_match('/'.$key.'/',$this->engine)) {
-				// Improve InnoDB performance on MySQL with
-				// SET GLOBAL innodb_stats_on_metadata=0;
-				// This requires SUPER privilege!
 				$rows=[];
 				foreach ($this->exec($val[0],NULL,$ttl) as $row) {
 					if (!$fields || in_array($row[$val[1]],$fields))
@@ -371,7 +368,8 @@ class SQL {
 									\PDO::PARAM_INT:
 									(preg_match('/bool/i',$row[$val[2]])?
 										\PDO::PARAM_BOOL:
-										(preg_match('/blob|bytea|image|binary/i',
+										(preg_match(
+											'/blob|bytea|image|binary/i',
 											$row[$val[2]])?
 											\PDO::PARAM_LOB:
 											\PDO::PARAM_STR)),
