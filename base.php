@@ -1103,7 +1103,7 @@ final class Base extends Prefab implements ArrayAccess {
 			else {
 				header('Pragma: no-cache');
 				header('Cache-Control: no-cache, no-store, must-revalidate');
-				header('Expires: Thu, 01 Jan 1970 00:00:00 GMT');
+				header('Expires: '.gmdate('r',0));
 			}
 		}
 	}
