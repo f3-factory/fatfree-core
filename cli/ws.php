@@ -20,6 +20,8 @@
 
 */
 
+namespace CLI;
+
 //! WebSocket server
 class WS {
 
