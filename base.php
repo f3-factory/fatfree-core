@@ -1096,8 +1096,8 @@ final class Base extends Prefab implements ArrayAccess {
 			if ($this->hive['VERB']=='GET' && $secs) {
 				$time=microtime(TRUE);
 				header_remove('Pragma');
-				header('Expires: '.gmdate('r',$time+$secs));
 				header('Cache-Control: max-age='.(int)$secs);
+				header('Expires: '.gmdate('r',$time+$secs));
 				header('Last-Modified: '.gmdate('r'));
 			}
 			else {
