@@ -221,7 +221,13 @@ class SMTP extends Magic {
 			// Authenticate
 			$this->dialog('AUTH LOGIN',$log,$mock);
 			$this->dialog(base64_encode($this->user),$log,$mock);
-			$this->dialog(base64_encode($this->pw),$log,$mock);
+			$auth_rply=$this->dialog(base64_encode($this->pw),$log,$mock);
+			if (!preg_match('/^235\s.*/',$auth_rply)) {
+				$this->dialog('QUIT',$log,$mock);
+				if (!$mock && $socket)
+					fclose($socket);
+				return FALSE;
+			}
 		}
 		if (empty($headers['Message-ID']))
 			$headers['Message-ID']='<'.uniqid('',TRUE).'@'.$this->host.'>';
