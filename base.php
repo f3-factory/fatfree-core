@@ -1464,7 +1464,6 @@ final class Base extends Prefab implements ArrayAccess {
 			elseif (is_numeric($key) && $key)
 				unset($args[$key]);
 		}
-		var_dump($args);
 		return $args;
 	}
 
