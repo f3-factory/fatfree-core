@@ -154,26 +154,24 @@ final class Base extends Prefab implements ArrayAccess {
 	*	Replace tokenized URL with available token values
 	*	@return string
 	*	@param $url array|string
-	*	@param $params array
+	*	@param $args array
 	**/
-	function build($url,$params=[]) {
-		$params+=$this->hive['PARAMS'];
+	function build($url,$args=[]) {
+		$args+=$this->hive['PARAMS'];
 		if (is_array($url))
 			foreach ($url as &$var) {
-				$var=$this->build($var,$params);
+				$var=$this->build($var,$args);
 				unset($var);
 			}
 		else {
-			$i=0;
-			$url=preg_replace_callback('/@(\w+)|\*/',
-				function($match) use(&$i,$params) {
-					$i++;
-					if (isset($match[1]) &&
-						array_key_exists($match[1],$params))
-						return $params[$match[1]];
-					return array_key_exists($i,$params)?
-						$params[$i]:
-						$match[0];
+			$url=preg_replace_callback('/@(\w+)|(\*)/',
+				function($match) use(&$i,$args) {
+					return isset($match[1]) &&
+						array_key_exists($match[1],$args)?
+							$args[$match[1]]:
+							(array_key_exists($match[2],$args)?
+								$args[$match[2]]:
+								$match[0]);
 				},$url);
 		}
 		return $url;
