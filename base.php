@@ -1439,10 +1439,32 @@ final class Base extends Prefab implements ArrayAccess {
 		if (!$url)
 			$url=$this->rel($this->hive['URI']);
 		$case=$this->hive['CASELESS']?'i':'';
+		$wild=preg_quote($pattern,'/');
+		$i=0;
+		while (is_int($pos=strpos($wild,'\*'))) {
+			$wild=substr_replace($wild,'(?P<_'.$i.'>[^\?]*)',$pos,2);
+			$i++;
+		}
 		preg_match('/^'.
-			preg_replace('/((\\\{)?@(\w+\b)(?(2)\\\}))/','(?P<\3>[^\/\?]+)',
-			str_replace('\*','([^\?]*)',preg_quote($pattern,'/'))).
-				'\/?$/'.$case.'um',$url,$args);
+			preg_replace(
+				'/((\\\{)?@(\w+\b)(?(2)\\\}))/',
+				'(?P<\3>[^\/\?]+)',
+				$wild).'\/?$/'.$case.'um',$url,$args);
+		foreach (array_keys($args) as $key) {
+			if (preg_match('/_\d+/',$key)) {
+				if (empty($args['*']))
+					$args['*']=$args[$key];
+				else {
+					if (is_string($args['*']))
+						$args['*']=[$args['*']];
+					array_push($args['*'],$args[$key]);
+				}
+				unset($args[$key]);
+			}
+			elseif (is_numeric($key) && $key)
+				unset($args[$key]);
+		}
+		var_dump($args);
 		return $args;
 	}
 
@@ -1496,10 +1518,6 @@ final class Base extends Prefab implements ArrayAccess {
 					$this->reroute(substr($this->hive['PATH'],0,-1).
 						($this->hive['QUERY']?('?'.$this->hive['QUERY']):''));
 				list($handler,$ttl,$kbps,$alias)=$route[$this->hive['VERB']];
-				if (is_bool(strpos($pattern,'/*')))
-					foreach (array_keys($args) as $key)
-						if (is_numeric($key) && $key)
-							unset($args[$key]);
 				// Capture values of route pattern tokens
 				$this->hive['PARAMS']=$args;
 				// Save matching route
@@ -2163,6 +2181,8 @@ final class Base extends Prefab implements ArrayAccess {
 		}
 		if (isset($headers['X-HTTP-Method-Override']))
 			$_SERVER['REQUEST_METHOD']=$headers['X-HTTP-Method-Override'];
+		elseif ($_SERVER['REQUEST_METHOD']=='POST' && isset($_POST['_method']))
+			$_SERVER['REQUEST_METHOD']=$_POST['_method'];
 		$scheme=isset($_SERVER['HTTPS']) && $_SERVER['HTTPS']=='on' ||
 			isset($headers['X-Forwarded-Proto']) &&
 			$headers['X-Forwarded-Proto']=='https'?'https':'http';
