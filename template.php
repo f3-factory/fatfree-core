@@ -229,7 +229,7 @@ class Template extends Preview {
 	*	@return string
 	*	@param $node array|string
 	**/
-	protected function build($node) {
+	function build($node) {
 		if (is_string($node))
 			return parent::build($node);
 		$out='';
