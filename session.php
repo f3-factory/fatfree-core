@@ -182,8 +182,7 @@ class Session {
 		register_shutdown_function('session_commit');
 		$fw=\Base::instance();
 		$headers=$fw->get('HEADERS');
-		$this->_csrf=$fw->hash($fw->get('ROOT').$fw->get('BASE')).'.'.
-			$fw->hash(mt_rand());
+		$this->_csrf=$fw->get('SEED').'.'.$fw->hash(mt_rand());
 		if ($key)
 			$fw->set($key,$this->_csrf);
 		$this->_agent=isset($headers['User-Agent'])?$headers['User-Agent']:'';

@@ -521,8 +521,7 @@ class Image {
 			if (!is_dir($dir=$fw->get('TEMP')))
 				mkdir($dir,Base::MODE,TRUE);
 			$this->count++;
-			$fw->write($dir.'/'.
-				$fw->hash($fw->get('ROOT').$fw->get('BASE')).'.'.
+			$fw->write($dir.'/'.$fw->get('SEED').'.'.
 				$fw->hash($this->file).'-'.$this->count.'.png',
 				$this->dump());
 		}
@@ -537,8 +536,7 @@ class Image {
 	function restore($state=1) {
 		$fw=Base::instance();
 		if ($this->flag && is_file($file=($path=$fw->get('TEMP').
-			$fw->hash($fw->get('ROOT').$fw->get('BASE')).'.'.
-			$fw->hash($this->file).'-').$state.'.png')) {
+			$fw->get('SEED').'.'.$fw->hash($this->file).'-').$state.'.png')) {
 			if (is_resource($this->data))
 				imagedestroy($this->data);
 			$this->data=imagecreatefromstring($fw->read($file));
@@ -607,9 +605,7 @@ class Image {
 		if (is_resource($this->data)) {
 			imagedestroy($this->data);
 			$fw=Base::instance();
-			$path=$fw->get('TEMP').
-				$fw->hash($fw->get('ROOT').$fw->get('BASE')).'.'.
-				$fw->hash($this->file);
+			$path=$fw->get('TEMP').$fw->get('SEED').'.'.$fw->hash($this->file);
 			if ($glob=@glob($path.'*.png',GLOB_NOSORT))
 				foreach ($glob as $match)
 					if (preg_match('/-(\d+)\.png/',$match))

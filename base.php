@@ -1892,8 +1892,7 @@ final class Base extends Prefab implements ArrayAccess {
 			mkdir($tmp,self::MODE,TRUE);
 		// Use filesystem lock
 		if (is_file($lock=$tmp.
-			$this->hash($this->hive['ROOT'].$this->hive['BASE']).'.'.
-			$this->hash($id).'.lock') &&
+			$this->get('SEED').'.'.$this->hash($id).'.lock') &&
 			filemtime($lock)+ini_get('max_execution_time')<microtime(TRUE))
 			// Stale lock
 			@unlink($lock);
@@ -2786,8 +2785,7 @@ class Preview extends View {
 				return $data;
 			if (is_file($view=$fw->fixslashes($dir.$file))) {
 				if (!is_file($this->view=($tmp.
-					$fw->hash($fw->get('ROOT').$fw->get('BASE')).'.'.
-					$fw->hash($view).'.php')) ||
+					$fw->get('SEED').'.'.$fw->hash($view).'.php')) ||
 					filemtime($this->view)<filemtime($view)) {
 					// Remove PHP code and comments
 					$text=preg_replace(
