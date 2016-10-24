@@ -176,9 +176,7 @@ class Web extends Prefab {
 		if (!is_dir($dir))
 			mkdir($dir,Base::MODE,TRUE);
 		if ($fw->get('VERB')=='PUT') {
-			$tmp=$fw->get('TEMP').
-				$fw->hash($fw->get('ROOT').$fw->get('BASE')).'.'.
-				$fw->hash(uniqid());
+			$tmp=$fw->get('TEMP').$fw->get('SEED').'.'.$fw->hash(uniqid());
 			if (!$fw->get('RAW'))
 				$fw->write($tmp,$fw->get('BODY'));
 			else {
@@ -878,8 +876,7 @@ if (!function_exists('gzdecode')) {
 		$fw=Base::instance();
 		if (!is_dir($tmp=$fw->get('TEMP')))
 			mkdir($tmp,Base::MODE,TRUE);
-		file_put_contents($file=$tmp.'/'.
-			$fw->hash($fw->get('ROOT').$fw->get('BASE')).'.'.
+		file_put_contents($file=$tmp.'/'.$fw->get('SEED').'.'.
 			$fw->hash(uniqid(NULL,TRUE)).'.gz',$str,LOCK_EX);
 		ob_start();
 		readgzfile($file);
