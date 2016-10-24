@@ -33,7 +33,9 @@ class Mapper extends \DB\Cursor {
 		//! Mongo document
 		$document=[],
 		//! Mongo cursor
-		$cursor;
+		$cursor,
+		//! Defined fields
+		$fields;
 
 	/**
 	*	Return database type
@@ -191,7 +193,7 @@ class Mapper extends \DB\Cursor {
 			'limit'=>0,
 			'offset'=>0
 		];
-		return $this->select(NULL,$filter,$options,$ttl);
+		return $this->select($this->fields,$filter,$options,$ttl);
 	}
 
 	/**
@@ -351,10 +353,12 @@ class Mapper extends \DB\Cursor {
 	*	@return void
 	*	@param $db object
 	*	@param $collection string
+	*	@param $fields array
 	**/
-	function __construct(\DB\Mongo $db,$collection) {
+	function __construct(\DB\Mongo $db,$collection,$fields=NULL) {
 		$this->db=$db;
 		$this->collection=$db->selectcollection($collection);
+		$this->fields=$fields;
 		$this->reset();
 	}
 
