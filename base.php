@@ -164,14 +164,19 @@ final class Base extends Prefab implements ArrayAccess {
 				unset($var);
 			}
 		else {
+			$i=0;
 			$url=preg_replace_callback('/@(\w+)|(\*)/',
 				function($match) use(&$i,$args) {
-					return isset($match[1]) &&
-						array_key_exists($match[1],$args)?
-							$args[$match[1]]:
-							(array_key_exists($match[2],$args)?
-								$args[$match[2]]:
-								$match[0]);
+					if (isset($match[1]) &&
+						array_key_exists($match[1],$args))
+						return $args[$match[1]];
+					if (array_key_exists($match[2],$args)) {
+						if (!is_array($args[$match[2]]))
+							return $args[$match[2]];
+						$i++;
+						return $args[$match[2]][$i-1];
+					}
+					return $match[0];
 				},$url);
 		}
 		return $url;
@@ -201,11 +206,17 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $str string
 	**/
 	function parse($str) {
-		preg_match_all('/(\w+)\h*=\h*(.+?)(?=,|$)/',
+		preg_match_all('/(\w+|\*)\h*=\h*(?:\[(.+?)\]|(.+?))(?=,|$)/',
 			$str,$pairs,PREG_SET_ORDER);
 		$out=[];
 		foreach ($pairs as $pair)
-			$out[$pair[1]]=trim($pair[2]);
+			if ($pair[2]) {
+				$out[$pair[1]]=[];
+				foreach (explode(',',$pair[2]) as $val)
+					array_push($out[$pair[1]],$val);
+			}
+			else
+				$out[$pair[1]]=trim($pair[3]);
 		return $out;
 	}
 
