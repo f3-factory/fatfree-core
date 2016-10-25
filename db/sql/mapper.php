@@ -539,6 +539,7 @@ class Mapper extends \DB\Cursor {
 	*	@return NULL
 	**/
 	function reset() {
+		$this->_id=NULL;
 		foreach ($this->fields as &$field) {
 			$field['value']=NULL;
 			$field['initial']=NULL;
