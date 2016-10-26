@@ -30,6 +30,9 @@ class SQL {
 		E_PKey='Table %s does not have a primary key';
 	//@}
 
+	const
+		PARAM_FLOAT='float';
+
 	protected
 		//! UUID
 		$uuid,
@@ -103,6 +106,8 @@ class SQL {
 				return \PDO::PARAM_INT;
 			case 'resource':
 				return \PDO::PARAM_LOB;
+			case 'float':
+				return self::PARAM_FLOAT;
 			default:
 				return \PDO::PARAM_STR;
 		}
@@ -116,6 +121,10 @@ class SQL {
 	**/
 	function value($type,$val) {
 		switch ($type) {
+			case self::PARAM_FLOAT:
+				return (float)(is_string($val)
+					? str_replace(',','.',preg_replace('/([.,])(?!\d+$)/','',$val))
+					: $val);
 			case \PDO::PARAM_NULL:
 				return (unset)$val;
 			case \PDO::PARAM_INT:
@@ -195,13 +204,15 @@ class SQL {
 				foreach ($arg as $key=>$val) {
 					if (is_array($val)) {
 						// User-specified data type
-						$query->bindvalue($key,$val[0],$val[1]);
+						$query->bindvalue($key,$val[0],
+							$val[1]==self::PARAM_FLOAT?\PDO::PARAM_STR:$val[1]);
 						$vals[]=$fw->stringify($this->value($val[1],$val[0]));
 					}
 					else {
 						// Convert to PDO data type
 						$query->bindvalue($key,$val,
-							$type=$this->type($val));
+							($type=$this->type($val))==self::PARAM_FLOAT?
+								\PDO::PARAM_STR:$type);
 						$vals[]=$fw->stringify($this->value($type,$val));
 					}
 					$keys[]='/'.preg_quote(is_numeric($key)?chr(0).'?':$key).
@@ -370,9 +381,11 @@ class SQL {
 										\PDO::PARAM_BOOL:
 										(preg_match(
 											'/blob|bytea|image|binary/i',
-											$row[$val[2]])?
-											\PDO::PARAM_LOB:
-											\PDO::PARAM_STR)),
+											$row[$val[2]])?\PDO::PARAM_LOB:
+											(preg_match(
+												'/float|decimal|real|numeric|double/i',
+												$row[$val[2]])?self::PARAM_FLOAT:
+												\PDO::PARAM_STR))),
 							'default'=>is_string($row[$val[3]])?
 								preg_replace('/^\s*([\'"])(.*)\1\s*/','\2',
 								$row[$val[3]]):$row[$val[3]],
