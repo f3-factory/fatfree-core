@@ -144,6 +144,8 @@ class Mapper extends \DB\Cursor {
 				return 'bool';
 			case \PDO::PARAM_STR:
 				return 'string';
+			case \DB\SQL::PARAM_FLOAT:
+				return 'float';
 		}
 	}
 
