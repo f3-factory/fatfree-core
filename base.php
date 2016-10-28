@@ -170,7 +170,8 @@ final class Base extends Prefab implements ArrayAccess {
 					if (isset($match[1]) &&
 						array_key_exists($match[1],$args))
 						return $args[$match[1]];
-					if (array_key_exists($match[2],$args)) {
+					if (isset($match[2]) &&
+						array_key_exists($match[2],$args)) {
 						if (!is_array($args[$match[2]]))
 							return $args[$match[2]];
 						$i++;
