@@ -22,7 +22,7 @@
 
 namespace CLI;
 
-//! WebSocket server
+//! RFC6455 WebSocket server
 class WS {
 
 	const
@@ -46,11 +46,6 @@ class WS {
 	const
 		Length=0x7f;
 	//@}
-
-}
-
-//! RFC6455 server socket
-class Server {
 
 	protected
 		$addr,
@@ -119,7 +114,7 @@ class Server {
 					base64_encode(
 						sha1(
 							$hdrs['Sec-Websocket-Key'].
-							WS::Magic,
+							self::Magic,
 							TRUE
 						)
 					).$CRLF.$CRLF
@@ -161,9 +156,9 @@ class Server {
 	*	@param $socket resource
 	**/
 	function read($socket) {
-		if (is_string($str=@fread($socket,WS::Packet)) &&
+		if (is_string($str=@fread($socket,self::Packet)) &&
 			strlen($str) &&
-			strlen($str)<WS::Packet)
+			strlen($str)<self::Packet)
 			return $str;
 		if (isset($this->events['error']) &&
 			is_callable($func=$this->events['error']))
@@ -298,16 +293,16 @@ class Server {
 							$raw=$this->agents[$id]->fetch()) {
 							list($op,$data)=$raw;
 							// Dispatch
-							switch ($op & WS::OpCode) {
-							case WS::Ping:
-								$this->agents[$id]->send(WS::Pong);
+							switch ($op & self::OpCode) {
+							case self::Ping:
+								$this->agents[$id]->send(self::Pong);
 								break;
-							case WS::Close:
+							case self::Close:
 								$this->free($socket);
 								break;
-							case WS::Text:
+							case self::Text:
 								$data=trim($data);
-							case WS::Binary:
+							case self::Binary:
 								if (isset($this->events['receive']) &&
 									is_callable($func=$this->events['receive']))
 									$func($this->agents[$id],$op,$data);

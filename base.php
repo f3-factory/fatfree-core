@@ -350,6 +350,11 @@ final class Base extends Prefab implements ArrayAccess {
 			if ($expr[1]=='COOKIE') {
 				$parts=$this->cut($key);
 				$jar=$this->unserialize($this->serialize($this->hive['JAR']));
+				if (isset($_COOKIE[$parts[1]])) {
+					$jar['expire']=strtotime('-1 year');
+					call_user_func_array('setcookie',
+						array_merge([$parts[1],NULL],$jar));
+				}
 				if ($ttl)
 					$jar['expire']=$time+$ttl;
 				call_user_func_array('setcookie',[$parts[1],$val]+$jar);
