@@ -881,7 +881,8 @@ final class Base extends Prefab implements ArrayAccess {
 					return $expr[0];
 				if (isset($type)) {
 					if (isset($this->hive['FORMATS'][$type]))
-						return $this->call($this->hive['FORMATS'][$type],[$args[$pos],$mod,$prop]);
+						return $this->call($this->hive['FORMATS'][$type],
+							[$args[$pos],$mod,isset($prop)?$prop:null]);
 					switch ($type) {
 						case 'plural':
 							preg_match_all('/(?<tag>\w+)'.
