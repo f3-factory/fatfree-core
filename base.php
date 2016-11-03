@@ -1830,6 +1830,7 @@ final class Base extends Prefab implements ArrayAccess {
 			$matches,PREG_SET_ORDER);
 		if ($matches) {
 			$sec='globals';
+			$cmd=[];
 			foreach ($matches as $match) {
 				if ($match['section']) {
 					$sec=$match['section'];
@@ -1838,6 +1839,8 @@ final class Base extends Prefab implements ArrayAccess {
 						'((?:\.?\w)+)/i',$sec,$msec) &&
 						!$this->exists($msec[0]))
 						$this->set($msec[0],NULL);
+					preg_match('/^(config|route|map|redirect)s\b|'.
+						'(^.*)\s*\>\s*(.*)/i',$sec,$cmd);
 				}
 				else {
 					if ($allow) {
@@ -1846,9 +1849,10 @@ final class Base extends Prefab implements ArrayAccess {
 						$match['rval']=Preview::instance()->
 							resolve($match['rval']);
 					}
-					if (preg_match('/^(config|route|map|redirect)s\b/i',
-						$sec,$cmd)) {
-						call_user_func_array(
+					if (!empty($cmd)) {
+						(isset($cmd[3])) ?
+						$this->call($cmd[3],[$match['lval'],$match['rval'],$cmd[2]])
+						: call_user_func_array(
 							[$this,$cmd[1]],
 							array_merge([$match['lval']],
 								str_getcsv($match['rval'])));
