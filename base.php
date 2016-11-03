@@ -1240,7 +1240,8 @@ final class Base extends Prefab implements ArrayAccess {
 			'trace'=>$trace,
 			'level'=>$level
 		];
-		$this->expire(-1);
+		if (!headers_sent())
+			$this->expire(-1);
 		$handler=$this->hive['ONERROR'];
 		$this->hive['ONERROR']=NULL;
 		$eol="\n";
