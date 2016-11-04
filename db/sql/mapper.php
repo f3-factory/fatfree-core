@@ -423,9 +423,11 @@ class Mapper extends \DB\Cursor {
 			$seq=NULL;
 			if ($this->engine=='pgsql') {
 				$names=array_keys($pkeys);
-				$seq=$this->source.'_'.end($names).'_seq';
+				$aik=end($names);
+				if ($this->fields[$aik]['pdo_type']==\PDO::PARAM_INT)
+					$seq=$this->source.'_'.$aik.'_seq';
 			}
-			if ($this->engine!='oci')
+			if ($this->engine!='oci' || ($this->engine=='pgsql' && $seq))
 				$this->_id=$this->db->lastinsertid($seq);
 			// Reload to obtain default and auto-increment field values
 			if ($inc || $filter)
