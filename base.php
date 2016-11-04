@@ -1105,7 +1105,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $secs int
 	**/
 	function expire($secs=0) {
-		if (!$this->hive['CLI']) {
+		if (!$this->hive['CLI'] && !headers_sent()) {
 			if ($this->hive['PACKAGE'])
 				header('X-Powered-By: '.$this->hive['PACKAGE']);
 			if ($this->hive['XFRAME'])
@@ -1240,8 +1240,7 @@ final class Base extends Prefab implements ArrayAccess {
 			'trace'=>$trace,
 			'level'=>$level
 		];
-		if (!headers_sent())
-			$this->expire(-1);
+		$this->expire(-1);
 		$handler=$this->hive['ONERROR'];
 		$this->hive['ONERROR']=NULL;
 		$eol="\n";
