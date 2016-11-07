@@ -2182,9 +2182,12 @@ final class Base extends Prefab implements ArrayAccess {
 		$headers=[];
 		if (!$cli) {
 			if (function_exists('getallheaders')) {
-				$headers=getallheaders();
-				foreach (array_keys($headers) as $key) {
+				$_headers=getallheaders();
+				foreach ($_headers as $key=>$val) {
 					$tmp=strtoupper(strtr($key,'-','_'));
+					// TODO: use ucwords delimiters for php 5.4.32+ & 5.5.16+
+					$key=strtr(ucwords(strtolower(strtr($key,'-',' '))),' ','-');
+					$headers[$key]=$val;
 					if (isset($_SERVER['HTTP_'.$tmp]))
 						$headers[$key]=&$_SERVER['HTTP_'.$tmp];
 				}
