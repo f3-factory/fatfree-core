@@ -2175,7 +2175,7 @@ final class Base extends Prefab implements ArrayAccess {
 					} else
 						$req.='/'.$arg;
 				}
-				$_SERVER['REQUEST_URI']=($req?:'/').'?'.$opts;
+				$_SERVER['REQUEST_URI']=($req?:'/').'?'.urlencode($opts);
 				parse_str($opts,$GLOBALS['_GET']);
 			}
 		}
