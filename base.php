@@ -2182,8 +2182,7 @@ final class Base extends Prefab implements ArrayAccess {
 		$headers=[];
 		if (!$cli) {
 			if (function_exists('getallheaders')) {
-				$_headers=getallheaders();
-				foreach ($_headers as $key=>$val) {
+				foreach (getallheaders() as $key=>$val) {
 					$tmp=strtoupper(strtr($key,'-','_'));
 					// TODO: use ucwords delimiters for php 5.4.32+ & 5.5.16+
 					$key=strtr(ucwords(strtolower(strtr($key,'-',' '))),' ','-');
