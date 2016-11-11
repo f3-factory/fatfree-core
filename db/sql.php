@@ -444,8 +444,9 @@ class SQL {
 	*	Return quoted identifier name
 	*	@return string
 	*	@param $key
-	**/
-	function quotekey($key) {
+	*	@param bool $split
+	 **/
+	function quotekey($key, $split=TRUE) {
 		$delims=[
 			'mysql'=>'``',
 			'sqlite2?|pgsql|oci'=>'""',
@@ -457,7 +458,8 @@ class SQL {
 				$use=$delim;
 				break;
 			}
-		return $use[0].implode($use[1].'.'.$use[0],explode('.',$key)).$use[1];
+		return $use[0].($split ? implode($use[1].'.'.$use[0],explode('.',$key))
+			: $key).$use[1];
 	}
 
 	/**
