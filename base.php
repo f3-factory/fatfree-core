@@ -625,7 +625,7 @@ final class Base extends Prefab implements ArrayAccess {
 		$ref=&$this->ref($key);
 		if (!$ref)
 			$ref=[];
-		$out=$ref+(is_string($src)?$this->hive[$src]:$src);
+		$out=array_replace_recursive(is_string($src)?$this->hive[$src]:$src,$ref);
 		if ($keep)
 			$ref=$out;
 		return $out;
