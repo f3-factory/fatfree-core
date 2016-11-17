@@ -2511,8 +2511,9 @@ class Cache extends Prefab {
 						foreach (memcache_get_extended_stats(
 							$this->ref,'cachedump',$id) as $data)
 							if (is_array($data))
-								foreach ($data as $key=>$val)
+								foreach (array_keys($data) as $key)
 									if (preg_match($regex,$key) &&
+										($val=memcache_get($this->ref,$key)) &&
 										$val[1]+$lifetime<time())
 										memcache_delete($this->ref,$key);
 				return TRUE;
