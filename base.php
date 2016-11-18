@@ -2504,6 +2504,7 @@ class Cache extends Prefab {
 				}
 				return TRUE;
 			case 'memcache':
+				$fw=Base::instance();
 				foreach (memcache_get_extended_stats(
 					$this->ref,'slabs') as $slabs)
 					foreach (array_filter(array_keys($slabs),'is_numeric')
@@ -2513,7 +2514,7 @@ class Cache extends Prefab {
 							if (is_array($data))
 								foreach (array_keys($data) as $key)
 									if (preg_match($regex,$key) &&
-										($val=memcache_get($this->ref,$key)) &&
+										($val=$fw->unserialize(memcache_get($this->ref,$key))) &&
 										$val[1]+$lifetime<time())
 										memcache_delete($this->ref,$key);
 				return TRUE;
