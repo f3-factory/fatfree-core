@@ -3,7 +3,7 @@
 /**
 *	Lightweight password hashing library
 *
-*	Copyright (c) 2009-2015 F3::Factory/Bong Cosca, All rights reserved.
+*	Copyright (c) 2009-2016 F3::Factory/Bong Cosca, All rights reserved.
 *
 *	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
 *

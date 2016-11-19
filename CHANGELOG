@@ -1,6 +1,6 @@
 CHANGELOG
 
-3.6.0 (TBA)
+3.6.0 (19 November 2016)
 *	NEW: [cli] request type
 *	NEW: console-friendly CLI mode
 *	NEW: lexicon caching
@@ -21,7 +21,7 @@ CHANGELOG
 *	NEW: Indexed route wildcards, now exposed in PARAMS['*']
 *	Changed: PHP 5.4 is now the minimum version requirement
 *	Changed: Prevent database wrappers from being cloned
-*	Changed: Router works on PATH instead of URI (#126) NB: PARAMS.0 no longuer contains the query string
+*	Changed: Router works on PATH instead of URI (#126) NB: PARAMS.0 no longer contains the query string
 *	Changed: Removed ALIASES autobuilding (#118)
 *	Changed: Route wildcards match empty strings (#119)
 *	Changed: Disable default debug highlighting, HIGHLIGHT is false now
@@ -85,6 +85,7 @@ CHANGELOG
 *	Added optional custom cache instance to Session (#141)
 *	CLI-aware mock()
 *	XFRAME and PACKAGE can be switched off now (#128)
+*	Bug fix: wrong time calculation on memcache reset (#170)
 *	Bug fix: encode CLI parameters
 *	Bug fix: Close connection on abort explicitly (#162)
 *	Bug fix: Image->identicon, Avoid double-size sprite rotation (and possible segfault)
