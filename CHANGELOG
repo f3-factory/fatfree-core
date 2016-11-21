@@ -78,7 +78,6 @@ CHANGELOG
 *	Image->resize: keep aspect ratio when only width or height was given
 *	Updated OpenID lib (bcosca/fatfree#965)
 *	Audit->card: add new mastercard "2" BIN range (bcosca/fatfree#954)
-*	Deprecated: Bcrypt class
 *	Preview->render: optimized detection to remove short open PHP tags and allow xml tags (#133)
 *	Display file and line number in exception handler (bcosca/fatfree#967)
 *	Added error reporting level to Base->error and ERROR.level (bcosca/fatfree#957)
