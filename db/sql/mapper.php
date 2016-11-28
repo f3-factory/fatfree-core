@@ -492,7 +492,7 @@ class Mapper extends \DB\Cursor {
 	*	@param $filter string|array
 	**/
 	function erase($filter=NULL) {
-		if ($filter) {
+		if (isset($filter)) {
 			$args=[];
 			if (is_array($filter)) {
 				$args=isset($filter[1]) && is_array($filter[1])?
@@ -502,7 +502,7 @@ class Mapper extends \DB\Cursor {
 				list($filter)=$filter;
 			}
 			return $this->db->
-				exec('DELETE FROM '.$this->table.' WHERE '.$filter.';',$args);
+				exec('DELETE FROM '.$this->table.($filter?' WHERE '.$filter:'').';',$args);
 		}
 		$args=[];
 		$ctr=0;
