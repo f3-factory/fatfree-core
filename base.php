@@ -2632,6 +2632,33 @@ class View extends Prefab {
 	}
 
 	/**
+	*	Send resource to browser using HTTP/2 server push
+	*	@return string
+	*	@param $file string
+	**/
+	function push($file) {
+		$fw=Base::instance();
+		$hive=$fw->hive();
+		if ($hive['SCHEME']=='https') {
+			$map=[
+				'css'=>'stylesheet',
+				'js'=>'script',
+				'bmp|gif|jpe?g|png'=>'image'
+			];
+			$base='';
+			if (!preg_match('/^[.\/]/',$file))
+				$base=$hive['BASE'].'/';
+			foreach ($map as $key=>$val)
+				if (preg_match('/'.$key.'$/',$file)) {
+					header('Link: '.'<'.$base.$file.'>; '.
+						'rel=preload; as='.$val,false);
+					break;
+				}
+		}
+		return $file;
+	}
+
+	/**
 	*	Create sandbox for template execution
 	*	@return string
 	*	@param $hive array
@@ -2712,6 +2739,7 @@ class Preview extends View {
 		$filter=[
 			'esc'=>'$this->esc',
 			'raw'=>'$this->raw',
+			'push'=>'$this->push',
 			'alias'=>'\Base::instance()->alias',
 			'format'=>'\Base::instance()->format'
 		];
