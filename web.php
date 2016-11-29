@@ -140,6 +140,12 @@ class Web extends Prefab {
 			header('Content-Length: '.$size);
 			header('X-Powered-By: '.Base::instance()->get('PACKAGE'));
 		}
+		if(!$kbps && $flush) {
+			while (ob_get_level())
+				ob_end_clean();
+			readfile($file);
+			return $size;
+		}
 		$ctr=0;
 		$handle=fopen($file,'rb');
 		$start=microtime(TRUE);
