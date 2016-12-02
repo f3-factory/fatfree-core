@@ -2236,7 +2236,7 @@ final class Base extends Prefab implements ArrayAccess {
 				'httponly'=>TRUE
 			]
 		);
-		$port=0;
+		$port=80;
 		if (isset($_SERVER['SERVER_PORT']))
 			$port=$_SERVER['SERVER_PORT'];
 		// Default configuration
