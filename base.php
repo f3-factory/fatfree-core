@@ -1510,7 +1510,7 @@ final class Base extends Prefab implements ArrayAccess {
 		$this->hive['ROUTES']=array_combine($keys,$vals);
 		// Convert to BASE-relative URL
 		$req=$this->rel(urldecode($this->hive['PATH']));
-		if ($cors=(isset($this->hive['HEADERS']['Origin']) &&
+		if ($cors=((isset($this->hive['HEADERS']['Origin']) || $this->hive['CORS']['force']) &&
 			$this->hive['CORS']['origin'])) {
 			$cors=$this->hive['CORS'];
 			header('Access-Control-Allow-Origin: '.$cors['origin']);
@@ -2257,7 +2257,8 @@ final class Base extends Prefab implements ArrayAccess {
 				'origin'=>FALSE,
 				'credentials'=>FALSE,
 				'expose'=>FALSE,
-				'ttl'=>0
+				'ttl'=>0,
+				'force'=>false
 			],
 			'DEBUG'=>0,
 			'DIACRITICS'=>[],
