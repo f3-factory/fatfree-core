@@ -78,7 +78,7 @@ class Mongo {
 						PHP_EOL;
 		} else {
 			$this->log=FALSE;
-			if ($legacy)
+			if ($this->legacy)
 				$this->db->setprofilinglevel(-1);
 			else
 				$this->db->command(['profile'=>-1]);
@@ -93,7 +93,7 @@ class Mongo {
 	function drop() {
 		$out=$this->db->drop();
 		if ($this->log!==FALSE) {
-			if ($legacy)
+			if ($this->legacy)
 				$this->db->setprofilinglevel(2);
 			else
 				$this->db->command(['profile'=>2]);
