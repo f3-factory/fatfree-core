@@ -1009,10 +1009,11 @@ final class Base extends Prefab implements ArrayAccess {
 					$country=@constant('ISO::CC_'.strtolower($parts[1])))
 					$locale.='-'.$country;
 			}
-			$locales[]=$locale;
+			$locale=str_replace('-','_',$locale);
 			$locales[]=$locale.'.'.ini_get('default_charset');
+			$locales[]=$locale;
 		}
-		setlocale(LC_ALL,str_replace('-','_',$locales));
+		setlocale(LC_ALL,$locales);
 		return implode(',',$this->languages);
 	}
 
