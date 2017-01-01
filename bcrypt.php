@@ -1,9 +1,7 @@
 <?php
 
 /**
-*	Lightweight password hashing library
-*
-*	Copyright (c) 2009-2016 F3::Factory/Bong Cosca, All rights reserved.
+*	Copyright (c) 2009-2017 F3::Factory/Bong Cosca, All rights reserved.
 *
 *	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
 *
@@ -19,9 +17,12 @@
 *	You should have received a copy of the GNU General Public License along
 *	with Fat-Free Framework.  If not, see <http://www.gnu.org/licenses/>.
 *
-*	@deprecated use http://php.net/manual/en/ref.password.php instead (PHP 5.5+ only)
 **/
 
+/**
+*	Lightweight password hashing library (PHP 5.5+ only)
+*	@deprecated Use http://php.net/manual/en/ref.password.php instead
+**/
 class Bcrypt extends Prefab {
 
 	//@{ Error messages
