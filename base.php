@@ -128,6 +128,8 @@ final class Base extends Prefab implements ArrayAccess {
 		$init,
 		//! Language lookup sequence
 		$languages,
+		//! Mutex locks
+		$locks=[],
 		//! Default fallback language
 		$fallback='en';
 
@@ -1924,9 +1926,11 @@ final class Base extends Prefab implements ArrayAccess {
 			@unlink($lock);
 		while (!($handle=@fopen($lock,'x')) && !connection_aborted())
 			usleep(mt_rand(0,100));
+		$this->locks[$id]=$lock;
 		$out=$this->call($func,$args);
 		fclose($handle);
 		@unlink($lock);
+		unset($this->locks[$id]);
 		return $out;
 	}
 
@@ -2026,6 +2030,8 @@ final class Base extends Prefab implements ArrayAccess {
 		if (!($error=error_get_last()) &&
 			session_status()==PHP_SESSION_ACTIVE)
 			session_commit();
+		foreach ($this->locks as $lock)
+			@unlink($lock);
 		$handler=$this->hive['UNLOAD'];
 		if ((!$handler || $this->call($handler,$this)===FALSE) &&
 			$error && in_array($error['type'],
