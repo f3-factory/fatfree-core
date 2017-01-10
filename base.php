@@ -2648,7 +2648,7 @@ class View extends Prefab {
 		$hive=$fw->hive();
 		if ($hive['SCHEME']=='https') {
 			$map=[
-				'css'=>'stylesheet',
+				'css'=>'style',
 				'js'=>'script',
 				'bmp|gif|jpe?g|png'=>'image'
 			];
