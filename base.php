@@ -1386,7 +1386,7 @@ final class Base extends Prefab implements ArrayAccess {
 			$this->status($permanent?301:302);
 			die;
 		}
-		$this->mock('GET '.$url);
+		$this->mock('GET '.$url.' [cli]');
 	}
 
 	/**
