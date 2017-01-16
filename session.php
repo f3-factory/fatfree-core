@@ -58,7 +58,7 @@ class Session {
 
 	/**
 	*	Return session data in serialized format
-	*	@return string|FALSE
+	*	@return string
 	*	@param $id string
 	**/
 	function read($id) {

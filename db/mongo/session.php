@@ -59,13 +59,13 @@ class Session extends Mapper {
 
 	/**
 	*	Return session data in serialized format
-	*	@return string|FALSE
+	*	@return string
 	*	@param $id string
 	**/
 	function read($id) {
 		$this->load(['session_id'=>$this->sid=$id]);
 		if ($this->dry())
-			return FALSE;
+			return '';
 		if ($this->get('ip')!=$this->_ip || $this->get('agent')!=$this->_agent) {
 			$fw=\Base::instance();
 			if (!isset($this->onsuspect) ||
