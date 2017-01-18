@@ -2651,7 +2651,7 @@ class View extends Prefab {
 			if (!preg_match('/^[.\/]/',$file))
 				$base=$hive['BASE'].'/';
 			if (preg_match('/'.$key.'$/',$file))
-				header('Link: '.'<'.$base.$file.'>; '.'rel=prefetch',FALSE);
+				header('Link: '.'<'.$base.$file.'>; '.'rel=preload',FALSE);
 		}
 		return $file;
 	}
