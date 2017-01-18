@@ -2647,20 +2647,11 @@ class View extends Prefab {
 		$fw=Base::instance();
 		$hive=$fw->hive();
 		if ($hive['SCHEME']=='https') {
-			$map=[
-				'css'=>'style',
-				'js'=>'script',
-				'bmp|gif|jpe?g|png'=>'image'
-			];
 			$base='';
 			if (!preg_match('/^[.\/]/',$file))
 				$base=$hive['BASE'].'/';
-			foreach ($map as $key=>$val)
-				if (preg_match('/'.$key.'$/',$file)) {
-					header('Link: '.'<'.$base.$file.'>; '.
-						'rel=preload; as='.$val,false);
-					break;
-				}
+			if (preg_match('/'.$key.'$/',$file))
+				header('Link: '.'<'.$base.$file.'>; '.'rel=prefetch',FALSE);
 		}
 		return $file;
 	}
