@@ -1163,7 +1163,7 @@ final class Base extends Prefab implements ArrayAccess {
 		return isset($headers['Client-IP'])?
 			$headers['Client-IP']:
 			(isset($headers['X-Forwarded-For'])?
-				$headers['X-Forwarded-For']:
+				explode(',',$headers['X-Forwarded-For'])[0]:
 				(isset($_SERVER['REMOTE_ADDR'])?
 					$_SERVER['REMOTE_ADDR']:''));
 	}
@@ -1386,7 +1386,7 @@ final class Base extends Prefab implements ArrayAccess {
 			$this->status($permanent?301:302);
 			die;
 		}
-		$this->mock('GET '.$url);
+		$this->mock('GET '.$url.' [cli]');
 	}
 
 	/**

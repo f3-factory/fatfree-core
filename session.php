@@ -58,13 +58,13 @@ class Session {
 
 	/**
 	*	Return session data in serialized format
-	*	@return string|FALSE
+	*	@return string
 	*	@param $id string
 	**/
 	function read($id) {
 		$this->sid=$id;
 		if (!$data=$this->_cache->get($id.'.@'))
-			return FALSE;
+			return '';
 		if ($data['ip']!=$this->_ip || $data['agent']!=$this->_agent) {
 			$fw=Base::instance();
 			if (!isset($this->onsuspect) ||
