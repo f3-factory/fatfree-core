@@ -1185,7 +1185,7 @@ final class Base extends Prefab implements ArrayAccess {
 		$trace=array_filter(
 			$trace,
 			function($frame) use($debug) {
-				return $debug && isset($frame['file']) &&
+				return isset($frame['file']) &&
 					($frame['file']!=__FILE__ || $debug>1) &&
 					(empty($frame['function']) ||
 					!preg_match('/^(?:(?:trigger|user)_error|'.
