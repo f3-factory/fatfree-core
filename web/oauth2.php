@@ -62,6 +62,8 @@ class OAuth2 extends \Magic {
 				)
 			);
 		$response=$web->request($uri,$options);
+		if ($response['error'])
+			user_error($response['error']);
 		return $response['body'] &&
 			preg_grep('/HTTP\/1\.\d 200/',$response['headers'])?
 			json_decode($response['body'],TRUE):

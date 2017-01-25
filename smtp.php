@@ -45,6 +45,8 @@ class SMTP extends Magic {
 		$user,
 		//! Password
 		$pw,
+		//! TLS/SSL stream context
+		$context,
 		//! TCP/IP socket
 		$socket,
 		//! Server-client conversation
@@ -192,7 +194,9 @@ class SMTP extends Magic {
 		// Connect to the server
 		if (!$mock) {
 			$socket=&$this->socket;
-			$socket=@fsockopen($this->host,$this->port,$errno,$errstr);
+			$socket=@stream_socket_client($this->host.':'.$this->port,
+				$errno,$errstr,ini_get('default_socket_timeout'),
+				STREAM_CLIENT_CONNECT,$this->context);
 			if (!$socket) {
 				$fw->error(500,$errstr);
 				return FALSE;
@@ -336,18 +340,18 @@ class SMTP extends Magic {
 	*	@param $pw string
 	**/
 	function __construct(
-		$host='localhost',$port=25,$scheme=NULL,$user=NULL,$pw=NULL) {
+		$host='localhost',$port=25,$scheme=NULL,$user=NULL,$pw=NULL,$ctx=NULL) {
 		$this->headers=[
 			'MIME-Version'=>'1.0',
 			'Content-Type'=>'text/plain; '.
 				'charset='.Base::instance()->get('ENCODING')
 		];
-		$this->host=$host;
-		if (strtolower($this->scheme=strtolower($scheme))=='ssl')
-			$this->host='ssl://'.$host;
+		$this->host=(strtolower($this->scheme=strtolower($scheme))=='ssl'?
+			'ssl':'tcp').'://'.$host;
 		$this->port=$port;
 		$this->user=$user;
 		$this->pw=$pw;
+		$this->context=$ctx;
 	}
 
 }
