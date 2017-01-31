@@ -233,8 +233,8 @@ class SMTP extends Magic {
 				return FALSE;
 			}
 		}
-		if (empty($headers['Message-ID']))
-			$headers['Message-ID']='<'.uniqid('',TRUE).'@'.$this->host.'>';
+		if (empty($headers['Message-Id']))
+			$headers['Message-Id']='<'.uniqid('',TRUE).'@'.$this->host.'>';
 		if (empty($headers['Date']))
 			$headers['Date']=date('r');
 		// Required headers
@@ -301,7 +301,7 @@ class SMTP extends Magic {
 				$out.='Content-Type: application/octet-stream'.$eol;
 				$out.='Content-Transfer-Encoding: base64'.$eol;
 				if ($attachment['cid'])
-					$out.='Content-ID: '.$attachment['cid'].$eol;
+					$out.='Content-Id: '.$attachment['cid'].$eol;
 				$out.='Content-Disposition: attachment; '.
 					'filename="'.$alias.'"'.$eol;
 				$out.=$eol;
