@@ -311,7 +311,7 @@ class SMTP extends Magic {
 			$out.=$eol;
 			$out.='--'.$hash.'--'.$eol;
 			$out.='.';
-			$this->dialog($out,TRUE,$mock);
+			$this->dialog($out,$log,$mock);
 		}
 		else {
 			// Send mail headers
@@ -323,7 +323,7 @@ class SMTP extends Magic {
 			$out.=$message.$eol;
 			$out.='.';
 			// Send message
-			$this->dialog($out,TRUE,$mock);
+			$this->dialog($out,$log,$mock);
 		}
 		$this->dialog('QUIT',$log,$mock);
 		if (!$mock && $socket)
