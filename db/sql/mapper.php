@@ -473,10 +473,10 @@ class Mapper extends \DB\Cursor {
 		if ($pairs) {
 			$sql='UPDATE '.$this->table.' SET '.$pairs.$filter;
 			$this->db->exec($sql,$args);
-			if (isset($this->trigger['afterupdate']))
-				\Base::instance()->call($this->trigger['afterupdate'],
-					[$this,$pkeys]);
 		}
+		if (isset($this->trigger['afterupdate']))
+			\Base::instance()->call($this->trigger['afterupdate'],
+				[$this,$pkeys]);
 		// reset changed flag after calling afterupdate
 		foreach ($this->fields as $key=>&$field) {
 				$field['changed']=FALSE;
