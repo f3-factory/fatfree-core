@@ -49,7 +49,9 @@ class SQL {
 		//! Number of rows affected by query
 		$rows=0,
 		//! SQL log
-		$log;
+		$log,
+		//! float precision break-point
+		$precision;
 
 	/**
 	*	Begin SQL transaction
@@ -113,16 +115,17 @@ class SQL {
 
 	/**
 	*	Cast value to PHP type
-	*	@return scalar
+	*	@return mixed
 	*	@param $type string
-	*	@param $val scalar
+	*	@param $val mixed
 	**/
 	function value($type,$val) {
 		switch ($type) {
 			case self::PARAM_FLOAT:
-				return (float)(is_string($val)
-					? str_replace(',','.',preg_replace('/([.,])(?!\d+$)/','',$val))
-					: $val);
+				if (is_string($val))
+					$val=str_replace(',','.',preg_replace('/([.,])(?!\d+$)/','',$val));
+				return (strlen($val)-(int)(bool)strpos($val,'.') <= $this->precision)
+					? (float) $val : $val;
 			case \PDO::PARAM_NULL:
 				return (unset)$val;
 			case \PDO::PARAM_INT:
@@ -495,6 +498,7 @@ class SQL {
 				strtolower(str_replace('-','',$fw->get('ENCODING'))).';'];
 		$this->pdo=new \PDO($dsn,$user,$pw,$options);
 		$this->engine=$this->pdo->getattribute(\PDO::ATTR_DRIVER_NAME);
+		$this->precision=ini_get('precision') ?: 12;
 	}
 
 }
