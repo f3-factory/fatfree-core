@@ -122,10 +122,12 @@ class SQL {
 	function value($type,$val) {
 		switch ($type) {
 			case self::PARAM_FLOAT:
-				if (is_string($val))
+				if (is_string($val)) {
 					$val=str_replace(',','.',preg_replace('/([.,])(?!\d+$)/','',$val));
-				return (strlen($val)-(int)(bool)strpos($val,'.') <= $this->precision)
-					? (float) $val : $val;
+					if (strlen($val)-(int)(bool)strpos($val,'.') <= $this->precision)
+						$val=(float) $val;
+				}
+				return $val;
 			case \PDO::PARAM_NULL:
 				return (unset)$val;
 			case \PDO::PARAM_INT:
