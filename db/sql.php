@@ -375,7 +375,7 @@ class SQL {
 											'/blob|bytea|image|binary/i',
 											$row[$val[2]])?\PDO::PARAM_LOB:
 											(preg_match(
-												'/float|decimal|real|numeric|double/i',
+												'/float|double/i',
 												$row[$val[2]])?self::PARAM_FLOAT:
 												\PDO::PARAM_STR))),
 							'default'=>is_string($row[$val[3]])?
