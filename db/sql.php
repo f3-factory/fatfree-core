@@ -49,9 +49,7 @@ class SQL {
 		//! Number of rows affected by query
 		$rows=0,
 		//! SQL log
-		$log,
-		//! float precision break-point
-		$precision;
+		$log;
 
 	/**
 	*	Begin SQL transaction
@@ -122,12 +120,7 @@ class SQL {
 	function value($type,$val) {
 		switch ($type) {
 			case self::PARAM_FLOAT:
-				if (is_string($val)) {
-					$val=str_replace(',','.',preg_replace('/([.,])(?!\d+$)/','',$val));
-					if (strlen($val)-(int)(bool)strpos($val,'.') <= $this->precision)
-						$val=(float) $val;
-				}
-				return $val;
+				return rtrim(sprintf('%F',$val),'0');
 			case \PDO::PARAM_NULL:
 				return (unset)$val;
 			case \PDO::PARAM_INT:
@@ -375,7 +368,7 @@ class SQL {
 											'/blob|bytea|image|binary/i',
 											$row[$val[2]])?\PDO::PARAM_LOB:
 											(preg_match(
-												'/float|double/i',
+												'/float|decimal|real|numeric|double/i',
 												$row[$val[2]])?self::PARAM_FLOAT:
 												\PDO::PARAM_STR))),
 							'default'=>is_string($row[$val[3]])?
@@ -487,9 +480,8 @@ class SQL {
 	*	@param $user string
 	*	@param $pw string
 	*	@param $options array
-	*	@param $precision int
 	**/
-	function __construct($dsn,$user=NULL,$pw=NULL,array $options=NULL,$precision=-1) {
+	function __construct($dsn,$user=NULL,$pw=NULL,array $options=NULL) {
 		$fw=\Base::instance();
 		$this->uuid=$fw->hash($this->dsn=$dsn);
 		if (preg_match('/^.+?(?:dbname|database)=(.+?)(?=;|$)/is',$dsn,$parts))
@@ -501,7 +493,6 @@ class SQL {
 				strtolower(str_replace('-','',$fw->get('ENCODING'))).';'];
 		$this->pdo=new \PDO($dsn,$user,$pw,$options);
 		$this->engine=$this->pdo->getattribute(\PDO::ATTR_DRIVER_NAME);
-		$this->precision=$precision;
 	}
 
 }
