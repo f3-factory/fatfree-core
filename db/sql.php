@@ -487,8 +487,9 @@ class SQL {
 	*	@param $user string
 	*	@param $pw string
 	*	@param $options array
+	*	@param $precision int
 	**/
-	function __construct($dsn,$user=NULL,$pw=NULL,array $options=NULL) {
+	function __construct($dsn,$user=NULL,$pw=NULL,array $options=NULL,$precision=-1) {
 		$fw=\Base::instance();
 		$this->uuid=$fw->hash($this->dsn=$dsn);
 		if (preg_match('/^.+?(?:dbname|database)=(.+?)(?=;|$)/is',$dsn,$parts))
@@ -500,7 +501,7 @@ class SQL {
 				strtolower(str_replace('-','',$fw->get('ENCODING'))).';'];
 		$this->pdo=new \PDO($dsn,$user,$pw,$options);
 		$this->engine=$this->pdo->getattribute(\PDO::ATTR_DRIVER_NAME);
-		$this->precision=ini_get('precision') ?: 12;
+		$this->precision=$precision;
 	}
 
 }
