@@ -120,7 +120,9 @@ class SQL {
 	function value($type,$val) {
 		switch ($type) {
 			case self::PARAM_FLOAT:
-				return rtrim(sprintf('%F',$val),'0');
+				if (!is_string($val))
+					$val=str_replace(',','.',$val);
+				return $val;
 			case \PDO::PARAM_NULL:
 				return (unset)$val;
 			case \PDO::PARAM_INT:
