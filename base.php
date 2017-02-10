@@ -1473,7 +1473,7 @@ final class Base extends Prefab implements ArrayAccess {
 				'(?P<\3>[^\/\?]+)',
 				$wild).'\/?$/'.$case.'um',$url,$args);
 		foreach (array_keys($args) as $key) {
-			if (preg_match('/_\d+/',$key)) {
+			if (preg_match('/^_\d+$/',$key)) {
 				if (empty($args['*']))
 					$args['*']=$args[$key];
 				else {
