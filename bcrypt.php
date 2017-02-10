@@ -53,8 +53,6 @@ class Bcrypt extends Prefab {
 		else {
 			$raw=16;
 			$iv='';
-			if (extension_loaded('mcrypt'))
-				$iv=mcrypt_create_iv($raw,MCRYPT_DEV_URANDOM);
 			if (!$iv && extension_loaded('openssl'))
 				$iv=openssl_random_pseudo_bytes($raw);
 			if (!$iv)
