@@ -2382,6 +2382,9 @@ class Cache extends Prefab {
 			case 'memcache':
 				$raw=memcache_get($this->ref,$ndx);
 				break;
+			case 'memcached':
+				$raw=$this->ref->get($ndx);
+				break;
 			case 'wincache':
 				$raw=wincache_ucache_get($ndx);
 				break;
@@ -2427,6 +2430,8 @@ class Cache extends Prefab {
 				return $this->ref->set($ndx,$data, $ttl ? ['ex'=>$ttl] : []);
 			case 'memcache':
 				return memcache_set($this->ref,$ndx,$data,0,$ttl);
+			case 'memcached':
+				return $this->ref->set($ndx,$data,$ttl);
 			case 'wincache':
 				return wincache_ucache_set($ndx,$data,$ttl);
 			case 'xcache':
@@ -2464,6 +2469,8 @@ class Cache extends Prefab {
 				return $this->ref->del($ndx);
 			case 'memcache':
 				return memcache_delete($this->ref,$ndx);
+			case 'memcached':
+				return $this->ref->delete($ndx);
 			case 'wincache':
 				return wincache_ucache_delete($ndx);
 			case 'xcache':
@@ -2478,12 +2485,11 @@ class Cache extends Prefab {
 	*	Clear contents of cache backend
 	*	@return bool
 	*	@param $suffix string
-	*	@param $lifetime int
 	**/
-	function reset($suffix=NULL,$lifetime=0) {
+	function reset($suffix=NULL) {
 		if (!$this->dsn)
 			return TRUE;
-		$regex='/'.preg_quote($this->prefix.'.','/').'.+?'.
+		$regex='/'.preg_quote($this->prefix.'.','/').'.+'.
 			preg_quote($suffix,'/').'/';
 		$parts=explode('=',$this->dsn,2);
 		switch ($parts[0]) {
@@ -2496,19 +2502,15 @@ class Cache extends Prefab {
 					$mtkey=array_key_exists('mtime',$info['cache_list'][0])?
 						'mtime':'modification_time';
 					foreach ($info['cache_list'] as $item)
-						if (preg_match($regex,$item[$key]) &&
-							$item[$mtkey]+$lifetime<time())
+						if (preg_match($regex,$item[$key]))
 							apc_delete($item[$key]);
 				}
 				return TRUE;
 			case 'redis':
 				$fw=Base::instance();
 				$keys=$this->ref->keys($this->prefix.'.*'.$suffix);
-				foreach($keys as $key) {
-					$val=$fw->unserialize($this->ref->get($key));
-					if ($val[1]+$lifetime<time())
-						$this->ref->del($key);
-				}
+				foreach($keys as $key)
+					$this->ref->del($key);
 				return TRUE;
 			case 'memcache':
 				$fw=Base::instance();
@@ -2520,17 +2522,20 @@ class Cache extends Prefab {
 							$this->ref,'cachedump',$id) as $data)
 							if (is_array($data))
 								foreach (array_keys($data) as $key)
-									if (preg_match($regex,$key) &&
-										($val=$fw->unserialize(memcache_get($this->ref,$key))) &&
-										$val[1]+$lifetime<time())
+									if (preg_match($regex,$key))
 										memcache_delete($this->ref,$key);
+				return TRUE;
+			case 'memcached':
+				$fw=Base::instance();
+				foreach ($this->ref->getallkeys() as $key)
+					if (preg_match($regex,$key))
+						$this->ref->delete($key);
 				return TRUE;
 			case 'wincache':
 				$info=wincache_ucache_info();
 				foreach ($info['ucache_entries'] as $item)
-					if (preg_match($regex,$item['key_name']) &&
-						$item['use_time']+$lifetime<time())
-					wincache_ucache_delete($item['key_name']);
+					if (preg_match($regex,$item['key_name']))
+						wincache_ucache_delete($item['key_name']);
 				return TRUE;
 			case 'xcache':
 				xcache_unset_by_prefix($this->prefix.'.');
@@ -2538,8 +2543,7 @@ class Cache extends Prefab {
 			case 'folder':
 				if ($glob=@glob($parts[1].'*'))
 					foreach ($glob as $file)
-						if (preg_match($regex,basename($file)) &&
-							filemtime($file)+$lifetime<time())
+						if (preg_match($regex,basename($file)))
 							@unlink($file);
 				return TRUE;
 		}
@@ -2571,6 +2575,14 @@ class Cache extends Prefab {
 						$this->ref=@memcache_connect($host,$port)?:NULL;
 					else
 						memcache_add_server($this->ref,$host,$port);
+				}
+			elseif (preg_match('/^memcached=(.+)/',$dsn,$parts) &&
+				extension_loaded('memcached'))
+				foreach ($fw->split($parts[1]) as $server) {
+					list($host,$port)=explode(':',$server)+[1=>11211];
+					if (empty($this->ref))
+						$this->ref=new Memcached();
+					$this->ref->addServer($host,$port);
 				}
 			if (empty($this->ref) && !preg_match('/^folder\h*=/',$dsn))
 				$dsn=($grep=preg_grep('/^(apc|wincache|xcache)/',
