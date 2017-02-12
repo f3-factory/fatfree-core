@@ -123,7 +123,7 @@ class OAuth2 extends \Magic {
 	/**
 	*	Remove scope/claim
 	*	@return NULL
-	*	@param $key
+	*	@param $key string
 	**/
 	function clear($key=NULL) {
 		if ($key)
