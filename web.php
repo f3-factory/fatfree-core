@@ -140,32 +140,33 @@ class Web extends Prefab {
 			header('Content-Length: '.$size);
 			header('X-Powered-By: '.Base::instance()->get('PACKAGE'));
 		}
-		if(!$kbps && $flush) {
+		if (!$kbps && $flush) {
 			while (ob_get_level())
 				ob_end_clean();
 			readfile($file);
-			return $size;
 		}
-		$ctr=0;
-		$handle=fopen($file,'rb');
-		$start=microtime(TRUE);
-		while (!feof($handle) &&
-			($info=stream_get_meta_data($handle)) &&
-			!$info['timed_out'] && !connection_aborted()) {
-			if ($kbps) {
-				// Throttle output
-				$ctr++;
-				if ($ctr/$kbps>$elapsed=microtime(TRUE)-$start)
-					usleep(1e6*($ctr/$kbps-$elapsed));
+		else {
+			$ctr=0;
+			$handle=fopen($file,'rb');
+			$start=microtime(TRUE);
+			while (!feof($handle) &&
+				($info=stream_get_meta_data($handle)) &&
+				!$info['timed_out'] && !connection_aborted()) {
+				if ($kbps) {
+					// Throttle output
+					$ctr++;
+					if ($ctr/$kbps>$elapsed=microtime(TRUE)-$start)
+						usleep(1e6*($ctr/$kbps-$elapsed));
+				}
+				// Send 1KiB and reset timer
+				echo fread($handle,1024);
+				if ($flush) {
+					ob_flush();
+					flush();
+				}
 			}
-			// Send 1KiB and reset timer
-			echo fread($handle,1024);
-			if ($flush) {
-				ob_flush();
-				flush();
-			}
+			fclose($handle);
 		}
-		fclose($handle);
 		return $size;
 	}
 
