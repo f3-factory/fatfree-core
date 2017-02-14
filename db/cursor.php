@@ -70,9 +70,10 @@ abstract class Cursor extends \Magic implements \IteratorAggregate {
 	*	Count records that match criteria
 	*	@return int
 	*	@param $filter array
+	*	@param $options array
 	*	@param $ttl int
 	**/
-	abstract function count($filter=NULL,$ttl=0);
+	abstract function count($filter=NULL,array $options=NULL,$ttl=0);
 
 	/**
 	*	Insert new record
@@ -145,7 +146,7 @@ abstract class Cursor extends \Magic implements \IteratorAggregate {
 	**/
 	function paginate(
 		$pos=0,$size=10,$filter=NULL,array $options=NULL,$ttl=0) {
-		$total=$this->count($filter,$ttl);
+		$total=$this->count($filter,$options,$ttl);
 		$count=ceil($total/$size);
 		$pos=max(0,min($pos,$count-1));
 		return [

@@ -226,7 +226,8 @@ class Mapper extends \DB\Cursor {
 					return preg_replace_callback(
 						'/\b(\w+)\h*(HAVING.+|$)/i',
 						function($parts) use($db) {
-							return $db->quotekey($parts[1]).(isset($parts[2])?(' '.$parts[2]):'');
+							return $db->quotekey($parts[1]).
+								(isset($parts[2])?(' '.$parts[2]):'');
 						},
 						$str
 					);
@@ -324,24 +325,18 @@ class Mapper extends \DB\Cursor {
 	*	Count records that match criteria
 	*	@return int
 	*	@param $filter string|array
+	*	@param $options array
 	*	@param $ttl int|array
 	**/
-	function count($filter=NULL,$ttl=0) {
-		$sql='SELECT COUNT(*) AS '.
-			$this->db->quotekey('rows').' FROM '.$this->table;
-		$args=[];
-		if ($filter) {
-			if (is_array($filter)) {
-				$args=isset($filter[1]) && is_array($filter[1])?
-					$filter[1]:
-					array_slice($filter,1,NULL,TRUE);
-				$args=is_array($args)?$args:[1=>$args];
-				list($filter)=$filter;
-			}
-			$sql.=' WHERE '.$filter;
-		}
-		$result=$this->db->exec($sql,$args,$ttl);
-		return $result[0]['rows'];
+	function count($filter=NULL,array $options=NULL,$ttl=0) {
+		$expr='COUNT(*)';
+		$field='rows';
+		$this->adhoc[$field]=['expr'=>$expr,'value'=>NULL];
+		$result=$this->select($expr.' AS '.$this->db->quotekey($field),
+			$filter,$options,$ttl);
+		$out=$result[0]->adhoc[$field]['value'];
+		unset($this->adhoc[$field]);
+		return $out;
 	}
 
 	/**
