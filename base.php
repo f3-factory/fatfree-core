@@ -2709,7 +2709,7 @@ class View extends Prefab {
 		$cache=Cache::instance();
 		if ($cache->exists($hash=$fw->hash($file),$data))
 			return $data;
-		foreach ($fw->split($fw->get('UI').';./') as $dir)
+		foreach ($fw->split($fw->get('UI')) as $dir)
 			if (is_file($this->view=$fw->fixslashes($dir.$file))) {
 				if (isset($_COOKIE[session_name()]) &&
 					!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
@@ -2848,7 +2848,7 @@ class Preview extends View {
 			$this->mime='text/html';
 		if (!is_dir($tmp=$fw->get('TEMP')))
 			mkdir($tmp,Base::MODE,TRUE);
-		foreach ($fw->split($fw->get('UI').';./') as $dir) {
+		foreach ($fw->split($fw->get('UI')) as $dir) {
 			if ($cache->exists($hash=$fw->hash($dir.$file),$data))
 				return $data;
 			if (is_file($view=$fw->fixslashes($dir.$file))) {
