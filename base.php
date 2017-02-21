@@ -2247,7 +2247,9 @@ final class Base extends Prefab implements ArrayAccess {
 			]
 		);
 		$port=80;
-		if (isset($_SERVER['SERVER_PORT']))
+		if (isset($headers['X-Forwarded-Port']))
+			$port=$headers['X-Forwarded-Port'];
+		elseif (isset($_SERVER['SERVER_PORT']))
 			$port=$_SERVER['SERVER_PORT'];
 		// Default configuration
 		$this->hive+=[
