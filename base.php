@@ -2307,8 +2307,8 @@ final class Base extends Prefab implements ArrayAccess {
 			'QUIET'=>FALSE,
 			'RAW'=>FALSE,
 			'REALM'=>$scheme.'://'.$_SERVER['SERVER_NAME'].
-				($port && $port!=80 && $port!=443?
-					(':'.$port):'').$_SERVER['REQUEST_URI'],
+				($port && !in_array($port,[80,443])?(':'.$port):'').
+				$_SERVER['REQUEST_URI'],
 			'RESPONSE'=>'',
 			'ROOT'=>$_SERVER['DOCUMENT_ROOT'],
 			'ROUTES'=>[],
