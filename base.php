@@ -392,9 +392,6 @@ final class Base extends Prefab implements ArrayAccess {
 		case 'TZ':
 			date_default_timezone_set($val);
 			break;
-		case 'TIDY':
-			if (!extension_loaded('tidy'))
-				$val=FALSE;
 		}
 		$ref=&$this->ref($key);
 		$ref=$val;
@@ -2316,7 +2313,6 @@ final class Base extends Prefab implements ArrayAccess {
 			'SEED'=>$this->hash($_SERVER['SERVER_NAME'].$base),
 			'SERIALIZER'=>extension_loaded($ext='igbinary')?$ext:'php',
 			'TEMP'=>'tmp/',
-			'TIDY'=>FALSE,
 			'TIME'=>&$_SERVER['REQUEST_TIME_FLOAT'],
 			'TZ'=>@date_default_timezone_get(),
 			'UI'=>'./',
@@ -2699,15 +2695,7 @@ class View extends Prefab {
 		ob_start();
 		require($this->view);
 		$this->level--;
-		$out=ob_get_clean();
-		$fw=Base::instance();
-		$hive=$fw->hive();
-		if ($hive['TIDY'] && $this->level<1) {
-			$tidy=tidy_parse_string($out,$hive['TIDY']);
-			$tidy->cleanrepair();
-			$out=tidy_get_output($tidy);
-		}
-		return $out;
+		return ob_get_clean();
 	}
 
 	/**
