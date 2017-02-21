@@ -292,10 +292,17 @@ class Mapper extends \DB\Cursor {
 	/**
 	*	Delete current record
 	*	@return bool
+	*	@param $quick bool
 	*	@param $filter array
 	**/
-	function erase($filter=NULL) {
+	function erase($filter=NULL,$quick=TRUE) {
 		if ($filter) {
+			if (!$quick) {
+				foreach ($this->find($filter) as $mapper)
+					if (!$mapper->erase())
+						return FALSE;
+				return TRUE;
+			}
 			return $this->legacy?
 				$this->collection->remove($filter):
 				$this->collection->deletemany($filter);

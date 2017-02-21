@@ -484,10 +484,17 @@ class Mapper extends \DB\Cursor {
 	/**
 	*	Delete current record
 	*	@return int
+	*	@param $quick bool
 	*	@param $filter string|array
 	**/
-	function erase($filter=NULL) {
+	function erase($filter=NULL,$quick=TRUE) {
 		if (isset($filter)) {
+			if (!$quick) {
+				$out=0;
+				foreach ($this->find($filter) as $mapper)
+					$out+=$mapper->erase();
+				return $out;
+			}
 			$args=[];
 			if (is_array($filter)) {
 				$args=isset($filter[1]) && is_array($filter[1])?
