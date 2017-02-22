@@ -152,7 +152,7 @@ abstract class Cursor extends \Magic implements \IteratorAggregate {
 		if ($bounce)
 			$pos=max(0,min($pos,$count-1));
 		return [
-			'subset'=>(!$bounce && $pos<$count)?$this->find($filter,
+			'subset'=>($bounce || $pos<$count)?$this->find($filter,
 				array_merge(
 					$options?:[],
 					['limit'=>$size,'offset'=>$pos*$size]
