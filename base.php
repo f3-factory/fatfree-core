@@ -2674,8 +2674,9 @@ class View extends Prefab {
 	*	Create sandbox for template execution
 	*	@return string
 	*	@param $hive array
+	*	@param $mime string
 	**/
-	protected function sandbox(array $hive=NULL) {
+	protected function sandbox(array $hive=NULL,$mime=NULL) {
 		$fw=Base::instance();
 		$implicit=FALSE;
 		if (is_null($hive)) {
@@ -2683,14 +2684,17 @@ class View extends Prefab {
 			$hive=$fw->hive();
 		}
 		if ($this->level<1 || $implicit) {
+			if (!$hive['CLI'] && !headers_sent() &&
+				!preg_grep ('/^Content-Type:/',headers_list()))
+				header('Content-Type: '.($mime?:'text/html').'; '.
+					'charset='.$fw->get('ENCODING'));
 			if ($fw->get('ESCAPE'))
 				$hive=$this->esc($hive);
 			if (isset($hive['ALIASES']))
 				$hive['ALIASES']=$fw->build($hive['ALIASES']);
 		}
-		unset($fw,$implicit);
 		extract($hive);
-		unset($hive);
+		unset($fw,$hive,$implicit,$mime);
 		$this->level++;
 		ob_start();
 		require($this->view);
@@ -2706,7 +2710,7 @@ class View extends Prefab {
 	*	@param $hive array
 	*	@param $ttl int
 	**/
-	function render($file,$mime='text/html',array $hive=NULL,$ttl=0) {
+	function render($file,$mime=NULL,array $hive=NULL,$ttl=0) {
 		$fw=Base::instance();
 		$cache=Cache::instance();
 		if ($cache->exists($hash=$fw->hash($file),$data))
@@ -2717,10 +2721,7 @@ class View extends Prefab {
 					!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
 					session_start();
 				$fw->sync('SESSION');
-				if ($mime && !$fw->get('CLI') && !headers_sent())
-					header('Content-Type: '.$mime.'; '.
-						'charset='.$fw->get('ENCODING'));
-				$data=$this->sandbox($hive);
+				$data=$this->sandbox($hive,$mime);
 				if(isset($this->trigger['afterrender']))
 					foreach($this->trigger['afterrender'] as $func)
 						$data=$fw->call($func,$data);
@@ -2745,8 +2746,6 @@ class View extends Prefab {
 class Preview extends View {
 
 	protected
-		//! MIME type
-		$mime,
 		//! token filter
 		$filter=[
 			'esc'=>'$this->esc',
@@ -2844,10 +2843,6 @@ class Preview extends View {
 	function render($file,$mime=NULL,array $hive=NULL,$ttl=0) {
 		$fw=Base::instance();
 		$cache=Cache::instance();
-		if ($mime)
-			$this->mime=$mime;
-		elseif (!$this->mime)
-			$this->mime='text/html';
 		if (!is_dir($tmp=$fw->get('TEMP')))
 			mkdir($tmp,Base::MODE,TRUE);
 		foreach ($fw->split($fw->get('UI')) as $dir) {
@@ -2870,10 +2865,7 @@ class Preview extends View {
 					!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
 					session_start();
 				$fw->sync('SESSION');
-				if (!$fw->get('CLI') && !headers_sent())
-					header('Content-Type: '.$this->mime.'; '.
-						'charset='.$fw->get('ENCODING'));
-				$data=$this->sandbox($hive);
+				$data=$this->sandbox($hive,$mime);
 				if(isset($this->trigger['afterrender']))
 					foreach ($this->trigger['afterrender'] as $func)
 						$data = $fw->call($func, $data);
