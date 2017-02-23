@@ -96,7 +96,7 @@ final class Base extends Prefab implements ArrayAccess {
 		//! Mapped PHP globals
 		GLOBALS='GET|POST|COOKIE|REQUEST|SESSION|FILES|SERVER|ENV',
 		//! HTTP verbs
-		VERBS='GET|HEAD|POST|PUT|PATCH|DELETE|CONNECT',
+		VERBS='GET|HEAD|POST|PUT|PATCH|DELETE|CONNECT|OPTIONS',
 		//! Default directory permissions
 		MODE=0755,
 		//! Syntax highlighting stylesheet
@@ -1532,8 +1532,7 @@ final class Base extends Prefab implements ArrayAccess {
 				$route=$routes[$ptr];
 			if (!$route)
 				continue;
-			if ($this->hive['VERB']!='OPTIONS' &&
-				isset($route[$this->hive['VERB']])) {
+			if (isset($route[$this->hive['VERB']])) {
 				if ($this->hive['VERB']=='GET' &&
 					preg_match('/.+\/$/',$this->hive['PATH']))
 					$this->reroute(substr($this->hive['PATH'],0,-1).
@@ -1625,7 +1624,8 @@ final class Base extends Prefab implements ArrayAccess {
 					else
 						echo $body;
 				}
-				return $result;
+				if ($result || $this->hive['VERB']!='OPTIONS')
+					return $result;
 			}
 			$allowed=array_merge($allowed,array_keys($route));
 		}
