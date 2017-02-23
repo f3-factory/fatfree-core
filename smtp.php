@@ -119,7 +119,7 @@ class SMTP extends Magic {
 	*	Send SMTP command and record server response
 	*	@return string
 	*	@param $cmd string
-	*	@param $log bool
+	*	@param $log bool|string
 	*	@param $mock bool
 	**/
 	protected function dialog($cmd=NULL,$log=TRUE,$mock=FALSE) {
@@ -179,7 +179,7 @@ class SMTP extends Magic {
 	*	Transmit message
 	*	@return bool
 	*	@param $message string
-	*	@param $log bool
+	*	@param $log bool|string
 	*	@param $mock bool
 	**/
 	function send($message,$log=TRUE,$mock=FALSE) {
@@ -225,8 +225,8 @@ class SMTP extends Magic {
 			// Authenticate
 			$this->dialog('AUTH LOGIN',$log,$mock);
 			$this->dialog(base64_encode($this->user),$log,$mock);
-			$auth_rply=$this->dialog(base64_encode($this->pw),$log,$mock);
-			if (!preg_match('/^235\s.*/',$auth_rply)) {
+			$reply=$this->dialog(base64_encode($this->pw),$log,$mock);
+			if (!preg_match('/^235\s.*/',$reply)) {
 				$this->dialog('QUIT',$log,$mock);
 				if (!$mock && $socket)
 					fclose($socket);
@@ -311,7 +311,7 @@ class SMTP extends Magic {
 			$out.=$eol;
 			$out.='--'.$hash.'--'.$eol;
 			$out.='.';
-			$this->dialog($out,$log,$mock);
+			$this->dialog($out,preg_match('/verbose/i',$log),$mock);
 		}
 		else {
 			// Send mail headers
@@ -323,7 +323,7 @@ class SMTP extends Magic {
 			$out.=$message.$eol;
 			$out.='.';
 			// Send message
-			$this->dialog($out,$log,$mock);
+			$this->dialog($out,preg_match('/verbose/i',$log),$mock);
 		}
 		$this->dialog('QUIT',$log,$mock);
 		if (!$mock && $socket)
