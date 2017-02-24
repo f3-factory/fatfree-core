@@ -367,15 +367,16 @@ class Mapper extends \DB\Cursor {
 	*	Delete current record
 	*	@return bool
 	*	@param $filter array
+	*	@param $quick bool
 	**/
-	function erase($filter=NULL) {
+	function erase($filter=NULL,$quick=FALSE) {
 		$db=$this->db;
 		$now=microtime(TRUE);
 		$data=&$db->read($this->file);
 		$pkey=['_id'=>$this->id];
 		if ($filter) {
 			foreach ($this->find($filter,NULL,FALSE) as $mapper)
-				if (!$mapper->erase())
+				if (!$mapper->erase(null,$quick))
 					return FALSE;
 			return TRUE;
 		}
@@ -385,7 +386,7 @@ class Mapper extends \DB\Cursor {
 		}
 		else
 			return FALSE;
-		if (isset($this->trigger['beforeerase']) &&
+		if (!$quick && isset($this->trigger['beforeerase']) &&
 			\Base::instance()->call($this->trigger['beforeerase'],
 				[$this,$pkey])===FALSE)
 			return FALSE;
@@ -404,7 +405,7 @@ class Mapper extends \DB\Cursor {
 		$db->jot('('.sprintf('%.1f',1e3*(microtime(TRUE)-$now)).'ms) '.
 			$this->file.' [erase] '.
 			($filter?preg_replace($keys,$vals,$filter[0],1):''));
-		if (isset($this->trigger['aftererase']))
+		if (!$quick && isset($this->trigger['aftererase']))
 			\Base::instance()->call($this->trigger['aftererase'],
 				[$this,$pkey]);
 		return TRUE;
