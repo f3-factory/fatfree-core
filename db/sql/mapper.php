@@ -404,8 +404,6 @@ class Mapper extends \DB\Cursor {
 				$actr++;
 				$ckeys[]=$key;
 			}
-			$field['changed']=FALSE;
-			unset($field);
 		}
 		if ($fields) {
 			$this->db->exec(
@@ -425,7 +423,7 @@ class Mapper extends \DB\Cursor {
 			if ($this->engine!='oci' && !($this->engine=='pgsql' && !$seq))
 				$this->_id=$this->db->lastinsertid($seq);
 			// Reload to obtain default and auto-increment field values
-			if ($inc || $filter)
+			if ($reload=($inc || $filter))
 				$this->load($inc?
 					[$inc.'=?',$this->db->value(
 						$this->fields[$inc]['pdo_type'],$this->_id)]:
@@ -433,6 +431,13 @@ class Mapper extends \DB\Cursor {
 			if (isset($this->trigger['afterinsert']))
 				\Base::instance()->call($this->trigger['afterinsert'],
 					[$this,$pkeys]);
+			// reset changed flag after calling afterinsert
+			if (!$reload)
+				foreach ($this->fields as $key=>&$field) {
+					$field['changed']=FALSE;
+					$field['initial']=$field['value'];
+					unset($field);
+				}
 		}
 		return $this;
 	}
@@ -484,10 +489,17 @@ class Mapper extends \DB\Cursor {
 	/**
 	*	Delete current record
 	*	@return int
+	*	@param $quick bool
 	*	@param $filter string|array
 	**/
-	function erase($filter=NULL) {
+	function erase($filter=NULL,$quick=TRUE) {
 		if (isset($filter)) {
+			if (!$quick) {
+				$out=0;
+				foreach ($this->find($filter) as $mapper)
+					$out+=$mapper->erase();
+				return $out;
+			}
 			$args=[];
 			if (is_array($filter)) {
 				$args=isset($filter[1]) && is_array($filter[1])?

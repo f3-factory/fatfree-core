@@ -1109,6 +1109,7 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function expire($secs=0) {
 		if (!$this->hive['CLI'] && !headers_sent()) {
+			$secs=(int)$secs;
 			if ($this->hive['PACKAGE'])
 				header('X-Powered-By: '.$this->hive['PACKAGE']);
 			if ($this->hive['XFRAME'])
@@ -1118,7 +1119,7 @@ final class Base extends Prefab implements ArrayAccess {
 			if ($this->hive['VERB']=='GET' && $secs) {
 				$time=microtime(TRUE);
 				header_remove('Pragma');
-				header('Cache-Control: max-age='.(int)$secs);
+				header('Cache-Control: max-age='.$secs);
 				header('Expires: '.gmdate('r',$time+$secs));
 				header('Last-Modified: '.gmdate('r'));
 			}
