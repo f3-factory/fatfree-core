@@ -1226,6 +1226,8 @@ final class Base extends Prefab implements ArrayAccess {
 		$prior=$this->hive['ERROR'];
 		$header=$this->status($code);
 		$req=$this->hive['VERB'].' '.$this->hive['PATH'];
+		if ($this->hive['QUERY'])
+			$req.='?'.$this->hive['QUERY'];
 		if (!$text)
 			$text='HTTP '.$code.' ('.$req.')';
 		error_log($text);
