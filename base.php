@@ -2685,7 +2685,7 @@ class View extends Prefab {
 			$hive=$fw->hive();
 		}
 		if ($this->level<1 || $implicit) {
-			if (!$hive['CLI'] && !headers_sent() &&
+			if (!$fw->get('CLI') && !headers_sent() &&
 				!preg_grep ('/^Content-Type:/',headers_list()))
 				header('Content-Type: '.($mime?:'text/html').'; '.
 					'charset='.$fw->get('ENCODING'));
