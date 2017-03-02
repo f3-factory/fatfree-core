@@ -338,6 +338,7 @@ class SMTP extends Magic {
 	*	@param $scheme string
 	*	@param $user string
 	*	@param $pw string
+	*	@param $ctx resource
 	**/
 	function __construct(
 		$host='localhost',$port=25,$scheme=NULL,$user=NULL,$pw=NULL,$ctx=NULL) {
@@ -346,11 +347,13 @@ class SMTP extends Magic {
 			'Content-Type'=>'text/plain; '.
 				'charset='.Base::instance()->get('ENCODING')
 		];
-		$this->host=(strtolower($this->scheme=strtolower($scheme))=='ssl'?
-			'ssl':'tcp').'://'.$host;
+		$this->host=strtolower((($this->scheme=strtolower($scheme))=='ssl'?
+			'ssl':'tcp').'://'.$host);
 		$this->port=$port;
 		$this->user=$user;
 		$this->pw=$pw;
+		if (!$ctx)
+			$ctx=stream_context_create();
 		$this->context=$ctx;
 	}
 
