@@ -39,9 +39,7 @@ class Mapper extends \DB\Cursor {
 		//! Defined fields
 		$fields,
 		//! Adhoc fields
-		$adhoc=[],
-		//! Sequence object name
-		$seq;
+		$adhoc=[];
 
 	/**
 	*	Return database type
@@ -164,15 +162,12 @@ class Mapper extends \DB\Cursor {
 				$var='fields';
 			elseif (array_key_exists($key,$this->adhoc))
 				$var='adhoc';
-			else {
-				if ($key=='_id')
-					$mapper->_id=$val;
+			else
 				continue;
-			}
-			$mapper->$var[$key]['value']=$val;
-			$mapper->$var[$key]['initial']=$val;
-			if ($var=='fields' && $mapper->$var[$key]['pkey'])
-				$mapper->$var[$key]['previous']=$val;
+			$mapper->{$var}[$key]['value']=$val;
+			$mapper->{$var}[$key]['initial']=$val;
+			if ($var=='fields' && $mapper->{$var}[$key]['pkey'])
+				$mapper->{$var}[$key]['previous']=$val;
 		}
 		$mapper->query=[clone($mapper)];
 		if (isset($mapper->trigger['load']))
@@ -188,7 +183,7 @@ class Mapper extends \DB\Cursor {
 	function cast($obj=NULL) {
 		if (!$obj)
 			$obj=$this;
-		return ['_id'=>$obj->_id]+array_map(
+		return array_map(
 			function($row) {
 				return $row['value'];
 			},
@@ -214,9 +209,7 @@ class Mapper extends \DB\Cursor {
 			'offset'=>0
 		];
 		$db=$this->db;
-		$sql='SELECT '.$fields.
-			($this->engine!='oci' && !($this->engine=='pgsql' && !$this->seq)?
-				(',ROWID as '.$db->quotekey('_id')):'').' FROM '.$this->table;
+		$sql='SELECT '.$fields.' FROM '.$this->table;
 		$args=[];
 		if (is_array($filter)) {
 			$args=isset($filter[1]) && is_array($filter[1])?
@@ -355,7 +348,6 @@ class Mapper extends \DB\Cursor {
 	function skip($ofs=1) {
 		$out=parent::skip($ofs);
 		$dry=$this->dry();
-		$this->_id=$out->_id;
 		foreach ($this->fields as $key=>&$field) {
 			$field['value']=$dry?NULL:$out->fields[$key]['value'];
 			$field['initial']=$field['value'];
@@ -421,15 +413,15 @@ class Mapper extends \DB\Cursor {
 				'INSERT INTO '.$this->table.' ('.$fields.') '.
 				'VALUES ('.$values.')',$args
 			);
+			$seq=NULL;
 			if ($this->engine=='pgsql') {
 				$names=array_keys($pkeys);
 				$aik=end($names);
 				if ($this->fields[$aik]['pdo_type']==\PDO::PARAM_INT)
-					$this->seq=$this->source.'_'.$aik.'_seq';
+					$seq=$this->source.'_'.$aik.'_seq';
 			}
-			if ($this->engine!='oci' &&
-				!($this->engine=='pgsql' && !$this->seq))
-				$this->_id=$this->db->lastinsertid($this->seq);
+			if ($this->engine!='oci' && !($this->engine=='pgsql' && !$seq))
+				$this->_id=$this->db->lastinsertid($seq);
 			// Reload to obtain default and auto-increment field values
 			if ($reload=($inc || $filter))
 				$this->load($inc?
@@ -439,7 +431,7 @@ class Mapper extends \DB\Cursor {
 			if (isset($this->trigger['afterinsert']))
 				\Base::instance()->call($this->trigger['afterinsert'],
 					[$this,$pkeys]);
-			// Reset changed flag after calling afterinsert
+			// reset changed flag after calling afterinsert
 			if (!$reload)
 				foreach ($this->fields as $key=>&$field) {
 					$field['changed']=FALSE;
@@ -485,7 +477,7 @@ class Mapper extends \DB\Cursor {
 		if (isset($this->trigger['afterupdate']))
 			\Base::instance()->call($this->trigger['afterupdate'],
 				[$this,$pkeys]);
-		// Reset changed flag after calling afterupdate
+		// reset changed flag after calling afterupdate
 		foreach ($this->fields as $key=>&$field) {
 				$field['changed']=FALSE;
 				$field['initial']=$field['value'];
@@ -518,7 +510,7 @@ class Mapper extends \DB\Cursor {
 			}
 			return $this->db->
 				exec('DELETE FROM '.$this->table.
-					($filter?' WHERE '.$filter:'').';',$args);
+				($filter?' WHERE '.$filter:'').';',$args);
 		}
 		$args=[];
 		$ctr=0;
