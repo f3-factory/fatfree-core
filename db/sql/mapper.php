@@ -39,7 +39,9 @@ class Mapper extends \DB\Cursor {
 		//! Defined fields
 		$fields,
 		//! Adhoc fields
-		$adhoc=[];
+		$adhoc=[],
+		//! Sequence object name
+		$seq;
 
 	/**
 	*	Return database type
@@ -209,7 +211,9 @@ class Mapper extends \DB\Cursor {
 			'offset'=>0
 		];
 		$db=$this->db;
-		$sql='SELECT '.$fields.' FROM '.$this->table;
+		$sql='SELECT '.$fields.
+			($this->engine!='oci' && !($this->engine=='pgsql' && !$this->seq)?
+				',ROWID as _id':'').' FROM '.$this->table;
 		$args=[];
 		if (is_array($filter)) {
 			$args=isset($filter[1]) && is_array($filter[1])?
@@ -287,6 +291,9 @@ class Mapper extends \DB\Cursor {
 				}
 				elseif (array_key_exists($field,$this->adhoc))
 					$this->adhoc[$field]['value']=$val;
+				elseif ($field=='_id') {
+					$this->_id=$val;
+				}
 				unset($val);
 			}
 			$out[]=$this->factory($row);
@@ -413,15 +420,9 @@ class Mapper extends \DB\Cursor {
 				'INSERT INTO '.$this->table.' ('.$fields.') '.
 				'VALUES ('.$values.')',$args
 			);
-			$seq=NULL;
-			if ($this->engine=='pgsql') {
-				$names=array_keys($pkeys);
-				$aik=end($names);
-				if ($this->fields[$aik]['pdo_type']==\PDO::PARAM_INT)
-					$seq=$this->source.'_'.$aik.'_seq';
-			}
-			if ($this->engine!='oci' && !($this->engine=='pgsql' && !$seq))
-				$this->_id=$this->db->lastinsertid($seq);
+			if ($this->engine!='oci' &&
+				!($this->engine=='pgsql' && !$this->seq))
+				$this->_id=$this->db->lastinsertid($this->seq);
 			// Reload to obtain default and auto-increment field values
 			if ($reload=($inc || $filter))
 				$this->load($inc?
@@ -431,7 +432,7 @@ class Mapper extends \DB\Cursor {
 			if (isset($this->trigger['afterinsert']))
 				\Base::instance()->call($this->trigger['afterinsert'],
 					[$this,$pkeys]);
-			// reset changed flag after calling afterinsert
+			// Reset changed flag after calling afterinsert
 			if (!$reload)
 				foreach ($this->fields as $key=>&$field) {
 					$field['changed']=FALSE;
@@ -477,7 +478,7 @@ class Mapper extends \DB\Cursor {
 		if (isset($this->trigger['afterupdate']))
 			\Base::instance()->call($this->trigger['afterupdate'],
 				[$this,$pkeys]);
-		// reset changed flag after calling afterupdate
+		// Reset changed flag after calling afterupdate
 		foreach ($this->fields as $key=>&$field) {
 				$field['changed']=FALSE;
 				$field['initial']=$field['value'];
@@ -509,7 +510,8 @@ class Mapper extends \DB\Cursor {
 				list($filter)=$filter;
 			}
 			return $this->db->
-				exec('DELETE FROM '.$this->table.($filter?' WHERE '.$filter:'').';',$args);
+				exec('DELETE FROM '.$this->table.
+					($filter?' WHERE '.$filter:'').';',$args);
 		}
 		$args=[];
 		$ctr=0;
@@ -645,6 +647,12 @@ class Mapper extends \DB\Cursor {
 		$this->source=$table;
 		$this->table=$this->db->quotekey($table);
 		$this->fields=$db->schema($table,$fields,$ttl);
+		if ($this->engine=='pgsql') {
+			$names=array_keys($pkeys);
+			$aik=end($names);
+			if ($this->fields[$aik]['pdo_type']==\PDO::PARAM_INT)
+				$this->seq=$this->source.'_'.$aik.'_seq';
+		}
 		$this->reset();
 	}
 
