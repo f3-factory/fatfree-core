@@ -827,6 +827,7 @@ class Web extends Prefab {
 			'ŵ'=>'w','ы'=>'y','ÿ'=>'y','ý'=>'y','ŷ'=>'y','ź'=>'z',
 			'ž'=>'z','з'=>'z','ż'=>'z','ж'=>'zh','ь'=>'','ъ'=>''
 		];
+	}
 
 	/**
 	*	Return a URL/filesystem-friendly version of string
