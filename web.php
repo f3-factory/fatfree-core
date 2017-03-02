@@ -692,7 +692,9 @@ class Web extends Prefab {
 									preg_match('/[\w'.($ext[0]=='css'?
 										'#\.%+\-*()\[\]':'\$').']{2}|'.
 										'[+\-]{2}/',
-										substr($data,-1).$src[$ptr+1]))
+										substr($data,-1).$src[$ptr+1]) ||
+									($ext[0]=='css' && $ptr+2<strlen($src) &&
+									preg_match('/:\w/',substr($src,$ptr+1,2))))
 									$data.=' ';
 								$ptr++;
 								continue;
@@ -700,6 +702,8 @@ class Web extends Prefab {
 							$data.=$src[$ptr];
 							$ptr++;
 						}
+						if ($ext[0]=='css')
+							$data=str_replace(';}','}',$data);
 						if ($fw->get('CACHE'))
 							$cache->set($hash,$data);
 						$dst.=$data;
