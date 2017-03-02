@@ -841,7 +841,7 @@ class Web extends Prefab {
 	function slug($text) {
 		return trim(strtolower(preg_replace('/([^\pL\pN])+/u','-',
 			trim(strtr(str_replace('\'','',$text),
-			$this->diacritics+Base::instance()->get('DIACRITICS'))))),'-');
+			$this->diacritics()+Base::instance()->get('DIACRITICS'))))),'-');
 	}
 
 	/**
