@@ -164,12 +164,15 @@ class Mapper extends \DB\Cursor {
 				$var='fields';
 			elseif (array_key_exists($key,$this->adhoc))
 				$var='adhoc';
-			else
+			else {
+				if ($key=='_id')
+					$mapper->_id=$val;
 				continue;
-			$mapper->{$var}[$key]['value']=$val;
-			$mapper->{$var}[$key]['initial']=$val;
-			if ($var=='fields' && $mapper->{$var}[$key]['pkey'])
-				$mapper->{$var}[$key]['previous']=$val;
+			}
+			$mapper->$var[$key]['value']=$val;
+			$mapper->$var[$key]['initial']=$val;
+			if ($var=='fields' && $mapper->$var[$key]['pkey'])
+				$mapper->$var[$key]['previous']=$val;
 		}
 		$mapper->query=[clone($mapper)];
 		if (isset($mapper->trigger['load']))
@@ -185,7 +188,7 @@ class Mapper extends \DB\Cursor {
 	function cast($obj=NULL) {
 		if (!$obj)
 			$obj=$this;
-		return array_map(
+		return ['_id'=>$obj->_id]+array_map(
 			function($row) {
 				return $row['value'];
 			},
@@ -213,7 +216,7 @@ class Mapper extends \DB\Cursor {
 		$db=$this->db;
 		$sql='SELECT '.$fields.
 			($this->engine!='oci' && !($this->engine=='pgsql' && !$this->seq)?
-				',ROWID as _id':'').' FROM '.$this->table;
+				(',ROWID as '.$db->quotekey('_id')):'').' FROM '.$this->table;
 		$args=[];
 		if (is_array($filter)) {
 			$args=isset($filter[1]) && is_array($filter[1])?
@@ -291,9 +294,6 @@ class Mapper extends \DB\Cursor {
 				}
 				elseif (array_key_exists($field,$this->adhoc))
 					$this->adhoc[$field]['value']=$val;
-				elseif ($field=='_id') {
-					$this->_id=$val;
-				}
 				unset($val);
 			}
 			$out[]=$this->factory($row);
@@ -355,6 +355,7 @@ class Mapper extends \DB\Cursor {
 	function skip($ofs=1) {
 		$out=parent::skip($ofs);
 		$dry=$this->dry();
+		$this->_id=$out->_id;
 		foreach ($this->fields as $key=>&$field) {
 			$field['value']=$dry?NULL:$out->fields[$key]['value'];
 			$field['initial']=$field['value'];
