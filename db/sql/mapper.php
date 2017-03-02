@@ -421,6 +421,12 @@ class Mapper extends \DB\Cursor {
 				'INSERT INTO '.$this->table.' ('.$fields.') '.
 				'VALUES ('.$values.')',$args
 			);
+			if ($this->engine=='pgsql') {
+				$names=array_keys($pkeys);
+				$aik=end($names);
+				if ($this->fields[$aik]['pdo_type']==\PDO::PARAM_INT)
+					$this->seq=$this->source.'_'.$aik.'_seq';
+			}
 			if ($this->engine!='oci' &&
 				!($this->engine=='pgsql' && !$this->seq))
 				$this->_id=$this->db->lastinsertid($this->seq);
@@ -648,12 +654,6 @@ class Mapper extends \DB\Cursor {
 		$this->source=$table;
 		$this->table=$this->db->quotekey($table);
 		$this->fields=$db->schema($table,$fields,$ttl);
-		if ($this->engine=='pgsql') {
-			$names=array_keys($pkeys);
-			$aik=end($names);
-			if ($this->fields[$aik]['pdo_type']==\PDO::PARAM_INT)
-				$this->seq=$this->source.'_'.$aik.'_seq';
-		}
 		$this->reset();
 	}
 
