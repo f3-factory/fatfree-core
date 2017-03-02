@@ -351,7 +351,7 @@ class SMTP extends Magic {
 		$this->port=$port;
 		$this->user=$user;
 		$this->pw=$pw;
-		$this->context=$ctx;
+		$this->context=stream_context_create($ctx);
 	}
 
 }
