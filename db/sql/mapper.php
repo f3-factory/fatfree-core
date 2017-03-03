@@ -58,15 +58,6 @@ class Mapper extends \DB\Cursor {
 	}
 
 	/**
-	*	Return TRUE if field is defined
-	*	@return bool
-	*	@param $key string
-	**/
-	function exists($key) {
-		return array_key_exists($key,$this->fields+$this->adhoc);
-	}
-
-	/**
 	*	Return TRUE if any/specified field value has changed
 	*	@return bool
 	*	@param $key string
@@ -78,6 +69,15 @@ class Mapper extends \DB\Cursor {
 			if ($field['changed'])
 				return TRUE;
 		return FALSE;
+	}
+
+	/**
+	*	Return TRUE if field is defined
+	*	@return bool
+	*	@param $key string
+	**/
+	function exists($key) {
+		return array_key_exists($key,$this->fields+$this->adhoc);
 	}
 
 	/**
@@ -95,12 +95,14 @@ class Mapper extends \DB\Cursor {
 				$this->fields[$key]['changed']=TRUE;
 			return $this->fields[$key]['value']=$val;
 		}
-		// adjust result on existing expressions
+		// Adjust result on existing expressions
 		if (isset($this->adhoc[$key]))
 			$this->adhoc[$key]['value']=$val;
-		else
+		elseif (is_string($val))
 			// Parenthesize expression in case it's a subquery
 			$this->adhoc[$key]=['expr'=>'('.$val.')','value'=>NULL];
+		else
+			$this->$key=$val;
 		return $val;
 	}
 
@@ -116,6 +118,8 @@ class Mapper extends \DB\Cursor {
 			return $this->fields[$key]['value'];
 		elseif (array_key_exists($key,$this->adhoc))
 			return $this->adhoc[$key]['value'];
+		elseif (property_exists($this,$key))
+			return $this->$key;
 		user_error(sprintf(self::E_Field,$key),E_USER_ERROR);
 	}
 
@@ -127,6 +131,8 @@ class Mapper extends \DB\Cursor {
 	function clear($key) {
 		if (array_key_exists($key,$this->adhoc))
 			unset($this->adhoc[$key]);
+		else
+			unset($this->$key);
 	}
 
 	/**
