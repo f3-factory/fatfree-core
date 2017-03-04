@@ -2379,7 +2379,7 @@ class Cache extends Prefab {
 		switch ($parts[0]) {
 			case 'apc':
 			case 'apcu':
-				$raw=apc_fetch($ndx);
+				$raw=call_user_func($parts[0].'_fetch',$ndx);
 				break;
 			case 'redis':
 				$raw=$this->ref->get($ndx);
@@ -2430,9 +2430,9 @@ class Cache extends Prefab {
 		switch ($parts[0]) {
 			case 'apc':
 			case 'apcu':
-				return apc_store($ndx,$data,$ttl);
+				return call_user_func($parts[0].'_store',$ndx,$data,$ttl);
 			case 'redis':
-				return $this->ref->set($ndx,$data, $ttl ? ['ex'=>$ttl] : []);
+				return $this->ref->set($ndx,$data,$ttl?['ex'=>$ttl]:[]);
 			case 'memcache':
 				return memcache_set($this->ref,$ndx,$data,0,$ttl);
 			case 'memcached':
@@ -2469,7 +2469,7 @@ class Cache extends Prefab {
 		switch ($parts[0]) {
 			case 'apc':
 			case 'apcu':
-				return apc_delete($ndx);
+				return call_user_func($parts[0].'_delete',$ndx);
 			case 'redis':
 				return $this->ref->del($ndx);
 			case 'memcache':
@@ -2500,7 +2500,8 @@ class Cache extends Prefab {
 		switch ($parts[0]) {
 			case 'apc':
 			case 'apcu':
-				$info=apc_cache_info('user');
+				$info=call_user_func($parts[0].'_cache_info',
+					$parts[0]=='apcu'?FALSE:'user');
 				if (!empty($info['cache_list'])) {
 					$key=array_key_exists('info',
 						$info['cache_list'][0])?'info':'key';
@@ -2508,7 +2509,7 @@ class Cache extends Prefab {
 						'mtime':'modification_time';
 					foreach ($info['cache_list'] as $item)
 						if (preg_match($regex,$item[$key]))
-							apc_delete($item[$key]);
+							call_user_func($parts[0].'_delete',$item[$key]);
 				}
 				return TRUE;
 			case 'redis':
