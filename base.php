@@ -1380,7 +1380,7 @@ final class Base extends Prefab implements ArrayAccess {
 			return;
 		if ($url[0]=='/' && (empty($url[1]) || $url[1]!='/')) {
 			$port=$this->hive['PORT'];
-			$port=in_array($port,[80,443])?'':':'.$port;
+			$port=in_array($port,[80,443])?'':(':'.$port);
 			$url=$this->hive['SCHEME'].'://'.
 				$this->hive['HOST'].$port.$this->hive['BASE'].$url;
 		}
