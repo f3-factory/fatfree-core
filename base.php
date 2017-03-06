@@ -904,7 +904,7 @@ final class Base extends Prefab implements ArrayAccess {
 										return number_format(
 											$args[$pos],0,'',$thousands_sep);
 									case 'currency':
-										$int=$cstm=false;
+										$int=$cstm=FALSE;
 										if (isset($prop) &&
 											$cstm=!$int=($prop=='int'))
 											$currency_symbol=$prop;
@@ -1516,14 +1516,15 @@ final class Base extends Prefab implements ArrayAccess {
 		$this->hive['ROUTES']=array_combine($keys,$vals);
 		// Convert to BASE-relative URL
 		$req=urldecode($this->hive['PATH']);
-		$preflight=false;
+		$preflight=FALSE;
 		if ($cors=(isset($this->hive['HEADERS']['Origin']) &&
 			$this->hive['CORS']['origin'])) {
 			$cors=$this->hive['CORS'];
 			header('Access-Control-Allow-Origin: '.$cors['origin']);
 			header('Access-Control-Allow-Credentials: '.
-				($cors['credentials']?'true':'false'));
-			$preflight=isset($this->hive['HEADERS']['Access-Control-Request-Method']);
+				var_export($cors['credentials'],TRUE));
+			$preflight=
+				isset($this->hive['HEADERS']['Access-Control-Request-Method']);
 		}
 		$allowed=[];
 		foreach ($this->hive['ROUTES'] as $pattern=>$routes) {
