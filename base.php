@@ -873,9 +873,9 @@ final class Base extends Prefab implements ArrayAccess {
 		// Get formatting rules
 		$conv=localeconv();
 		return preg_replace_callback(
-			'/\{(?P<pos>\d+)\s*(?:,\s*(?P<type>\w+)\s*'.
+			'/\{\s*(?P<pos>\d+)\s*(?:,\s*(?P<type>\w+)\s*'.
 			'(?:,\s*(?P<mod>(?:\w+(?:\s*\{.+?\}\s*,?\s*)?)*)'.
-			'(?:,\s*(?P<prop>.+?))?)?)?\}/',
+			'(?:,\s*(?P<prop>.+?))?)?)?\s*\}/',
 			function($expr) use($args,$conv) {
 				extract($expr);
 				extract($conv);
