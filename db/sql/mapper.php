@@ -39,7 +39,9 @@ class Mapper extends \DB\Cursor {
 		//! Defined fields
 		$fields,
 		//! Adhoc fields
-		$adhoc=[];
+		$adhoc=[],
+		//! Dynamic properties
+		$props=[];
 
 	/**
 	*	Return database type
@@ -102,7 +104,7 @@ class Mapper extends \DB\Cursor {
 			// Parenthesize expression in case it's a subquery
 			$this->adhoc[$key]=['expr'=>'('.$val.')','value'=>NULL];
 		else
-			$this->$key=$val;
+			$this->props[$key]=$val;
 		return $val;
 	}
 
@@ -118,8 +120,8 @@ class Mapper extends \DB\Cursor {
 			return $this->fields[$key]['value'];
 		elseif (array_key_exists($key,$this->adhoc))
 			return $this->adhoc[$key]['value'];
-		elseif (property_exists($this,$key))
-			return $this->$key;
+		elseif (array_key_exists($key,$this->props))
+			return $this->props[$key];
 		user_error(sprintf(self::E_Field,$key),E_USER_ERROR);
 	}
 
@@ -132,27 +134,21 @@ class Mapper extends \DB\Cursor {
 		if (array_key_exists($key,$this->adhoc))
 			unset($this->adhoc[$key]);
 		else
-			unset($this->$key);
+			unset($this->props[$key]);
 	}
 
 	/**
-	*	Get PHP type equivalent of PDO constant
-	*	@return string
-	*	@param $pdo string
+	*	Invoke dynamic method
+	*	@return mixed
+	*	@param $func string
+	*	@param $args array
 	**/
-	function type($pdo) {
-		switch ($pdo) {
-			case \PDO::PARAM_NULL:
-				return 'unset';
-			case \PDO::PARAM_INT:
-				return 'int';
-			case \PDO::PARAM_BOOL:
-				return 'bool';
-			case \PDO::PARAM_STR:
-				return 'string';
-			case \DB\SQL::PARAM_FLOAT:
-				return 'float';
-		}
+	function __call($func,$args) {
+		return call_user_func_array(
+			(array_key_exists($func,$this->props)?
+				$this->props[$func]:
+				$this->$func),$args
+		);
 	}
 
 	/**
