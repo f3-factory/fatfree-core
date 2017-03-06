@@ -1516,12 +1516,14 @@ final class Base extends Prefab implements ArrayAccess {
 		$this->hive['ROUTES']=array_combine($keys,$vals);
 		// Convert to BASE-relative URL
 		$req=urldecode($this->hive['PATH']);
+		$preflight=false;
 		if ($cors=(isset($this->hive['HEADERS']['Origin']) &&
 			$this->hive['CORS']['origin'])) {
 			$cors=$this->hive['CORS'];
 			header('Access-Control-Allow-Origin: '.$cors['origin']);
 			header('Access-Control-Allow-Credentials: '.
 				($cors['credentials']?'true':'false'));
+			$preflight=isset($this->hive['HEADERS']['Access-Control-Request-Method']);
 		}
 		$allowed=[];
 		foreach ($this->hive['ROUTES'] as $pattern=>$routes) {
@@ -1535,7 +1537,7 @@ final class Base extends Prefab implements ArrayAccess {
 				$route=$routes[$ptr];
 			if (!$route)
 				continue;
-			if (isset($route[$this->hive['VERB']])) {
+			if (isset($route[$this->hive['VERB']]) && !$preflight) {
 				if ($this->hive['VERB']=='GET' &&
 					preg_match('/.+\/$/',$this->hive['PATH']))
 					$this->reroute(substr($this->hive['PATH'],0,-1).
