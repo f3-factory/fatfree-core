@@ -2623,7 +2623,7 @@ class View extends Prefab {
 	protected
 		//! Template file
 		$view,
-		//! post-rendering handler
+		//! Post-rendering handler
 		$trigger,
 		//! Nesting level
 		$level=0;
