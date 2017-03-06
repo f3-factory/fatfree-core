@@ -287,8 +287,6 @@ class Mapper extends \DB\Cursor {
 						$val=$this->db->value(
 							$this->fields[$field]['pdo_type'],$val);
 				}
-				elseif (array_key_exists($field,$this->adhoc))
-					$this->adhoc[$field]['value']=$val;
 				unset($val);
 			}
 			$out[]=$this->factory($row);
