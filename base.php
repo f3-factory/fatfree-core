@@ -2810,7 +2810,7 @@ class Preview extends View {
 					return $expr[1];
 				$str=trim($self->token($expr[2]));
 				return empty($expr[4])?
-					('<?php echo '.$str.'; ?>'.
+					('<?= '.$str.'; ?>'.
 					(isset($expr[3])?$expr[3]."\n":'')):
 					'';
 			},
