@@ -364,29 +364,29 @@ class SQL {
 		foreach ($cmd as $key=>$val)
 			if (preg_match('/'.$key.'/',$this->engine)) {
 				$rows=[];
-				foreach ($this->exec($val[0],NULL,$ttl) as $row) {
+				foreach ($this->exec($val[0],NULL) as $row)
 					if (!$fields || in_array($row[$val[1]],$fields))
 						$rows[$row[$val[1]]]=[
 							'type'=>$row[$val[2]],
 							'pdo_type'=>
 								preg_match('/int\b|integer/i',$row[$val[2]])?
 									\PDO::PARAM_INT:
-									(preg_match('/bool/i',$row[$val[2]])?
+									preg_match('/bool/i',$row[$val[2]])?
 										\PDO::PARAM_BOOL:
-										(preg_match(
+										preg_match(
 											'/blob|bytea|image|binary/i',
 											$row[$val[2]])?\PDO::PARAM_LOB:
-											(preg_match(
-												'/float|decimal|real|numeric|double/i',
-												$row[$val[2]])?self::PARAM_FLOAT:
-												\PDO::PARAM_STR))),
+											preg_match(
+												'/float|real|double/i',
+												$row[$val[2]])?
+													self::PARAM_FLOAT:
+													\PDO::PARAM_STR,
 							'default'=>is_string($row[$val[3]])?
 								preg_replace('/^\s*([\'"])(.*)\1\s*/','\2',
 								$row[$val[3]]):$row[$val[3]],
 							'nullable'=>$row[$val[4]]==$val[5],
 							'pkey'=>$row[$val[6]]==$val[7]
 						];
-				}
 				if ($fw->get('CACHE') && $ttl)
 					// Save to cache backend
 					$cache->set($hash,$rows,$ttl);
