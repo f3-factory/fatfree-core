@@ -297,6 +297,13 @@ class SQL {
 	*	@param $ttl int|array
 	**/
 	function schema($table,$fields=NULL,$ttl=0) {
+		$fw=\Base::instance();
+		$cache=\Cache::instance();
+		if ($fw->get('CACHE') && $ttl &&
+			($cached=$cache->exists(
+				$hash=$fw->hash($this->dsn.$table).'.schema',$result)) &&
+			$cached[0]+$ttl>microtime(TRUE))
+			return $result;
 		if (strpos($table,'.'))
 			list($schema,$table)=explode('.',$table);
 		// Supported engines
@@ -380,6 +387,9 @@ class SQL {
 							'pkey'=>$row[$val[6]]==$val[7]
 						];
 				}
+				if ($fw->get('CACHE') && $ttl)
+					// Save to cache backend
+					$cache->set($hash,$rows,$ttl);
 				return $rows;
 			}
 		user_error(sprintf(self::E_PKey,$table),E_USER_ERROR);
