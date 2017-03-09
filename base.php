@@ -2296,6 +2296,7 @@ final class Base extends Prefab implements ArrayAccess {
 				$this->fallback,
 			'LOCALES'=>'./',
 			'LOGS'=>'./',
+			'MB'=>extension_loaded('mbstring'),
 			'ONERROR'=>NULL,
 			'ONREROUTE'=>NULL,
 			'PACKAGE'=>self::PACKAGE,
@@ -2796,6 +2797,11 @@ class Preview extends View {
 		if (!$func)
 			return $this->filter[$key];
 		$this->filter[$key]=$func;
+	}
+
+	function persist($key) {
+		$fw=Base::instance();
+		$fw->$key=&$this->$key;
 	}
 
 	/**
