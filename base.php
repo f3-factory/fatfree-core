@@ -2775,8 +2775,7 @@ class Preview extends View {
 			$str,$parts)) {
 			$str=trim($parts[1]);
 			foreach (Base::instance()->split($parts[2]) as $func)
-				$str=function_exists($cmd=$func) ||
-					is_string($cmd=$this->filter($func))?
+				$str=is_string($cmd=$this->filter($func))?
 					$cmd.'('.$str.')':
 					'\Base::instance()->call('.
 						'$this->filter(\''.$func.'\'),['.$str.'])';
