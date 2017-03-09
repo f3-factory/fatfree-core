@@ -563,7 +563,7 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function push($key,$val) {
 		$ref=&$this->ref($key);
-		$ref[] = $val;
+		$ref[]=$val;
 		return $val;
 	}
 
@@ -2625,7 +2625,7 @@ class View extends Prefab {
 
 	protected
 		//! Template file
-		$view,
+		$template,
 		//! Post-rendering handler
 		$trigger,
 		//! Nesting level
@@ -2704,7 +2704,7 @@ class View extends Prefab {
 		unset($fw,$hive,$implicit,$mime);
 		$this->level++;
 		ob_start();
-		require($this->view);
+		require($this->template);
 		$this->level--;
 		return ob_get_clean();
 	}
@@ -2723,7 +2723,7 @@ class View extends Prefab {
 		if ($cache->exists($hash=$fw->hash($file),$data))
 			return $data;
 		foreach ($fw->split($fw->get('UI')) as $dir)
-			if (is_file($this->view=$fw->fixslashes($dir.$file))) {
+			if (is_file($this->template=$fw->fixslashes($dir.$file))) {
 				if (isset($_COOKIE[session_name()]) &&
 					!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
 					session_start();
@@ -2774,7 +2774,8 @@ class Preview extends View {
 			$str,$parts)) {
 			$str=trim($parts[1]);
 			foreach (Base::instance()->split($parts[2]) as $func)
-				$str=is_string($cmd=$this->filter($func))?
+				$str=function_exists($cmd=$func) ||
+					is_string($cmd=$this->filter($func))?
 					$cmd.'('.$str.')':
 					'\Base::instance()->call('.
 						'$this->filter(\''.$func.'\'),['.$str.'])';
@@ -2791,6 +2792,7 @@ class Preview extends View {
 	function filter($key=NULL,$func=NULL) {
 		if (!$key)
 			return array_keys($this->filter);
+		$key=strtolower($key);
 		if (!$func)
 			return $this->filter[$key];
 		$this->filter[$key]=$func;
@@ -2856,9 +2858,9 @@ class Preview extends View {
 			if ($cache->exists($hash=$fw->hash($dir.$file),$data))
 				return $data;
 			if (is_file($view=$fw->fixslashes($dir.$file))) {
-				if (!is_file($this->view=($tmp.
+				if (!is_file($this->template=($tmp.
 					$fw->get('SEED').'.'.$fw->hash($view).'.php')) ||
-					filemtime($this->view)<filemtime($view)) {
+					filemtime($this->template)<filemtime($view)) {
 					// Remove PHP code and comments
 					$text=preg_replace(
 						'/\h*<\?(?!xml)(?:php|\s*=)?.+?\?>\h*'.
@@ -2866,7 +2868,7 @@ class Preview extends View {
 						$fw->read($view));
 					if (method_exists($this,'parse'))
 						$text=$this->parse($text);
-					$fw->write($this->view,$this->build($text));
+					$fw->write($this->template,$this->build($text));
 				}
 				if (isset($_COOKIE[session_name()]) &&
 					!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
@@ -2875,7 +2877,7 @@ class Preview extends View {
 				$data=$this->sandbox($hive,$mime);
 				if(isset($this->trigger['afterrender']))
 					foreach ($this->trigger['afterrender'] as $func)
-						$data = $fw->call($func, $data);
+						$data=$fw->call($func, $data);
 				if ($ttl)
 					$cache->set($hash,$data,$ttl);
 				return $data;
