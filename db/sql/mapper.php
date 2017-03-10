@@ -39,7 +39,9 @@ class Mapper extends \DB\Cursor {
 		//! Defined fields
 		$fields,
 		//! Adhoc fields
-		$adhoc=[];
+		$adhoc=[],
+		//! Dynamic properties
+		$props=[];
 
 	/**
 	*	Return database type
@@ -58,15 +60,6 @@ class Mapper extends \DB\Cursor {
 	}
 
 	/**
-	*	Return TRUE if field is defined
-	*	@return bool
-	*	@param $key string
-	**/
-	function exists($key) {
-		return array_key_exists($key,$this->fields+$this->adhoc);
-	}
-
-	/**
 	*	Return TRUE if any/specified field value has changed
 	*	@return bool
 	*	@param $key string
@@ -78,6 +71,15 @@ class Mapper extends \DB\Cursor {
 			if ($field['changed'])
 				return TRUE;
 		return FALSE;
+	}
+
+	/**
+	*	Return TRUE if field is defined
+	*	@return bool
+	*	@param $key string
+	**/
+	function exists($key) {
+		return array_key_exists($key,$this->fields+$this->adhoc);
 	}
 
 	/**
@@ -95,12 +97,14 @@ class Mapper extends \DB\Cursor {
 				$this->fields[$key]['changed']=TRUE;
 			return $this->fields[$key]['value']=$val;
 		}
-		// adjust result on existing expressions
+		// Adjust result on existing expressions
 		if (isset($this->adhoc[$key]))
 			$this->adhoc[$key]['value']=$val;
-		else
+		elseif (is_string($val))
 			// Parenthesize expression in case it's a subquery
 			$this->adhoc[$key]=['expr'=>'('.$val.')','value'=>NULL];
+		else
+			$this->props[$key]=$val;
 		return $val;
 	}
 
@@ -116,6 +120,8 @@ class Mapper extends \DB\Cursor {
 			return $this->fields[$key]['value'];
 		elseif (array_key_exists($key,$this->adhoc))
 			return $this->adhoc[$key]['value'];
+		elseif (array_key_exists($key,$this->props))
+			return $this->props[$key];
 		user_error(sprintf(self::E_Field,$key),E_USER_ERROR);
 	}
 
@@ -127,26 +133,22 @@ class Mapper extends \DB\Cursor {
 	function clear($key) {
 		if (array_key_exists($key,$this->adhoc))
 			unset($this->adhoc[$key]);
+		else
+			unset($this->props[$key]);
 	}
 
 	/**
-	*	Get PHP type equivalent of PDO constant
-	*	@return string
-	*	@param $pdo string
+	*	Invoke dynamic method
+	*	@return mixed
+	*	@param $func string
+	*	@param $args array
 	**/
-	function type($pdo) {
-		switch ($pdo) {
-			case \PDO::PARAM_NULL:
-				return 'unset';
-			case \PDO::PARAM_INT:
-				return 'int';
-			case \PDO::PARAM_BOOL:
-				return 'bool';
-			case \PDO::PARAM_STR:
-				return 'string';
-			case \DB\SQL::PARAM_FLOAT:
-				return 'float';
-		}
+	function __call($func,$args) {
+		return call_user_func_array(
+			(array_key_exists($func,$this->props)?
+				$this->props[$func]:
+				$this->$func),$args
+		);
 	}
 
 	/**
@@ -285,8 +287,6 @@ class Mapper extends \DB\Cursor {
 						$val=$this->db->value(
 							$this->fields[$field]['pdo_type'],$val);
 				}
-				elseif (array_key_exists($field,$this->adhoc))
-					$this->adhoc[$field]['value']=$val;
 				unset($val);
 			}
 			$out[]=$this->factory($row);
@@ -509,7 +509,8 @@ class Mapper extends \DB\Cursor {
 				list($filter)=$filter;
 			}
 			return $this->db->
-				exec('DELETE FROM '.$this->table.($filter?' WHERE '.$filter:'').';',$args);
+				exec('DELETE FROM '.$this->table.
+				($filter?' WHERE '.$filter:'').';',$args);
 		}
 		$args=[];
 		$ctr=0;

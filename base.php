@@ -563,7 +563,7 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function push($key,$val) {
 		$ref=&$this->ref($key);
-		$ref[] = $val;
+		$ref[]=$val;
 		return $val;
 	}
 
@@ -873,9 +873,9 @@ final class Base extends Prefab implements ArrayAccess {
 		// Get formatting rules
 		$conv=localeconv();
 		return preg_replace_callback(
-			'/\{(?P<pos>\d+)\s*(?:,\s*(?P<type>\w+)\s*'.
+			'/\{\s*(?P<pos>\d+)\s*(?:,\s*(?P<type>\w+)\s*'.
 			'(?:,\s*(?P<mod>(?:\w+(?:\s*\{.+?\}\s*,?\s*)?)*)'.
-			'(?:,\s*(?P<prop>.+?))?)?)?\}/',
+			'(?:,\s*(?P<prop>.+?))?)?)?\s*\}/',
 			function($expr) use($args,$conv) {
 				extract($expr);
 				extract($conv);
@@ -904,7 +904,7 @@ final class Base extends Prefab implements ArrayAccess {
 										return number_format(
 											$args[$pos],0,'',$thousands_sep);
 									case 'currency':
-										$int=$cstm=false;
+										$int=$cstm=FALSE;
 										if (isset($prop) &&
 											$cstm=!$int=($prop=='int'))
 											$currency_symbol=$prop;
@@ -1227,6 +1227,8 @@ final class Base extends Prefab implements ArrayAccess {
 		$prior=$this->hive['ERROR'];
 		$header=$this->status($code);
 		$req=$this->hive['VERB'].' '.$this->hive['PATH'];
+		if ($this->hive['QUERY'])
+			$req.='?'.$this->hive['QUERY'];
 		if (!$text)
 			$text='HTTP '.$code.' ('.$req.')';
 		error_log($text);
@@ -1378,7 +1380,7 @@ final class Base extends Prefab implements ArrayAccess {
 			return;
 		if ($url[0]=='/' && (empty($url[1]) || $url[1]!='/')) {
 			$port=$this->hive['PORT'];
-			$port=in_array($port,[80,443])?'':':'.$port;
+			$port=in_array($port,[80,443])?'':(':'.$port);
 			$url=$this->hive['SCHEME'].'://'.
 				$this->hive['HOST'].$port.$this->hive['BASE'].$url;
 		}
@@ -1514,12 +1516,15 @@ final class Base extends Prefab implements ArrayAccess {
 		$this->hive['ROUTES']=array_combine($keys,$vals);
 		// Convert to BASE-relative URL
 		$req=urldecode($this->hive['PATH']);
+		$preflight=FALSE;
 		if ($cors=(isset($this->hive['HEADERS']['Origin']) &&
 			$this->hive['CORS']['origin'])) {
 			$cors=$this->hive['CORS'];
 			header('Access-Control-Allow-Origin: '.$cors['origin']);
 			header('Access-Control-Allow-Credentials: '.
-				($cors['credentials']?'true':'false'));
+				var_export($cors['credentials'],TRUE));
+			$preflight=
+				isset($this->hive['HEADERS']['Access-Control-Request-Method']);
 		}
 		$allowed=[];
 		foreach ($this->hive['ROUTES'] as $pattern=>$routes) {
@@ -1533,7 +1538,7 @@ final class Base extends Prefab implements ArrayAccess {
 				$route=$routes[$ptr];
 			if (!$route)
 				continue;
-			if (isset($route[$this->hive['VERB']])) {
+			if (isset($route[$this->hive['VERB']]) && !$preflight) {
 				if ($this->hive['VERB']=='GET' &&
 					preg_match('/.+\/$/',$this->hive['PATH']))
 					$this->reroute(substr($this->hive['PATH'],0,-1).
@@ -2291,6 +2296,7 @@ final class Base extends Prefab implements ArrayAccess {
 				$this->fallback,
 			'LOCALES'=>'./',
 			'LOGS'=>'./',
+			'MB'=>extension_loaded('mbstring'),
 			'ONERROR'=>NULL,
 			'ONREROUTE'=>NULL,
 			'PACKAGE'=>self::PACKAGE,
@@ -2377,7 +2383,7 @@ class Cache extends Prefab {
 		switch ($parts[0]) {
 			case 'apc':
 			case 'apcu':
-				$raw=apc_fetch($ndx);
+				$raw=call_user_func($parts[0].'_fetch',$ndx);
 				break;
 			case 'redis':
 				$raw=$this->ref->get($ndx);
@@ -2428,9 +2434,9 @@ class Cache extends Prefab {
 		switch ($parts[0]) {
 			case 'apc':
 			case 'apcu':
-				return apc_store($ndx,$data,$ttl);
+				return call_user_func($parts[0].'_store',$ndx,$data,$ttl);
 			case 'redis':
-				return $this->ref->set($ndx,$data, $ttl ? ['ex'=>$ttl] : []);
+				return $this->ref->set($ndx,$data,$ttl?['ex'=>$ttl]:[]);
 			case 'memcache':
 				return memcache_set($this->ref,$ndx,$data,0,$ttl);
 			case 'memcached':
@@ -2467,7 +2473,7 @@ class Cache extends Prefab {
 		switch ($parts[0]) {
 			case 'apc':
 			case 'apcu':
-				return apc_delete($ndx);
+				return call_user_func($parts[0].'_delete',$ndx);
 			case 'redis':
 				return $this->ref->del($ndx);
 			case 'memcache':
@@ -2498,7 +2504,8 @@ class Cache extends Prefab {
 		switch ($parts[0]) {
 			case 'apc':
 			case 'apcu':
-				$info=apc_cache_info('user');
+				$info=call_user_func($parts[0].'_cache_info',
+					$parts[0]=='apcu'?FALSE:'user');
 				if (!empty($info['cache_list'])) {
 					$key=array_key_exists('info',
 						$info['cache_list'][0])?'info':'key';
@@ -2506,7 +2513,7 @@ class Cache extends Prefab {
 						'mtime':'modification_time';
 					foreach ($info['cache_list'] as $item)
 						if (preg_match($regex,$item[$key]))
-							apc_delete($item[$key]);
+							call_user_func($parts[0].'_delete',$item[$key]);
 				}
 				return TRUE;
 			case 'redis':
@@ -2622,7 +2629,7 @@ class View extends Prefab {
 
 	protected
 		//! Template file
-		$view,
+		$template,
 		//! Post-rendering handler
 		$trigger,
 		//! Nesting level
@@ -2703,7 +2710,7 @@ class View extends Prefab {
 		$this->sandboxedHive=NULL;
 		$this->level++;
 		ob_start();
-		require($this->view);
+		require($this->template);
 		$this->level--;
 		return ob_get_clean();
 	}
@@ -2722,7 +2729,7 @@ class View extends Prefab {
 		if ($cache->exists($hash=$fw->hash($file),$data))
 			return $data;
 		foreach ($fw->split($fw->get('UI')) as $dir)
-			if (is_file($this->view=$fw->fixslashes($dir.$file))) {
+			if (is_file($this->template=$fw->fixslashes($dir.$file))) {
 				if (isset($_COOKIE[session_name()]) &&
 					!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
 					session_start();
@@ -2790,9 +2797,15 @@ class Preview extends View {
 	function filter($key=NULL,$func=NULL) {
 		if (!$key)
 			return array_keys($this->filter);
+		$key=strtolower($key);
 		if (!$func)
 			return $this->filter[$key];
 		$this->filter[$key]=$func;
+	}
+
+	function persist($key) {
+		$fw=Base::instance();
+		$fw->$key=&$this->$key;
 	}
 
 	/**
@@ -2809,7 +2822,7 @@ class Preview extends View {
 					return $expr[1];
 				$str=trim($self->token($expr[2]));
 				return empty($expr[4])?
-					('<?php echo '.$str.'; ?>'.
+					('<?= '.$str.'; ?>'.
 					(isset($expr[3])?$expr[3]."\n":'')):
 					'';
 			},
@@ -2855,9 +2868,9 @@ class Preview extends View {
 			if ($cache->exists($hash=$fw->hash($dir.$file),$data))
 				return $data;
 			if (is_file($view=$fw->fixslashes($dir.$file))) {
-				if (!is_file($this->view=($tmp.
+				if (!is_file($this->template=($tmp.
 					$fw->get('SEED').'.'.$fw->hash($view).'.php')) ||
-					filemtime($this->view)<filemtime($view)) {
+					filemtime($this->template)<filemtime($view)) {
 					// Remove PHP code and comments
 					$text=preg_replace(
 						'/\h*<\?(?!xml)(?:php|\s*=)?.+?\?>\h*'.
@@ -2865,7 +2878,7 @@ class Preview extends View {
 						$fw->read($view));
 					if (method_exists($this,'parse'))
 						$text=$this->parse($text);
-					$fw->write($this->view,$this->build($text));
+					$fw->write($this->template,$this->build($text));
 				}
 				if (isset($_COOKIE[session_name()]) &&
 					!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
@@ -2874,7 +2887,7 @@ class Preview extends View {
 				$data=$this->sandbox($hive,$mime);
 				if(isset($this->trigger['afterrender']))
 					foreach ($this->trigger['afterrender'] as $func)
-						$data = $fw->call($func, $data);
+						$data=$fw->call($func, $data);
 				if ($ttl)
 					$cache->set($hash,$data,$ttl);
 				return $data;

@@ -297,6 +297,13 @@ class SQL {
 	*	@param $ttl int|array
 	**/
 	function schema($table,$fields=NULL,$ttl=0) {
+		$fw=\Base::instance();
+		$cache=\Cache::instance();
+		if ($fw->get('CACHE') && $ttl &&
+			($cached=$cache->exists(
+				$hash=$fw->hash($this->dsn.$table).'.schema',$result)) &&
+			$cached[0]+$ttl>microtime(TRUE))
+			return $result;
 		if (strpos($table,'.'))
 			list($schema,$table)=explode('.',$table);
 		// Supported engines
@@ -354,32 +361,34 @@ class SQL {
 		];
 		if (is_string($fields))
 			$fields=\Base::instance()->split($fields);
+		$conv=[
+			'int\b|integer'=>\PDO::PARAM_INT,
+			'bool'=>\PDO::PARAM_BOOL,
+			'blob|bytea|image|binary'=>\PDO::PARAM_LOB,
+			'float|real|double|decimal|numeric'=>self::PARAM_FLOAT,
+			'.+'=>\PDO::PARAM_STR
+		];
 		foreach ($cmd as $key=>$val)
 			if (preg_match('/'.$key.'/',$this->engine)) {
 				$rows=[];
-				foreach ($this->exec($val[0],NULL,$ttl) as $row) {
-					if (!$fields || in_array($row[$val[1]],$fields))
+				foreach ($this->exec($val[0],NULL) as $row)
+					if (!$fields || in_array($row[$val[1]],$fields)) {
+						foreach ($conv as $regex=>$type)
+							if (preg_match('/'.$regex.'/i',$row[$val[2]]))
+								break;
 						$rows[$row[$val[1]]]=[
 							'type'=>$row[$val[2]],
-							'pdo_type'=>
-								preg_match('/int\b|integer/i',$row[$val[2]])?
-									\PDO::PARAM_INT:
-									(preg_match('/bool/i',$row[$val[2]])?
-										\PDO::PARAM_BOOL:
-										(preg_match(
-											'/blob|bytea|image|binary/i',
-											$row[$val[2]])?\PDO::PARAM_LOB:
-											(preg_match(
-												'/float|decimal|real|numeric|double/i',
-												$row[$val[2]])?self::PARAM_FLOAT:
-												\PDO::PARAM_STR))),
+							'pdo_type'=>$type,
 							'default'=>is_string($row[$val[3]])?
 								preg_replace('/^\s*([\'"])(.*)\1\s*/','\2',
 								$row[$val[3]]):$row[$val[3]],
 							'nullable'=>$row[$val[4]]==$val[5],
 							'pkey'=>$row[$val[6]]==$val[7]
 						];
-				}
+					}
+				if ($fw->get('CACHE') && $ttl)
+					// Save to cache backend
+					$cache->set($hash,$rows,$ttl);
 				return $rows;
 			}
 		user_error(sprintf(self::E_PKey,$table),E_USER_ERROR);
