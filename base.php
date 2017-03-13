@@ -2623,6 +2623,9 @@ class Cache extends Prefab {
 
 //! View handler
 class View extends Prefab {
+	private
+		//! Temporary stored HIVE.
+		$sandboxedHive;
 
 	protected
 		//! Template file
@@ -2701,8 +2704,10 @@ class View extends Prefab {
 			if (isset($hive['ALIASES']))
 				$hive['ALIASES']=$fw->build($hive['ALIASES']);
 		}
-		extract($hive);
+		$this->sandboxedHive=$hive;
 		unset($fw,$hive,$implicit,$mime);
+		extract($this->sandboxedHive);
+		$this->sandboxedHive=NULL;
 		$this->level++;
 		ob_start();
 		require($this->template);
