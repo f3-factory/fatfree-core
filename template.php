@@ -74,7 +74,7 @@ class Template extends Preview {
 			'<?php '.(isset($attrib['if'])?
 				('if ('.$this->token($attrib['if']).') '):'').
 				('echo $this->render('.
-					(preg_match('/^\{\{(.+?)\}\}$/',$attrib['href'])?
+					(preg_match('/^\{\{(.+?)\}\}/',$attrib['href'])?
 						$this->token($attrib['href']):
 						Base::instance()->stringify($attrib['href'])).','.
 					'NULL,'.$hive.','.$ttl.'); ?>');
