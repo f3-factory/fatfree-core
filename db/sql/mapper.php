@@ -194,14 +194,13 @@ class Mapper extends \DB\Cursor {
 	}
 
 	/**
-	*	Build query string and execute
-	*	@return static[]
+	*	Build query string
+	*	@return object
 	*	@param $fields string
 	*	@param $filter string|array
 	*	@param $options array
-	*	@param $ttl int|array
 	**/
-	function select($fields,$filter=NULL,array $options=NULL,$ttl=0) {
+	function stringify($fields,$filter=NULL,array $options=NULL) {
 		if (!$options)
 			$options=[];
 		$options+=[
@@ -278,6 +277,19 @@ class Mapper extends \DB\Cursor {
 			if ($options['offset'])
 				$sql.=' OFFSET '.(int)$options['offset'];
 		}
+		return $sql;
+	}
+
+	/**
+	*	Build query string and execute
+	*	@return object
+	*	@param $fields string
+	*	@param $filter string|array
+	*	@param $options array
+	*	@param $ttl int|array
+	**/
+	function select($fields,$filter=NULL,array $options=NULL,$ttl=0) {
+		$sql=$this->stringify($fields,$filter,$options);
 		$result=$this->db->exec($sql,$args,$ttl);
 		$out=[];
 		foreach ($result as &$row) {
@@ -329,14 +341,13 @@ class Mapper extends \DB\Cursor {
 	*	@param $ttl int|array
 	**/
 	function count($filter=NULL,array $options=NULL,$ttl=0) {
-		$expr='COUNT(*)';
-		$field='rows';
-		$this->adhoc[$field]=['expr'=>$expr,'value'=>NULL];
-		$result=$this->select($expr.' AS '.$this->db->quotekey($field),
-			$filter,$options,$ttl);
-		$out=$result[0]->adhoc[$field]['value'];
-		unset($this->adhoc[$field]);
-		return $out;
+		$adhoc='';
+		foreach ($this->adhoc as $key=>$field)
+			$adhoc.=','.$field['expr'].' AS '.$this->db->quotekey($key);
+		$sql='SELECT COUNT(*) AS _rows FROM ('.
+			$this->stringify('*'.$adhoc,$filter,$options).')';
+		$result=$this->db->exec($sql,$args,$ttl);
+		return $result[0]['_rows'];
 	}
 
 	/**
