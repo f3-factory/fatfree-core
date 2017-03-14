@@ -2838,25 +2838,41 @@ class Preview extends View {
 	*	@param $str string
 	*	@param $hive array
 	*	@param $ttl int
+	*	@param $persist bool
 	**/
-	function resolve($str,array $hive=NULL,$ttl=0) {
+	function resolve($str,array $hive=NULL,$ttl=0,$persist=FALSE) {
 		$fw=Base::instance();
 		$cache=Cache::instance();
-		if (!is_dir($tmp=$fw->get('TEMP')))
-			mkdir($tmp,Base::MODE,TRUE);
 		if ($cache->exists($hash=$fw->hash($str),$data))
 			return $data;
-		if (!is_file($this->file=($tmp.$fw->get('SEED').'.'.$hash.'.php'))) {
-			// Remove PHP code and comments
-			$text=preg_replace(
-				'/\h*<\?(?!xml)(?:php|\s*=)?.+?\?>\h*|\{\*.+?\*\}/is','',$str);
-			$fw->write($this->file,$this->build($text));
+		if ($persist) {
+			if (!is_dir($tmp=$fw->get('TEMP')))
+				mkdir($tmp,Base::MODE,TRUE);
+			if (!is_file($this->file=($tmp.
+				$fw->get('SEED').'.'.$hash.'.php'))) {
+				// Remove PHP code and comments
+				$text=preg_replace(
+					'/\h*<\?(?!xml)(?:php|\s*=)?.+?\?>\h*|'.
+					'\{\*.+?\*\}/is','',$str);
+				$fw->write($this->file,$this->build($text));
+			}
+			if (isset($_COOKIE[session_name()]) &&
+				!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
+				session_start();
+			$fw->sync('SESSION');
+			$data=$this->sandbox($hive,$mime);
 		}
-		if (isset($_COOKIE[session_name()]) &&
-			!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
-			session_start();
-		$fw->sync('SESSION');
-		$data=$this->sandbox($hive,$mime);
+		else {
+			if (!$hive)
+				$hive=$fw->hive();
+			if ($fw->get('ESCAPE'))
+				$hive=$this->esc($hive);
+			extract($hive);
+			unset($hive);
+			ob_start();
+			eval(' ?>'.$this->build($str).'<?php ');
+			$data=ob_get_clean();
+		}
 		if ($ttl)
 			$cache->set($hash,$data,$ttl);
 		return $data;
