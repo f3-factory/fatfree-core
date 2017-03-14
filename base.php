@@ -627,7 +627,8 @@ final class Base extends Prefab implements ArrayAccess {
 		$ref=&$this->ref($key);
 		if (!$ref)
 			$ref=[];
-		$out=array_replace_recursive(is_string($src)?$this->hive[$src]:$src,$ref);
+		$out=array_replace_recursive(
+			is_string($src)?$this->hive[$src]:$src,$ref);
 		if ($keep)
 			$ref=$out;
 		return $out;
@@ -2626,7 +2627,7 @@ class View extends Prefab {
 
 	protected
 		//! Template file
-		$template,
+		$file,
 		//! Post-rendering handler
 		$trigger,
 		//! Nesting level
@@ -2705,7 +2706,7 @@ class View extends Prefab {
 		unset($fw,$hive,$implicit,$mime);
 		$this->level++;
 		ob_start();
-		require($this->template);
+		require($this->file);
 		$this->level--;
 		return ob_get_clean();
 	}
@@ -2724,7 +2725,7 @@ class View extends Prefab {
 		if ($cache->exists($hash=$fw->hash($file),$data))
 			return $data;
 		foreach ($fw->split($fw->get('UI')) as $dir)
-			if (is_file($this->template=$fw->fixslashes($dir.$file))) {
+			if (is_file($this->file=$fw->fixslashes($dir.$file))) {
 				if (isset($_COOKIE[session_name()]) &&
 					!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
 					session_start();
@@ -2798,24 +2799,18 @@ class Preview extends View {
 		$this->filter[$key]=$func;
 	}
 
-	function persist($key) {
-		$fw=Base::instance();
-		$fw->$key=&$this->$key;
-	}
-
 	/**
 	*	Assemble markup
 	*	@return string
 	*	@param $node string
 	**/
 	protected function build($node) {
-		$self=$this;
 		return preg_replace_callback(
 			'/\{\-(.+?)\-\}|\{\{(.+?)\}\}(\n+)?|(\{\*.*?\*\})/s',
-			function($expr) use($self) {
+			function($expr) {
 				if ($expr[1])
 					return $expr[1];
-				$str=trim($self->token($expr[2]));
+				$str=trim($this->token($expr[2]));
 				return empty($expr[4])?
 					('<?= '.$str.'; ?>'.
 					(isset($expr[3])?$expr[3]."\n":'')):
@@ -2823,8 +2818,8 @@ class Preview extends View {
 			},
 			preg_replace_callback(
 				'/\{~(.+?)~\}/s',
-				function($expr) use($self) {
-					return '<?php '.$self->token($expr[1]).' ?>';
+				function($expr) {
+					return '<?php '.$this->token($expr[1]).' ?>';
 				},
 				$node
 			)
@@ -2838,9 +2833,11 @@ class Preview extends View {
 	*	@param $hive array
 	**/
 	function resolve($str,array $hive=NULL) {
+		$fw=Base::instance();
 		if (!$hive)
-			$hive=\Base::instance()->hive();
+			$hive=$fw->hive();
 		extract($hive);
+		unset($hive);
 		ob_start();
 		eval(' ?>'.$this->build($str).'<?php ');
 		return ob_get_clean();
@@ -2863,9 +2860,9 @@ class Preview extends View {
 			if ($cache->exists($hash=$fw->hash($dir.$file),$data))
 				return $data;
 			if (is_file($view=$fw->fixslashes($dir.$file))) {
-				if (!is_file($this->template=($tmp.
+				if (!is_file($this->file=($tmp.
 					$fw->get('SEED').'.'.$fw->hash($view).'.php')) ||
-					filemtime($this->template)<filemtime($view)) {
+					filemtime($this->file)<filemtime($view)) {
 					// Remove PHP code and comments
 					$text=preg_replace(
 						'/\h*<\?(?!xml)(?:php|\s*=)?.+?\?>\h*'.
@@ -2873,7 +2870,7 @@ class Preview extends View {
 						$fw->read($view));
 					if (method_exists($this,'parse'))
 						$text=$this->parse($text);
-					$fw->write($this->template,$this->build($text));
+					$fw->write($this->file,$this->build($text));
 				}
 				if (isset($_COOKIE[session_name()]) &&
 					!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)

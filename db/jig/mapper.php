@@ -120,21 +120,20 @@ class Mapper extends \DB\Cursor {
 	*	@param $str string
 	**/
 	function token($str) {
-		$self=$this;
 		$str=preg_replace_callback(
 			'/(?<!\w)@(\w(?:[\w\.\[\]])*)/',
-			function($token) use($self) {
+			function($token) {
 				// Convert from JS dot notation to PHP array notation
 				return '$'.preg_replace_callback(
 					'/(\.\w+)|\[((?:[^\[\]]*|(?R))*)\]/',
-					function($expr) use($self) {
+					function($expr) {
 						$fw=\Base::instance();
 						return
 							'['.
 							($expr[1]?
 								$fw->stringify(substr($expr[1],1)):
 								(preg_match('/^\w+/',
-									$mix=$self->token($expr[2]))?
+									$mix=$this->token($expr[2]))?
 									$fw->stringify($mix):
 									$mix)).
 							']';
