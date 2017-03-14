@@ -345,7 +345,7 @@ class Mapper extends \DB\Cursor {
 		foreach ($this->adhoc as $key=>$field)
 			$adhoc.=','.$field['expr'].' AS '.$this->db->quotekey($key);
 		list($sql,$args)=$this->stringify('*'.$adhoc,$filter,$options);
-		$sql='SELECT COUNT(*) AS _rows FROM ('.$sql.')';
+		$sql='SELECT COUNT(*) AS _rows FROM ('.$sql.') AS x';
 		$result=$this->db->exec($sql,$args,$ttl);
 		return $result[0]['_rows'];
 	}
