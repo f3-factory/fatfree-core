@@ -2624,9 +2624,10 @@ class Cache extends Prefab {
 
 //! View handler
 class View extends Prefab {
+
 	private
-		//! Temporary stored HIVE.
-		$sandboxedHive;
+		//! Temporary hive
+		$temp;
 
 	protected
 		//! Template file
@@ -2705,10 +2706,10 @@ class View extends Prefab {
 			if (isset($hive['ALIASES']))
 				$hive['ALIASES']=$fw->build($hive['ALIASES']);
 		}
-		$this->sandboxedHive=$hive;
+		$this->temp=$hive;
 		unset($fw,$hive,$implicit,$mime);
-		extract($this->sandboxedHive);
-		$this->sandboxedHive=NULL;
+		extract($this->temp);
+		$this->temp=NULL;
 		$this->level++;
 		ob_start();
 		require($this->file);
@@ -2817,7 +2818,7 @@ class Preview extends View {
 					return $expr[1];
 				$str=trim($this->token($expr[2]));
 				return empty($expr[4])?
-					('<?= '.$str.'; ?>'.
+					('<?= '.$str.' ?>'.
 					(isset($expr[3])?$expr[3]."\n":'')):
 					'';
 			},
@@ -2836,16 +2837,29 @@ class Preview extends View {
 	*	@return string
 	*	@param $str string
 	*	@param $hive array
+	*	@param $ttl int
 	**/
-	function resolve($str,array $hive=NULL) {
+	function resolve($str,array $hive=NULL,$ttl=0) {
 		$fw=Base::instance();
-		if (!$hive)
-			$hive=$fw->hive();
-		extract($hive);
-		unset($hive);
-		ob_start();
-		eval(' ?>'.$this->build($str).'<?php ');
-		return ob_get_clean();
+		$cache=Cache::instance();
+		if (!is_dir($tmp=$fw->get('TEMP')))
+			mkdir($tmp,Base::MODE,TRUE);
+		if ($cache->exists($hash=$fw->hash($str),$data))
+			return $data;
+		if (!is_file($this->file=($tmp.$fw->get('SEED').'.'.$hash.'.php'))) {
+			// Remove PHP code and comments
+			$text=preg_replace(
+				'/\h*<\?(?!xml)(?:php|\s*=)?.+?\?>\h*|\{\*.+?\*\}/is','',$str);
+			$fw->write($this->file,$this->build($text));
+		}
+		if (isset($_COOKIE[session_name()]) &&
+			!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
+			session_start();
+		$fw->sync('SESSION');
+		$data=$this->sandbox($hive,$mime);
+		if ($ttl)
+			$cache->set($hash,$data,$ttl);
+		return $data;
 	}
 
 	/**
