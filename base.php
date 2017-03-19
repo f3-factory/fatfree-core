@@ -708,7 +708,7 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function camelcase($str) {
 		return preg_replace_callback(
-			'/_(\w)/',
+			'/_(\pL)/u',
 			function($match) {
 				return strtoupper($match[1]);
 			},
@@ -722,7 +722,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $str string
 	**/
 	function snakecase($str) {
-		return strtolower(preg_replace('/(?!^)[[:upper:]]/','_\0',$str));
+		return strtolower(preg_replace('/(?!^)\p{Lu}/u','_\0',$str));
 	}
 
 	/**
@@ -1338,8 +1338,8 @@ final class Base extends Prefab implements ArrayAccess {
 				$this->route($item,$handler,$ttl,$kbps);
 			return;
 		}
-		preg_match('/([\|\w]+)\h+(?:(?:@(\w+)\h*:\h*)?(@(\w+)|[^\h]+))'.
-			'(?:\h+\[('.implode('|',$types).')\])?/',$pattern,$parts);
+		preg_match('/([\|\w]+)\h+(?:(?:@?(.+?)\h*:\h*)?(@(\w+)|[^\h]+))'.
+			'(?:\h+\[('.implode('|',$types).')\])?/u',$pattern,$parts);
 		if (isset($parts[2]) && $parts[2])
 			$this->hive['ALIASES'][$alias=$parts[2]]=$parts[3];
 		elseif (!empty($parts[4])) {
