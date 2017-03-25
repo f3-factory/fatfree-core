@@ -1370,11 +1370,9 @@ final class Base extends Prefab implements ArrayAccess {
 		if (is_array($url))
 			$url=call_user_func_array([$this,'alias'],$url);
 		elseif (preg_match('/^(?:@?([^\/()?]+)(?:(\(.+?)\))*(\?.+)*)/',
-			$url,$parts)) {
-			if (empty($this->hive['ALIASES'][$parts[1]]))
-				user_error(sprintf(self::E_Named,$parts[1]),E_USER_ERROR);
+			$url,$parts) &&
+			isset($this->hive['ALIASES'][$parts[1]]))
 			$url=$this->hive['ALIASES'][$parts[1]];
-		}
 		$url=$this->build($url,isset($parts[2])?$this->parse($parts[2]):[]).
 			(isset($parts[3])?$parts[3]:'');
 		if (($handler=$this->hive['ONREROUTE']) &&
@@ -2602,12 +2600,12 @@ class Cache extends Prefab {
 						// Auto-detect
 						current($grep):
 						// Use filesystem as fallback
-						('folder='.$fw->get('TEMP').'cache/');
+						('folder='.$fw->TEMP.'cache/');
 			if (preg_match('/^folder\h*=\h*(.+)/',$dsn,$parts) &&
 				!is_dir($parts[1]))
 				mkdir($parts[1],Base::MODE,TRUE);
 		}
-		$this->prefix=$fw->get('SEED');
+		$this->prefix=$fw->SEED;
 		return $this->dsn=$dsn;
 	}
 
@@ -2698,11 +2696,11 @@ class View extends Prefab {
 			$hive=$fw->hive();
 		}
 		if ($this->level<1 || $implicit) {
-			if (!$fw->get('CLI') && !headers_sent() &&
+			if (!$fw->CLI && !headers_sent() &&
 				!preg_grep ('/^Content-Type:/',headers_list()))
 				header('Content-Type: '.($mime?:'text/html').'; '.
-					'charset='.$fw->get('ENCODING'));
-			if ($fw->get('ESCAPE'))
+					'charset='.$fw->ENCODING);
+			if ($fw->ESCAPE)
 				$hive=$this->esc($hive);
 			if (isset($hive['ALIASES']))
 				$hive['ALIASES']=$fw->build($hive['ALIASES']);
@@ -2731,7 +2729,7 @@ class View extends Prefab {
 		$cache=Cache::instance();
 		if ($cache->exists($hash=$fw->hash($file),$data))
 			return $data;
-		foreach ($fw->split($fw->get('UI')) as $dir)
+		foreach ($fw->split($fw->UI) as $dir)
 			if (is_file($this->file=$fw->fixslashes($dir.$file))) {
 				if (isset($_COOKIE[session_name()]) &&
 					!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
@@ -2847,10 +2845,10 @@ class Preview extends View {
 		if ($cache->exists($hash=$fw->hash($str),$data))
 			return $data;
 		if ($persist) {
-			if (!is_dir($tmp=$fw->get('TEMP')))
+			if (!is_dir($tmp=$fw->TEMP))
 				mkdir($tmp,Base::MODE,TRUE);
 			if (!is_file($this->file=($tmp.
-				$fw->get('SEED').'.'.$hash.'.php'))) {
+				$fw->SEED.'.'.$hash.'.php'))) {
 				// Remove PHP code and comments
 				$text=preg_replace(
 					'/\h*<\?(?!xml)(?:php|\s*=)?.+?\?>\h*|'.
@@ -2866,7 +2864,7 @@ class Preview extends View {
 		else {
 			if (!$hive)
 				$hive=$fw->hive();
-			if ($fw->get('ESCAPE'))
+			if ($fw->ESCAPE)
 				$hive=$this->esc($hive);
 			extract($hive);
 			unset($hive);
@@ -2890,14 +2888,14 @@ class Preview extends View {
 	function render($file,$mime=NULL,array $hive=NULL,$ttl=0) {
 		$fw=Base::instance();
 		$cache=Cache::instance();
-		if (!is_dir($tmp=$fw->get('TEMP')))
+		if (!is_dir($tmp=$fw->TEMP))
 			mkdir($tmp,Base::MODE,TRUE);
-		foreach ($fw->split($fw->get('UI')) as $dir) {
+		foreach ($fw->split($fw->UI) as $dir) {
 			if ($cache->exists($hash=$fw->hash($dir.$file),$data))
 				return $data;
 			if (is_file($view=$fw->fixslashes($dir.$file))) {
 				if (!is_file($this->file=($tmp.
-					$fw->get('SEED').'.'.$fw->hash($view).'.php')) ||
+					$fw->SEED.'.'.$fw->hash($view).'.php')) ||
 					filemtime($this->file)<filemtime($view)) {
 					// Remove PHP code and comments
 					$text=preg_replace(

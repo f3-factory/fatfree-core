@@ -185,7 +185,7 @@ class SQL {
 				continue;
 			$now=microtime(TRUE);
 			$keys=$vals=[];
-			if ($fw->get('CACHE') && $ttl && ($cached=$cache->exists(
+			if ($fw->CACHE && $ttl && ($cached=$cache->exists(
 				$hash=$fw->hash($this->dsn.$cmd.
 				$fw->stringify($arg)).($tag?'.'.$tag:'').'.sql',$result)) &&
 				$cached[0]+$ttl>microtime(TRUE)) {
@@ -246,7 +246,7 @@ class SQL {
 								$result[$pos][trim($key,'\'"[]`')]=$val;
 						}
 					$this->rows=count($result);
-					if ($fw->get('CACHE') && $ttl)
+					if ($fw->CACHE && $ttl)
 						// Save to cache backend
 						$cache->set($hash,$result,$ttl);
 				}
@@ -299,7 +299,7 @@ class SQL {
 	function schema($table,$fields=NULL,$ttl=0) {
 		$fw=\Base::instance();
 		$cache=\Cache::instance();
-		if ($fw->get('CACHE') && $ttl &&
+		if ($fw->CACHE && $ttl &&
 			($cached=$cache->exists(
 				$hash=$fw->hash($this->dsn.$table).'.schema',$result)) &&
 			$cached[0]+$ttl>microtime(TRUE))
@@ -386,7 +386,7 @@ class SQL {
 							'pkey'=>$row[$val[6]]==$val[7]
 						];
 					}
-				if ($fw->get('CACHE') && $ttl)
+				if ($fw->CACHE && $ttl)
 					// Save to cache backend
 					$cache->set($hash,$rows,$ttl);
 				return $rows;
@@ -501,7 +501,7 @@ class SQL {
 			$options=[];
 		if (isset($parts[0]) && strstr($parts[0],':',TRUE)=='mysql')
 			$options+=[\PDO::MYSQL_ATTR_INIT_COMMAND=>'SET NAMES '.
-				strtolower(str_replace('-','',$fw->get('ENCODING'))).';'];
+				strtolower(str_replace('-','',$fw->ENCODING)).';'];
 		$this->pdo=new \PDO($dsn,$user,$pw,$options);
 		$this->engine=$this->pdo->getattribute(\PDO::ATTR_DRIVER_NAME);
 	}

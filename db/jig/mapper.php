@@ -167,7 +167,7 @@ class Mapper extends \DB\Cursor {
 		$db=$this->db;
 		$now=microtime(TRUE);
 		$data=[];
-		if (!$fw->get('CACHE') || !$ttl || !($cached=$cache->exists(
+		if (!$fw->CACHE || !$ttl || !($cached=$cache->exists(
 			$hash=$fw->hash($this->db->dir().
 				$fw->stringify([$filter,$options])).'.jig',$data)) ||
 			$cached[0]+$ttl<microtime(TRUE)) {
@@ -258,7 +258,7 @@ class Mapper extends \DB\Cursor {
 			}
 			$data=array_slice($data,
 				$options['offset'],$options['limit']?:NULL,TRUE);
-			if ($fw->get('CACHE') && $ttl)
+			if ($fw->CACHE && $ttl)
 				// Save to cache backend
 				$cache->set($hash,$data,$ttl);
 		}
@@ -428,7 +428,7 @@ class Mapper extends \DB\Cursor {
 	**/
 	function copyfrom($var,$func=NULL) {
 		if (is_string($var))
-			$var=\Base::instance()->get($var);
+			$var=\Base::instance()->$var;
 		if ($func)
 			$var=call_user_func($func,$var);
 		foreach ($var as $key=>$val)

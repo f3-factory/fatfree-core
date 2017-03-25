@@ -38,7 +38,7 @@ class Recaptcha {
 	static function verify($secret,$response=NULL) {
 		$fw=\Base::instance();
 		if (!isset($response))
-			$response=$fw->get('POST.g-recaptcha-response');
+			$response=$fw->{'POST.g-recaptcha-response'};
 		if (!$response)
 			return FALSE;
 		$web=\Web::instance();
@@ -47,11 +47,12 @@ class Recaptcha {
 			'content'=>http_build_query([
 				'secret'=>$secret,
 				'response'=>$response,
-				'remoteip'=>$fw->get('IP'),
+				'remoteip'=>$fw->IP
 			]),
 		]);
-		return isset($out['body']) && ($json=json_decode($out['body'],TRUE)) &&
-				isset($json['success']) && $json['success'];
+		return isset($out['body']) &&
+			($json=json_decode($out['body'],TRUE)) &&
+			isset($json['success']) && $json['success'];
 	}
 
 }

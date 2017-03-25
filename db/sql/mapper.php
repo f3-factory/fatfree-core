@@ -586,7 +586,7 @@ class Mapper extends \DB\Cursor {
 	**/
 	function copyfrom($var,$func=NULL) {
 		if (is_string($var))
-			$var=\Base::instance()->get($var);
+			$var=\Base::instance()->$var;
 		if ($func)
 			$var=call_user_func($func,$var);
 		foreach ($var as $key=>$val)

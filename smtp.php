@@ -206,13 +206,13 @@ class SMTP extends Magic {
 		// Get server's initial response
 		$this->dialog(NULL,TRUE,$mock);
 		// Announce presence
-		$reply=$this->dialog('EHLO '.$fw->get('HOST'),$log,$mock);
+		$reply=$this->dialog('EHLO '.$fw->HOST,$log,$mock);
 		if (strtolower($this->scheme)=='tls') {
 			$this->dialog('STARTTLS',$log,$mock);
 			if (!$mock)
 				stream_socket_enable_crypto(
 					$socket,TRUE,STREAM_CRYPTO_METHOD_TLS_CLIENT);
-			$reply=$this->dialog('EHLO '.$fw->get('HOST'),$log,$mock);
+			$reply=$this->dialog('EHLO '.$fw->HOST,$log,$mock);
 		}
 		if (preg_match('/8BITMIME/',$reply))
 			$headers['Content-Transfer-Encoding']='8bit';
@@ -345,7 +345,7 @@ class SMTP extends Magic {
 		$this->headers=[
 			'MIME-Version'=>'1.0',
 			'Content-Type'=>'text/plain; '.
-				'charset='.Base::instance()->get('ENCODING')
+				'charset='.Base::instance()->ENCODING
 		];
 		$this->host=strtolower((($this->scheme=strtolower($scheme))=='ssl'?
 			'ssl':'tcp').'://'.$host);

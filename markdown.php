@@ -64,7 +64,7 @@ class Markdown extends Prefab {
 	protected function _fence($hint,$str) {
 		$str=$this->snip($str);
 		$fw=Base::instance();
-		if ($fw->get('HIGHLIGHT')) {
+		if ($fw->HIGHLIGHT) {
 			switch (strtolower($hint)) {
 				case 'php':
 					$str=$fw->highlight($str);
@@ -431,7 +431,7 @@ class Markdown extends Prefab {
 		foreach ($this->special as $key=>$val)
 			$str=preg_replace('/'.preg_quote($key,'/').'/i',$val,$str);
 		return htmlspecialchars($str,ENT_COMPAT,
-			Base::instance()->get('ENCODING'),FALSE);
+			Base::instance()->ENCODING,FALSE);
 	}
 
 	/**

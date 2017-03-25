@@ -138,7 +138,7 @@ class Web extends Prefab {
 					'filename="'.($name!==NULL?$name:basename($file)).'"');
 			header('Accept-Ranges: bytes');
 			header('Content-Length: '.$size);
-			header('X-Powered-By: '.Base::instance()->get('PACKAGE'));
+			header('X-Powered-By: '.Base::instance()->PACKAGE);
 		}
 		if (!$kbps && $flush) {
 			while (ob_get_level())
@@ -179,13 +179,13 @@ class Web extends Prefab {
 	**/
 	function receive($func=NULL,$overwrite=FALSE,$slug=TRUE) {
 		$fw=Base::instance();
-		$dir=$fw->get('UPLOADS');
+		$dir=$fw->UPLOADS;
 		if (!is_dir($dir))
 			mkdir($dir,Base::MODE,TRUE);
-		if ($fw->get('VERB')=='PUT') {
-			$tmp=$fw->get('TEMP').$fw->get('SEED').'.'.$fw->hash(uniqid());
-			if (!$fw->get('RAW'))
-				$fw->write($tmp,$fw->get('BODY'));
+		if ($fw->VERB=='PUT') {
+			$tmp=$fw->TEMP.$fw->SEED.'.'.$fw->hash(uniqid());
+			if (!$fw->RAW)
+				$fw->write($tmp,$fw->BODY);
 			else {
 				$src=@fopen('php://input','r');
 				$dst=@fopen($tmp,'w');
@@ -198,7 +198,7 @@ class Web extends Prefab {
 				fclose($dst);
 				fclose($src);
 			}
-			$base=basename($fw->get('URI'));
+			$base=basename($fw->URI);
 			$file=[
 				'name'=>$dir.
 					($slug && preg_match('/(.+?)(\.\w+)?$/',$base,$parts)?
@@ -489,9 +489,9 @@ class Web extends Prefab {
 		$parts=parse_url($url);
 		if (empty($parts['scheme'])) {
 			// Local URL
-			$url=$fw->get('SCHEME').'://'.
-				$fw->get('HOST').
-				($url[0]!='/'?($fw->get('BASE').'/'):'').$url;
+			$url=$fw->SCHEME.'://'.$fw->HOST.
+				(in_array($fw->PORT,[80,443])?'':(':'.$fw->PORT)).
+				($url[0]!='/'?($fw->BASE.'/'):'').$url;
 			$parts=parse_url($url);
 		}
 		elseif (!preg_match('/https?/',$parts['scheme']))
@@ -544,7 +544,7 @@ class Web extends Prefab {
 			'ignore_errors'=>FALSE
 		];
 		$eol="\r\n";
-		if ($fw->get('CACHE') &&
+		if ($fw->CACHE &&
 			preg_match('/GET|HEAD/',$options['method'])) {
 			$cache=Cache::instance();
 			if ($cache->exists(
@@ -591,13 +591,13 @@ class Web extends Prefab {
 		$cache=Cache::instance();
 		$dst='';
 		if (!isset($path))
-			$path=$fw->get('UI').';./';
+			$path=$fw->UI.';./';
 		foreach ($fw->split($path,FALSE) as $dir)
 			foreach ($files as $file)
 				if (is_file($save=$fw->fixslashes($dir.$file)) &&
 					is_bool(strpos($save,'../')) &&
 					preg_match('/\.(css|js)$/i',$file)) {
-					if ($fw->get('CACHE') &&
+					if ($fw->CACHE &&
 						($cached=$cache->exists(
 							$hash=$fw->hash($save).'.'.$ext[0],$data)) &&
 						$cached[0]>filemtime($save))
@@ -704,13 +704,13 @@ class Web extends Prefab {
 						}
 						if ($ext[0]=='css')
 							$data=str_replace(';}','}',$data);
-						if ($fw->get('CACHE'))
+						if ($fw->CACHE)
 							$cache->set($hash,$data);
 						$dst.=$data;
 					}
 				}
 		if (PHP_SAPI!='cli' && $header)
-			header('Content-Type: '.$mime.'; charset='.$fw->get('ENCODING'));
+			header('Content-Type: '.$mime.'; charset='.$fw->ENCODING);
 		return $dst;
 	}
 
@@ -841,7 +841,7 @@ class Web extends Prefab {
 	function slug($text) {
 		return trim(strtolower(preg_replace('/([^\pL\pN])+/u','-',
 			trim(strtr(str_replace('\'','',$text),
-			$this->diacritics()+Base::instance()->get('DIACRITICS'))))),'-');
+			$this->diacritics()+Base::instance()->DIACRITICS)))),'-');
 	}
 
 	/**
@@ -893,9 +893,9 @@ if (!function_exists('gzdecode')) {
 	**/
 	function gzdecode($str) {
 		$fw=Base::instance();
-		if (!is_dir($tmp=$fw->get('TEMP')))
+		if (!is_dir($tmp=$fw->TEMP))
 			mkdir($tmp,Base::MODE,TRUE);
-		file_put_contents($file=$tmp.'/'.$fw->get('SEED').'.'.
+		file_put_contents($file=$tmp.'/'.$fw->SEED.'.'.
 			$fw->hash(uniqid(NULL,TRUE)).'.gz',$str,LOCK_EX);
 		ob_start();
 		readgzfile($file);

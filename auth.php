@@ -160,12 +160,12 @@ class Auth {
 			stream_set_blocking($socket,TRUE);
 			$dialog();
 			$fw=Base::instance();
-			$dialog('EHLO '.$fw->get('HOST'));
+			$dialog('EHLO '.$fw->HOST);
 			if (strtolower($this->args['scheme'])=='tls') {
 				$dialog('STARTTLS');
 				stream_socket_enable_crypto(
 					$socket,TRUE,STREAM_CRYPTO_METHOD_TLS_CLIENT);
-				$dialog('EHLO '.$fw->get('HOST'));
+				$dialog('EHLO '.$fw->HOST);
 			}
 			// Authenticate
 			$dialog('AUTH LOGIN');
@@ -196,7 +196,7 @@ class Auth {
 	**/
 	function basic($func=NULL) {
 		$fw=Base::instance();
-		$realm=$fw->get('REALM');
+		$realm=$fw->REALM;
 		$hdr=NULL;
 		if (isset($_SERVER['HTTP_AUTHORIZATION']))
 			$hdr=$_SERVER['HTTP_AUTHORIZATION'];
