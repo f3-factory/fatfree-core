@@ -2843,7 +2843,7 @@ class Preview extends View {
 	function resolve($str,array $hive=NULL,$ttl=0,$persist=FALSE) {
 		$fw=Base::instance();
 		$cache=Cache::instance();
-		if ($cache->exists($hash=$fw->hash($str),$data))
+		if ($ttl && $cache->exists($hash=$fw->hash($str),$data))
 			return $data;
 		if ($persist) {
 			if (!is_dir($tmp=$fw->TEMP))
@@ -2860,7 +2860,7 @@ class Preview extends View {
 				!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
 				session_start();
 			$fw->sync('SESSION');
-			$data=$this->sandbox($hive,$mime);
+			$data=$this->sandbox($hive);
 		}
 		else {
 			if (!$hive)
