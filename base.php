@@ -2515,21 +2515,17 @@ class Cache extends Prefab {
 				if (!empty($info['cache_list'])) {
 					$key=array_key_exists('info',
 						$info['cache_list'][0])?'info':'key';
-					$mtkey=array_key_exists('mtime',$info['cache_list'][0])?
-						'mtime':'modification_time';
 					foreach ($info['cache_list'] as $item)
 						if (preg_match($regex,$item[$key]))
 							call_user_func($parts[0].'_delete',$item[$key]);
 				}
 				return TRUE;
 			case 'redis':
-				$fw=Base::instance();
 				$keys=$this->ref->keys($this->prefix.'.*'.$suffix);
 				foreach($keys as $key)
 					$this->ref->del($key);
 				return TRUE;
 			case 'memcache':
-				$fw=Base::instance();
 				foreach (memcache_get_extended_stats(
 					$this->ref,'slabs') as $slabs)
 					foreach (array_filter(array_keys($slabs),'is_numeric')
@@ -2542,8 +2538,7 @@ class Cache extends Prefab {
 										memcache_delete($this->ref,$key);
 				return TRUE;
 			case 'memcached':
-				$fw=Base::instance();
-				foreach ($this->ref->getallkeys() as $key)
+				foreach ($this->ref->getallkeys()?:[] as $key)
 					if (preg_match($regex,$key))
 						$this->ref->delete($key);
 				return TRUE;
