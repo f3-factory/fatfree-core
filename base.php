@@ -1824,33 +1824,36 @@ final class Base extends Prefab implements ArrayAccess {
 	*	Configure framework according to .ini-style file settings;
 	*	If optional 2nd arg is provided, template strings are interpreted
 	*	@return object
-	*	@param $file string
+	*	@param $source string|array
 	*	@param $allow bool
 	**/
-	function config($file,$allow=FALSE) {
-		preg_match_all(
-			'/(?<=^|\n)(?:'.
-				'\[(?<section>.+?)\]|'.
-				'(?<lval>[^\h\r\n;].*?)\h*=\h*'.
-				'(?<rval>(?:\\\\\h*\r?\n|.+?)*)'.
-			')(?=\r?\n|$)/',
-			$this->read($file),
-			$matches,PREG_SET_ORDER);
-		if ($matches) {
-			$sec='globals';
-			$cmd=[];
-			foreach ($matches as $match) {
-				if ($match['section']) {
-					$sec=$match['section'];
-					if (preg_match(
-						'/^(?!(?:global|config|route|map|redirect)s\b)'.
-						'((?:\.?\w)+)/i',$sec,$msec) &&
-						!$this->exists($msec[0]))
-						$this->set($msec[0],NULL);
-					preg_match('/^(config|route|map|redirect)s\b|'.
-						'^((?:\.?\w)+)\s*\>\s*(.*)/i',$sec,$cmd);
-				}
-				else {
+	function config($source,$allow=FALSE) {
+		if (is_string($source))
+			$source=$this->split($source);
+		foreach ($source as $file) {
+			preg_match_all(
+				'/(?<=^|\n)(?:'.
+					'\[(?<section>.+?)\]|'.
+					'(?<lval>[^\h\r\n;].*?)\h*=\h*'.
+					'(?<rval>(?:\\\\\h*\r?\n|.+?)*)'.
+				')(?=\r?\n|$)/',
+				$this->read($file),
+				$matches,PREG_SET_ORDER);
+			if ($matches) {
+				$sec='globals';
+				$cmd=[];
+				foreach ($matches as $match) {
+					if ($match['section']) {
+						$sec=$match['section'];
+						if (preg_match(
+							'/^(?!(?:global|config|route|map|redirect)s\b)'.
+							'((?:\.?\w)+)/i',$sec,$msec) &&
+							!$this->exists($msec[0]))
+							$this->set($msec[0],NULL);
+						preg_match('/^(config|route|map|redirect)s\b|'.
+							'^((?:\.?\w)+)\s*\>\s*(.*)/i',$sec,$cmd);
+						continue;
+					}
 					if ($allow) {
 						$match['lval']=Preview::instance()->
 							resolve($match['lval']);
@@ -1858,12 +1861,14 @@ final class Base extends Prefab implements ArrayAccess {
 							resolve($match['rval']);
 					}
 					if (!empty($cmd)) {
-						(isset($cmd[3])) ?
-						$this->call($cmd[3],[$match['lval'],$match['rval'],$cmd[2]])
-						: call_user_func_array(
+						isset($cmd[3])?
+						$this->call($cmd[3],
+							[$match['lval'],$match['rval'],$cmd[2]]):
+						call_user_func_array(
 							[$this,$cmd[1]],
 							array_merge([$match['lval']],
-								str_getcsv($match['rval'])));
+								str_getcsv($match['rval']))
+						);
 					}
 					else {
 						$rval=preg_replace(
@@ -1884,7 +1889,8 @@ final class Base extends Prefab implements ArrayAccess {
 								return preg_replace('/\\\\"/','"',$val);
 							},
 							// Mark quoted strings with 0x00 whitespace
-							str_getcsv(preg_replace('/(?<!\\\\)(")(.*?)\1/',
+							str_getcsv(preg_replace(
+								'/(?<!\\\\)(")(.*?)\1/',
 								"\\1\x00\\2\\1",trim($rval)))
 						);
 						preg_match('/^(?<section>[^:]+)(?:\:(?<func>.+))?/',
