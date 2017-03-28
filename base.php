@@ -186,24 +186,6 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
-	*	Assemble url from alias name
-	*	@return string
-	*	@param $name string
-	*	@param $params array|string
-	*	@param $query string|array
-	**/
-	function alias($name,$params=[],$query=NULL) {
-		if (!is_array($params))
-			$params=$this->parse($params);
-		if (empty($this->hive['ALIASES'][$name]))
-			user_error(sprintf(self::E_Named,$name),E_USER_ERROR);
-		$url=$this->build($this->hive['ALIASES'][$name],$params);
-		if (is_array($query))
-			$query=http_build_query($query);
-		return $url.($query?('?'.$query):'');
-	}
-
-	/**
 	*	Parse string containing key-value pairs
 	*	@return array
 	*	@param $str string
@@ -1188,10 +1170,11 @@ final class Base extends Prefab implements ArrayAccess {
 			$trace,
 			function($frame) use($debug) {
 				return isset($frame['file']) &&
+					($debug>2 ||
 					($frame['file']!=__FILE__ || $debug>1) &&
 					(empty($frame['function']) ||
 					!preg_match('/^(?:(?:trigger|user)_error|'.
-						'__call|call_user_func)/',$frame['function']));
+						'__call|call_user_func)/',$frame['function'])));
 			}
 		);
 		if (!$format)
@@ -2135,8 +2118,10 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $key string
 	*	@param $args array
 	**/
-	function __call($key,$args) {
-		return call_user_func_array($this->get($key),$args);
+	function __call($key,array $args) {
+		if ($this->exists($key,$val))
+			return call_user_func_array($val,$args);
+		user_error(sprintf(self::E_Method,$key),E_USER_ERROR);
 	}
 
 	//! Prohibit cloning
@@ -2166,7 +2151,7 @@ final class Base extends Prefab implements ArrayAccess {
 			}
 		);
 		set_error_handler(
-			function($level,$text) use($fw) {
+			function($level,$text,$file,$line) use($fw) {
 				if ($level & error_reporting())
 					$fw->error(500,$text,NULL,$level);
 			}
@@ -2671,21 +2656,22 @@ class View extends Prefab {
 	}
 
 	/**
-	*	Send resource to browser using HTTP/2 server push
+	*	Assemble url from alias name
 	*	@return string
-	*	@param $file string
+	*	@param $name string
+	*	@param $params array|string
+	*	@param $query string|array
 	**/
-	function push($file) {
+	function alias($name,$params=[],$query=NULL) {
 		$fw=Base::instance();
-		$hive=$fw->hive();
-		if ($hive['SCHEME']=='https') {
-			$base='';
-			if (!preg_match('/^[.\/]/',$file))
-				$base=$hive['BASE'].'/';
-			if (preg_match('/'.$key.'$/',$file))
-				header('Link: '.'<'.$base.$file.'>; '.'rel=preload',FALSE);
-		}
-		return $file;
+		if (!is_array($params))
+			$params=$fw->parse($params);
+		if (empty($fw->ALIASES[$name]))
+			user_error(sprintf(Base::E_Named,$name),E_USER_ERROR);
+		$url=$fw->build($fw->ALIASES[$name],$params);
+		if (is_array($query))
+			$query=http_build_query($query);
+		return $url.($query?('?'.$query):'');
 	}
 
 	/**
@@ -2770,9 +2756,8 @@ class Preview extends View {
 		$filter=[
 			'esc'=>'$this->esc',
 			'raw'=>'$this->raw',
-			'push'=>'$this->push',
-			'alias'=>'\Base::instance()->alias',
-			'format'=>'\Base::instance()->format'
+			'alias'=>'$this->alias',
+			'format'=>'Base::instance()->format'
 		];
 
 	/**
@@ -2789,8 +2774,7 @@ class Preview extends View {
 			foreach (Base::instance()->split($parts[2]) as $func)
 				$str=is_string($cmd=$this->filter($func))?
 					$cmd.'('.$str.')':
-					'\Base::instance()->call('.
-						'$this->filter(\''.$func.'\'),['.$str.'])';
+					'Base::instance()->call($this->filter(\''.$func.'\'),['.$str.'])';
 		}
 		return $str;
 	}
@@ -2817,14 +2801,13 @@ class Preview extends View {
 	**/
 	protected function build($node) {
 		return preg_replace_callback(
-			'/\{\-(.+?)\-\}|\{\{(.+?)\}\}(\n+)?|(\{\*.*?\*\})/s',
+			'/\{\-(.+?)\-\}|\{\{(.+?)\}\}(\n+)?|\{\*(.*?)\*\}/s',
 			function($expr) {
 				if ($expr[1])
 					return $expr[1];
 				$str=trim($this->token($expr[2]));
 				return empty($expr[4])?
-					('<?= '.$str.' ?>'.
-					(isset($expr[3])?$expr[3]."\n":'')):
+					('<?= '.$str.' ?>'.(isset($expr[3])?$expr[3]:'')):
 					'';
 			},
 			preg_replace_callback(
@@ -2875,7 +2858,7 @@ class Preview extends View {
 			extract($hive);
 			unset($hive);
 			ob_start();
-			eval(' ?>'.$this->build($str).'<?php ');
+			eval(' ?>'.$this->build($str).'<? ');
 			$data=ob_get_clean();
 		}
 		if ($ttl)
