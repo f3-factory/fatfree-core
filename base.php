@@ -1306,6 +1306,24 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
+	*	Assemble url from alias name
+	*	@return string
+	*	@param $name string
+	*	@param $params array|string
+	*	@param $query string|array
+	**/
+	function alias($name,$params=[],$query=NULL) {
+		if (!is_array($params))
+			$params=$this->parse($params);
+		if (empty($this->hive['ALIASES'][$name]))
+			user_error(sprintf(Base::E_Named,$name),E_USER_ERROR);
+		$url=$this->build($this->hive['ALIASES'][$name],$params);
+		if (is_array($query))
+			$query=http_build_query($query);
+		return $url.($query?('?'.$query):'');
+	}
+
+	/**
 	*	Bind handler to route pattern
 	*	@return NULL
 	*	@param $pattern string|array
@@ -2651,25 +2669,6 @@ class View extends Prefab {
 	}
 
 	/**
-	*	Assemble url from alias name
-	*	@return string
-	*	@param $name string
-	*	@param $params array|string
-	*	@param $query string|array
-	**/
-	function alias($name,$params=[],$query=NULL) {
-		$fw=Base::instance();
-		if (!is_array($params))
-			$params=$fw->parse($params);
-		if (empty($fw->ALIASES[$name]))
-			user_error(sprintf(Base::E_Named,$name),E_USER_ERROR);
-		$url=$fw->build($fw->ALIASES[$name],$params);
-		if (is_array($query))
-			$query=http_build_query($query);
-		return $url.($query?('?'.$query):'');
-	}
-
-	/**
 	*	Create sandbox for template execution
 	*	@return string
 	*	@param $hive array
@@ -2751,7 +2750,7 @@ class Preview extends View {
 		$filter=[
 			'esc'=>'$this->esc',
 			'raw'=>'$this->raw',
-			'alias'=>'$this->alias',
+			'alias'=>'Base::instance()->alias',
 			'format'=>'Base::instance()->format'
 		];
 
@@ -2769,7 +2768,8 @@ class Preview extends View {
 			foreach (Base::instance()->split($parts[2]) as $func)
 				$str=is_string($cmd=$this->filter($func))?
 					$cmd.'('.$str.')':
-					'Base::instance()->call($this->filter(\''.$func.'\'),['.$str.'])';
+					'Base::instance()->'.
+					'call($this->filter(\''.$func.'\'),['.$str.'])';
 		}
 		return $str;
 	}
@@ -2796,14 +2796,14 @@ class Preview extends View {
 	**/
 	protected function build($node) {
 		return preg_replace_callback(
-			'/\{\-(.+?)\-\}|\{\{(.+?)\}\}(\n+)?|\{\*(.*?)\*\}/s',
+			'/\{\-(.+?)\-\}|\{\{(.+?)\}\}(\n*)/s',
 			function($expr) {
 				if ($expr[1])
 					return $expr[1];
-				$str=trim($this->token($expr[2]));
-				return empty($expr[4])?
-					('<?= '.$str.' ?>'.(isset($expr[3])?$expr[3]:'')):
-					'';
+				$str='<?= '.trim($this->token($expr[2])).' ?>';
+				if (isset($expr[3]))
+					$str.=$expr[3];
+				return $str;
 			},
 			preg_replace_callback(
 				'/\{~(.+?)~\}/s',
@@ -2828,17 +2828,15 @@ class Preview extends View {
 		$cache=Cache::instance();
 		if ($ttl && $cache->exists($hash=$fw->hash($str),$data))
 			return $data;
+		// Remove PHP code and comments
+		$text=preg_replace(
+			'/\h*<\?(?!xml)(?:php|\s*=)?.+?\?>\h*|\{\*.+?\*\}/is','',$str);
 		if ($persist) {
 			if (!is_dir($tmp=$fw->TEMP))
 				mkdir($tmp,Base::MODE,TRUE);
 			if (!is_file($this->file=($tmp.
-				$fw->SEED.'.'.$hash.'.php'))) {
-				// Remove PHP code and comments
-				$text=preg_replace(
-					'/\h*<\?(?!xml)(?:php|\s*=)?.+?\?>\h*|'.
-					'\{\*.+?\*\}/is','',$str);
+				$fw->SEED.'.'.$hash.'.php')))
 				$fw->write($this->file,$this->build($text));
-			}
 			if (isset($_COOKIE[session_name()]) &&
 				!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
 				session_start();
@@ -2853,7 +2851,7 @@ class Preview extends View {
 			extract($hive);
 			unset($hive);
 			ob_start();
-			eval(' ?>'.$this->build($str).'<?php ');
+			eval(' ?>'.$this->build($text).'<?php ');
 			$data=ob_get_clean();
 		}
 		if ($ttl)
@@ -2883,8 +2881,8 @@ class Preview extends View {
 					filemtime($this->file)<filemtime($view)) {
 					// Remove PHP code and comments
 					$text=preg_replace(
-						'/\h*<\?(?!xml)(?:php|\s*=)?.+?\?>\h*'.
-						'|\{\*.+?\*\}/is','',
+						'/\h*<\?(?!xml)(?:php|\s*=)?.+?\?>\h*|'.
+						'\{\*.+?\*\}/is','',
 						$fw->read($view));
 					if (method_exists($this,'parse'))
 						$text=$this->parse($text);
