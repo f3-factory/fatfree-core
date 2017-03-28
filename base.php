@@ -2853,7 +2853,7 @@ class Preview extends View {
 			extract($hive);
 			unset($hive);
 			ob_start();
-			eval(' ?>'.$this->build($str).'<? ');
+			eval(' ?>'.$this->build($str).'<?php ');
 			$data=ob_get_clean();
 		}
 		if ($ttl)
