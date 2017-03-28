@@ -1316,7 +1316,7 @@ final class Base extends Prefab implements ArrayAccess {
 		if (!is_array($params))
 			$params=$this->parse($params);
 		if (empty($this->hive['ALIASES'][$name]))
-			user_error(sprintf(Base::E_Named,$name),E_USER_ERROR);
+			user_error(sprintf(self::E_Named,$name),E_USER_ERROR);
 		$url=$this->build($this->hive['ALIASES'][$name],$params);
 		if (is_array($query))
 			$query=http_build_query($query);
