@@ -2569,8 +2569,9 @@ class Cache extends Prefab {
 	*	Load/auto-detect cache backend
 	*	@return string
 	*	@param $dsn bool|string
+	*	@param $seed bool|string
 	**/
-	function load($dsn) {
+	function load($dsn,$seed=NULL) {
 		$fw=Base::instance();
 		if ($dsn=trim($dsn)) {
 			if (preg_match('/^redis=(.+)/',$dsn,$parts) &&
@@ -2610,13 +2611,12 @@ class Cache extends Prefab {
 				!is_dir($parts[1]))
 				mkdir($parts[1],Base::MODE,TRUE);
 		}
-		$this->prefix=$fw->SEED;
+		$this->prefix=$seed?:$fw->SEED;
 		return $this->dsn=$dsn;
 	}
 
 	/**
 	*	Class constructor
-	*	@return object
 	*	@param $dsn bool|string
 	**/
 	function __construct($dsn=FALSE) {
