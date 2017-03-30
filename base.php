@@ -211,31 +211,33 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $str string
 	**/
 	function compile($str) {
-		$fw=$this;
 		return preg_replace_callback(
-			'/(?<!\w)@(\w(?:[\h\w\.\[\]\(]|\->|::)*)/',
-			function($var) use($fw) {
-				return '$'.preg_replace_callback(
-					'/\.(\w+)\(|\.(\w+)|\[((?:[^\[\]]*|(?R))*)\]/',
-					function($expr) use($fw) {
-						return $expr[1]?
-							((function_exists($expr[1])?
-								('.'.$expr[1]):
-								('['.var_export($expr[1],TRUE).']')).'('):
-							('['.
-								(isset($expr[3])?
-									(strlen($expr[3])?
-										var_export(
-											trim($fw->compile($expr[3])),
-											TRUE):
-										''):
-									var_export(ctype_digit($expr[2])?
-										(int)$expr[2]:
-										$expr[2],TRUE)).
-							']');
-					},
-					$var[1]
-				);
+			'/(?<!\w)@(\w+(?:(?:\->|::)\w+)?)'.
+			'((?:\.\w+|\[(?:(?:[^\[\]]*|(?R))*)\]|(?:\->|::)\w+|\()*)/',
+			function($expr) {
+				$str='$'.$expr[1];
+				if (isset($expr[2]))
+					$str.=preg_replace_callback(
+						'/\.(\w+)(\()?|\[((?:[^\[\]]*|(?R))*)\]/',
+						function($sub) {
+							if (empty($sub[2])) {
+								if (ctype_digit($sub[1]))
+									$sub[1]=(int)$sub[1];
+								$out='['.
+									(isset($sub[3])?
+										$this->compile($sub[3]):
+										var_export($sub[1],TRUE)).
+								']';
+							}
+							else
+								$out=function_exists($sub[1])?
+									$sub[0]:
+									('['.var_export($sub[1],TRUE).']'.$sub[2]);
+							return $out;
+						},
+						$expr[2]
+					);
+				return $str;
 			},
 			$str
 		);
@@ -824,12 +826,11 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $tags string
 	**/
 	function clean($arg,$tags=NULL) {
-		$fw=$this;
 		return $this->recursive($arg,
-			function($val) use($fw,$tags) {
+			function($val) use($tags) {
 				if ($tags!='*')
 					$val=trim(strip_tags($val,
-						'<'.implode('><',$fw->split($tags)).'>'));
+						'<'.implode('><',$this->split($tags)).'>'));
 				return trim(preg_replace(
 					'/[\x00-\x08\x0B\x0C\x0E-\x1F]/','',$val));
 			}
@@ -2158,20 +2159,19 @@ final class Base extends Prefab implements ArrayAccess {
 		@ini_set('register_globals',0);
 		// Intercept errors/exceptions; PHP5.3-compatible
 		$check=error_reporting((E_ALL|E_STRICT)&~(E_NOTICE|E_USER_NOTICE));
-		$fw=$this;
 		set_exception_handler(
-			function($obj) use($fw) {
-				$fw->hive['EXCEPTION']=$obj;
-				$fw->error(500,
+			function($obj) {
+				$this->hive['EXCEPTION']=$obj;
+				$this->error(500,
 					$obj->getmessage().' '.
 					'['.$obj->getFile().':'.$obj->getLine().']',
 					$obj->gettrace());
 			}
 		);
 		set_error_handler(
-			function($level,$text,$file,$line) use($fw) {
+			function($level,$text,$file,$line) {
 				if ($level & error_reporting())
-					$fw->error(500,$text,NULL,$level);
+					$this->error(500,$text,NULL,$level);
 			}
 		);
 		if (!isset($_SERVER['SERVER_NAME']))
