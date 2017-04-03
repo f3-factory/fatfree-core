@@ -2797,22 +2797,20 @@ class Preview extends View {
 	**/
 	protected function build($node) {
 		return preg_replace_callback(
-			'/\{\-(.+?)\-\}|\{\{(.+?)\}\}(\n*)/s',
+			'/\{~(.+?)~\}|\{\-(.+?)\-\}|\{\{(.+?)\}\}(\n*)/s',
 			function($expr) {
 				if ($expr[1])
-					return $expr[1];
-				$str='<?= '.trim($this->token($expr[2])).' ?>';
-				if (isset($expr[3]))
-					$str.=$expr[3];
+					$str='<?php '.$this->token($expr[1]).' ?>';
+				elseif ($expr[2])
+					$str=$expr[2];
+				else {
+					$str='<?= '.trim($this->token($expr[3])).' ?>';
+					if (isset($expr[4]))
+						$str.=$expr[4];
+				}
 				return $str;
 			},
-			preg_replace_callback(
-				'/\{~(.+?)~\}/s',
-				function($expr) {
-					return '<?php '.$this->token($expr[1]).' ?>';
-				},
-				$node
-			)
+			$node
 		);
 	}
 
