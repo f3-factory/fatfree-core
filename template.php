@@ -276,21 +276,23 @@ class Template extends Preview {
 				'(?:\h*=\h*(?:"(?:.*?)"|\'(?:.*?)\'))?|'.
 				'\h*\{\{.+?\}\})*)\h*(\/?)>/is',
 				substr($text,$ptr),$match)) {
-				if (strlen($tmp)||$match[1])
+				if (strlen($tmp) || $match[1])
 					$tree[]=$tmp.$match[1];
 				// Element node
 				if ($match[2]) {
 					// Find matching start tag
 					$stack=[];
 					for($i=count($tree)-1;$i>=0;$i--) {
-						$item = $tree[$i];
-						if (is_array($item) && array_key_exists($match[3],$item)
-						&& !isset($item[$match[3]][0])) {
+						$item=$tree[$i];
+						if (is_array($item) &&
+							array_key_exists($match[3],$item) &&
+							!isset($item[$match[3]][0])) {
 							// Start tag found
 							$tree[$i][$match[3]]+=array_reverse($stack);
 							$tree=array_slice($tree,0,$i+1);
 							break;
-						} else $stack[]=$item;
+						}
+						else $stack[]=$item;
 					}
 				}
 				else {
