@@ -2797,16 +2797,18 @@ class Preview extends View {
 	**/
 	protected function build($node) {
 		return preg_replace_callback(
-			'/\{~(.+?)~\}|\{\-(.+?)\-\}|\{\{(.+?)\}\}(\n*)/s',
+			'/\{~(.+?)~\}|\{\*(.+?)\*\}|\{\-(.+?)\-\}|\{\{(.+?)\}\}(\n*)/s',
 			function($expr) {
 				if ($expr[1])
 					$str='<?php '.$this->token($expr[1]).' ?>';
 				elseif ($expr[2])
-					$str=$expr[2];
+					return '';
+				elseif ($expr[3])
+					$str=$expr[3];
 				else {
-					$str='<?= '.trim($this->token($expr[3])).' ?>';
-					if (isset($expr[4]))
-						$str.=$expr[4];
+					$str='<?= '.trim($this->token($expr[4])).' ?>';
+					if (isset($expr[5]))
+						$str.=$expr[5];
 				}
 				return $str;
 			},
@@ -2817,25 +2819,24 @@ class Preview extends View {
 	/**
 	*	Render template string
 	*	@return string
-	*	@param $str string
+	*	@param $node string|array
 	*	@param $hive array
 	*	@param $ttl int
 	*	@param $persist bool
 	**/
-	function resolve($str,array $hive=NULL,$ttl=0,$persist=FALSE) {
+	function resolve($node,array $hive=NULL,$ttl=0,$persist=FALSE) {
 		$fw=Base::instance();
 		$cache=Cache::instance();
-		if ($ttl && $cache->exists($hash=$fw->hash($str),$data))
+		if ($ttl || $persist)
+			$hash=$fw->hash($fw->serialize($node));
+		if ($ttl && $cache->exists($hash,$data))
 			return $data;
-		// Remove PHP code and comments
-		$text=preg_replace(
-			'/\h*<\?(?!xml)(?:php|\s*=)?.+?\?>\h*|\{\*.+?\*\}/is','',$str);
 		if ($persist) {
 			if (!is_dir($tmp=$fw->TEMP))
 				mkdir($tmp,Base::MODE,TRUE);
 			if (!is_file($this->file=($tmp.
 				$fw->SEED.'.'.$hash.'.php')))
-				$fw->write($this->file,$this->build($text));
+				$fw->write($this->file,$this->build($node));
 			if (isset($_COOKIE[session_name()]) &&
 				!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
 				session_start();
@@ -2850,12 +2851,24 @@ class Preview extends View {
 			extract($hive);
 			unset($hive);
 			ob_start();
-			eval(' ?>'.$this->build($text).'<?php ');
+			eval(' ?>'.$this->build($node).'<?php ');
 			$data=ob_get_clean();
 		}
 		if ($ttl)
 			$cache->set($hash,$data,$ttl);
 		return $data;
+	}
+
+	/**
+	 *	Parse template string
+	 *	@return array
+	 *	@param $text string
+	 **/
+	function parse($text) {
+		// Remove PHP code and comments
+		return preg_replace(
+			'/\h*<\?(?!xml)(?:php|\s*=)?.+?\?>\h*|'.
+			'\{\*.+?\*\}/is','', $text);
 	}
 
 	/**
@@ -2878,13 +2891,7 @@ class Preview extends View {
 				if (!is_file($this->file=($tmp.
 					$fw->SEED.'.'.$fw->hash($view).'.php')) ||
 					filemtime($this->file)<filemtime($view)) {
-					// Remove PHP code and comments
-					$text=preg_replace(
-						'/\h*<\?(?!xml)(?:php|\s*=)?.+?\?>\h*|'.
-						'\{\*.+?\*\}/is','',
-						$fw->read($view));
-					if (method_exists($this,'parse'))
-						$text=$this->parse($text);
+					$text=$this->parse($fw->read($view));
 					$fw->write($this->file,$this->build($text));
 				}
 				if (isset($_COOKIE[session_name()]) &&
