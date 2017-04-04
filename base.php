@@ -2861,7 +2861,7 @@ class Preview extends View {
 
 	/**
 	 *	Parse template string
-	 *	@return array
+	 *	@return string
 	 *	@param $text string
 	 **/
 	function parse($text) {
