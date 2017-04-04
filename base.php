@@ -351,7 +351,7 @@ final class Base extends Prefab implements ArrayAccess {
 		}
 		else switch ($key) {
 		case 'CACHE':
-			$val=Cache::instance()->load($val,TRUE);
+			$val=Cache::instance()->load($val);
 			break;
 		case 'ENCODING':
 			ini_set('default_charset',$val);
