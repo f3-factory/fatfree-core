@@ -252,7 +252,7 @@ class Template extends Preview {
 	/**
 	*	Call custom tag handler
 	*	@return string|FALSE
-	*	@param $func callback
+	*	@param $func string
 	*	@param $args array
 	**/
 	function __call($func,array $args) {
@@ -265,10 +265,11 @@ class Template extends Preview {
 
 	/**
 	*	Parse string for template directives and tokens
-	*	@return string|array
+	*	@return array
 	*	@param $text string
 	**/
 	function parse($text) {
+		$text=parent::parse($text);
 		// Build tree structure
 		for ($ptr=0,$w=5,$len=strlen($text),$tree=[],$tmp='';$ptr<$len;)
 			if (preg_match('/^(.{0,'.$w.'}?)<(\/?)(?:F3:)?'.
