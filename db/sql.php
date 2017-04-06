@@ -460,8 +460,8 @@ class SQL {
 	 **/
 	function quotekey($key, $split=TRUE) {
 		$delims=[
-			'mysql'=>'``',
-			'sqlite2?|pgsql|oci'=>'""',
+			'sqlite2?|mysql'=>'``',
+			'pgsql|oci'=>'""',
 			'mssql|sqlsrv|odbc|sybase|dblib'=>'[]'
 		];
 		$use='';
