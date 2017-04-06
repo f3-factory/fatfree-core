@@ -220,11 +220,14 @@ class SQL {
 						'/';
 				}
 				if ($log)
-					$this->log.=($stamp?(date('r').' '):'').'('.
-						sprintf('%.1f',1e3*(microtime(TRUE)-$now)).'ms) '.
+					$this->log.=($stamp?(date('r').' '):'').' (-0ms) '.
 						preg_replace($keys,$vals,
 							str_replace('?',chr(0).'?',$cmd),1).PHP_EOL;
 				$query->execute();
+				if ($log)
+					$this->log=str_replace('(-0ms)',
+						'('.sprintf('%.1f',1e3*(microtime(TRUE)-$now)).'ms)',
+						$this->log);
 				$error=$query->errorinfo();
 				if ($error[0]!=\PDO::ERR_NONE) {
 					// Statement-level error occurred
