@@ -348,7 +348,7 @@ class Mapper extends \DB\Cursor {
 		$sql='SELECT COUNT(*) AS '.$this->db->quotekey('_rows').' '.
 			'FROM ('.$sql.') AS '.$this->db->quotekey('_temp');
 		$result=$this->db->exec($sql,$args,$ttl);
-		return $result[0]['_rows'];
+		return (int)$result[0]['_rows'];
 	}
 
 	/**
