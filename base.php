@@ -1365,9 +1365,8 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@return NULL
 	*	@param $url array|string
 	*	@param $permanent bool
-	*	@param $func closure
 	**/
-	function reroute($url=NULL,$permanent=FALSE,$func=NULL) {
+	function reroute($url=NULL,$permanent=FALSE) {
 		if (!$url)
 			$url=$this->hive['REALM'];
 		if (is_array($url))
@@ -1387,14 +1386,12 @@ final class Base extends Prefab implements ArrayAccess {
 		if (($handler=$this->hive['ONREROUTE']) &&
 			$this->call($handler,[$url,$permanent])!==FALSE)
 			return;
-		if (!$this->hive['CLI']) {
+		if ($this->hive['CLI'])
+			$this->mock('GET '.$url.' [cli]');
+		else {
 			header('Location: '.$url);
 			$this->status($permanent?301:302);
-			if ($func && $this->call($func,[$url,$permanent])!==FALSE)
-				return;
-			die;
 		}
-		$this->mock('GET '.$url.' [cli]');
 	}
 
 	/**
@@ -1712,6 +1709,7 @@ final class Base extends Prefab implements ArrayAccess {
 		$out='';
 		while (ob_get_level())
 			$out=ob_get_clean().$out;
+		header('Content-Encoding: none');
 		header('Content-Length: '.strlen($out));
 		header('Connection: close');
 		echo $out;
