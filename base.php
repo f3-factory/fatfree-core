@@ -1366,7 +1366,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $url array|string
 	*	@param $permanent bool
 	**/
-	function reroute($url=NULL,$permanent=FALSE) {
+	function reroute($url=NULL,$permanent=FALSE,$func=NULL) {
 		if (!$url)
 			$url=$this->hive['REALM'];
 		if (is_array($url))
@@ -1380,8 +1380,7 @@ final class Base extends Prefab implements ArrayAccess {
 			$this->status($permanent?301:302);
 			$url=$this->build($url,isset($parts[2])?
 				$this->parse($parts[2]):[]).(isset($parts[3])?$parts[3]:'');
-			if (($handler=$this->hive['ONREROUTE']) &&
-				$this->call($handler,[$url,$permanent])!==FALSE)
+			if ($func && $this->call($func,[$url,$permanent])!==FALSE)
 				return;
 			if ($url[0]=='/' && (empty($url[1]) || $url[1]!='/')) {
 				$port=$this->hive['PORT'];
@@ -2311,7 +2310,6 @@ final class Base extends Prefab implements ArrayAccess {
 			'LOGS'=>'./',
 			'MB'=>extension_loaded('mbstring'),
 			'ONERROR'=>NULL,
-			'ONREROUTE'=>NULL,
 			'PACKAGE'=>self::PACKAGE,
 			'PARAMS'=>[],
 			'PATH'=>$path,
