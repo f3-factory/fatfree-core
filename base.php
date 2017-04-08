@@ -1384,6 +1384,9 @@ final class Base extends Prefab implements ArrayAccess {
 			$url=$this->hive['SCHEME'].'://'.
 				$this->hive['HOST'].$port.$this->hive['BASE'].$url;
 		}
+		if (($handler=$this->hive['ONREROUTE']) &&
+			$this->call($handler,[$url,$permanent])!==FALSE)
+			return;
 		if (!$this->hive['CLI']) {
 			header('Location: '.$url);
 			$this->status($permanent?301:302);
