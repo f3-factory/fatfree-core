@@ -1365,6 +1365,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@return NULL
 	*	@param $url array|string
 	*	@param $permanent bool
+	*	@param $func closure
 	**/
 	function reroute($url=NULL,$permanent=FALSE,$func=NULL) {
 		if (!$url)
@@ -1375,19 +1376,19 @@ final class Base extends Prefab implements ArrayAccess {
 			$url,$parts) &&
 			isset($this->hive['ALIASES'][$parts[1]]))
 			$url=$this->hive['ALIASES'][$parts[1]];
+		$url=$this->build($url,isset($parts[2])?$this->parse($parts[2]):[]).
+			(isset($parts[3])?$parts[3]:'');
+		if ($url[0]=='/' && (empty($url[1]) || $url[1]!='/')) {
+			$port=$this->hive['PORT'];
+			$port=in_array($port,[80,443])?'':(':'.$port);
+			$url=$this->hive['SCHEME'].'://'.
+				$this->hive['HOST'].$port.$this->hive['BASE'].$url;
+		}
 		if (!$this->hive['CLI']) {
 			header('Location: '.$url);
 			$this->status($permanent?301:302);
-			$url=$this->build($url,isset($parts[2])?
-				$this->parse($parts[2]):[]).(isset($parts[3])?$parts[3]:'');
 			if ($func && $this->call($func,[$url,$permanent])!==FALSE)
 				return;
-			if ($url[0]=='/' && (empty($url[1]) || $url[1]!='/')) {
-				$port=$this->hive['PORT'];
-				$port=in_array($port,[80,443])?'':(':'.$port);
-				$url=$this->hive['SCHEME'].'://'.
-					$this->hive['HOST'].$port.$this->hive['BASE'].$url;
-			}
 			die;
 		}
 		$this->mock('GET '.$url.' [cli]');
@@ -2310,6 +2311,7 @@ final class Base extends Prefab implements ArrayAccess {
 			'LOGS'=>'./',
 			'MB'=>extension_loaded('mbstring'),
 			'ONERROR'=>NULL,
+			'ONREROUTE'=>NULL,
 			'PACKAGE'=>self::PACKAGE,
 			'PARAMS'=>[],
 			'PATH'=>$path,
