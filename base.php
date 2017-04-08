@@ -1391,6 +1391,7 @@ final class Base extends Prefab implements ArrayAccess {
 		else {
 			header('Location: '.$url);
 			$this->status($permanent?301:302);
+			die;
 		}
 	}
 
@@ -1703,15 +1704,15 @@ final class Base extends Prefab implements ArrayAccess {
 	*	Disconnect HTTP client
 	**/
 	function abort() {
-		if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
-			session_start();
-		session_commit();
 		$out='';
 		while (ob_get_level())
 			$out=ob_get_clean().$out;
 		header('Content-Encoding: none');
 		header('Content-Length: '.strlen($out));
 		header('Connection: close');
+		if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
+			session_start();
+		session_commit();
 		echo $out;
 		flush();
 		if (function_exists('fastcgi_finish_request'))
