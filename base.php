@@ -1365,8 +1365,9 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@return NULL
 	*	@param $url array|string
 	*	@param $permanent bool
+	*	@param $die bool
 	**/
-	function reroute($url=NULL,$permanent=FALSE) {
+	function reroute($url=NULL,$permanent=FALSE,$die=TRUE) {
 		if (!$url)
 			$url=$this->hive['REALM'];
 		if (is_array($url))
@@ -1391,7 +1392,8 @@ final class Base extends Prefab implements ArrayAccess {
 		else {
 			header('Location: '.$url);
 			$this->status($permanent?301:302);
-			die;
+			if ($die)
+				die;
 		}
 	}
 
