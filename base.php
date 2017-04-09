@@ -1365,8 +1365,9 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@return NULL
 	*	@param $url array|string
 	*	@param $permanent bool
+	*	@param $die bool
 	**/
-	function reroute($url=NULL,$permanent=FALSE,$func=NULL) {
+	function reroute($url=NULL,$permanent=FALSE,$die=TRUE) {
 		if (!$url)
 			$url=$this->hive['REALM'];
 		if (is_array($url))
@@ -1375,22 +1376,25 @@ final class Base extends Prefab implements ArrayAccess {
 			$url,$parts) &&
 			isset($this->hive['ALIASES'][$parts[1]]))
 			$url=$this->hive['ALIASES'][$parts[1]];
-		if (!$this->hive['CLI']) {
+		$url=$this->build($url,isset($parts[2])?$this->parse($parts[2]):[]).
+			(isset($parts[3])?$parts[3]:'');
+		if (($handler=$this->hive['ONREROUTE']) &&
+			$this->call($handler,[$url,$permanent])!==FALSE)
+			return;
+		if ($url[0]=='/' && (empty($url[1]) || $url[1]!='/')) {
+			$port=$this->hive['PORT'];
+			$port=in_array($port,[80,443])?'':(':'.$port);
+			$url=$this->hive['SCHEME'].'://'.
+				$this->hive['HOST'].$port.$this->hive['BASE'].$url;
+		}
+		if ($this->hive['CLI'])
+			$this->mock('GET '.$url.' [cli]');
+		else {
 			header('Location: '.$url);
 			$this->status($permanent?301:302);
-			$url=$this->build($url,isset($parts[2])?
-				$this->parse($parts[2]):[]).(isset($parts[3])?$parts[3]:'');
-			if ($func && $this->call($func,[$url,$permanent])!==FALSE)
-				return;
-			if ($url[0]=='/' && (empty($url[1]) || $url[1]!='/')) {
-				$port=$this->hive['PORT'];
-				$port=in_array($port,[80,443])?'':(':'.$port);
-				$url=$this->hive['SCHEME'].'://'.
-					$this->hive['HOST'].$port.$this->hive['BASE'].$url;
-			}
-			die;
+			if ($die)
+				die;
 		}
-		$this->mock('GET '.$url.' [cli]');
 	}
 
 	/**
@@ -1704,12 +1708,13 @@ final class Base extends Prefab implements ArrayAccess {
 	function abort() {
 		if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
 			session_start();
-		session_commit();
 		$out='';
 		while (ob_get_level())
 			$out=ob_get_clean().$out;
+		header('Content-Encoding: none');
 		header('Content-Length: '.strlen($out));
 		header('Connection: close');
+		session_commit();
 		echo $out;
 		flush();
 		if (function_exists('fastcgi_finish_request'))
@@ -2310,6 +2315,7 @@ final class Base extends Prefab implements ArrayAccess {
 			'LOGS'=>'./',
 			'MB'=>extension_loaded('mbstring'),
 			'ONERROR'=>NULL,
+			'ONREROUTE'=>NULL,
 			'PACKAGE'=>self::PACKAGE,
 			'PARAMS'=>[],
 			'PATH'=>$path,
