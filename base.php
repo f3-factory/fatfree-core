@@ -1706,14 +1706,14 @@ final class Base extends Prefab implements ArrayAccess {
 	*	Disconnect HTTP client
 	**/
 	function abort() {
+		if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
+			session_start();
 		$out='';
 		while (ob_get_level())
 			$out=ob_get_clean().$out;
 		header('Content-Encoding: none');
 		header('Content-Length: '.strlen($out));
 		header('Connection: close');
-		if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
-			session_start();
 		session_commit();
 		echo $out;
 		flush();
