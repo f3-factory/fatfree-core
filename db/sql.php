@@ -317,7 +317,36 @@ class SQL {
 			'mysql'=>[
 				'SHOW columns FROM `'.$this->dbname.'`.`'.$table.'`',
 				'Field','Type','Default','Null','YES','Key','PRI'],
-			'mssql|sqlsrv|sybase|dblib|pgsql|odbc'=>[
+			'sqlsrv'=>[
+				'SELECT '.
+					'C.COLUMN_NAME AS FIELD,'.
+					'C.DATA_TYPE AS TYPE,'.
+					'C.COLUMN_DEFAULT AS DEFVAL,'.
+					'C.IS_NULLABLE AS NULLABLE,'.
+					'T.CONSTRAINT_TYPE AS PKEY '.
+				'FROM INFORMATION_SCHEMA.COLUMNS AS C '.
+				'LEFT OUTER JOIN '.
+					'INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS K '.
+					'ON '.
+						'C.TABLE_NAME=K.TABLE_NAME AND '.
+						'C.COLUMN_NAME=K.COLUMN_NAME AND '.
+						'C.TABLE_SCHEMA=K.TABLE_SCHEMA '.
+						($this->dbname?
+							('AND C.TABLE_CATALOG=K.TABLE_CATALOG '):'').
+				'LEFT OUTER JOIN '.
+					'INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS T ON '.
+						'K.TABLE_NAME=T.TABLE_NAME AND '.
+						'K.CONSTRAINT_NAME=T.CONSTRAINT_NAME AND '.
+						'K.TABLE_SCHEMA=T.TABLE_SCHEMA '.
+						($this->dbname?
+							('AND K.TABLE_CATALOG=T.TABLE_CATALOG '):'').
+				'WHERE '.
+					'C.TABLE_NAME='.$this->quote($table).
+					($this->dbname?
+						(' AND C.TABLE_CATALOG='.
+							$this->quote($this->dbname)):''),
+				'FIELD','TYPE','DEFVAL','NULLABLE','YES','PKEY','PRIMARY KEY'],
+			'mssql|sybase|dblib|pgsql|odbc'=>[
 				'SELECT '.
 					'c.column_name AS field,'.
 					'c.data_type AS type,'.
