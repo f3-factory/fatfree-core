@@ -312,7 +312,7 @@ class SQL {
 		// Supported engines
 		$cmd=[
 			'sqlite2?'=>[
-				'PRAGMA table_info("'.$table.'")',
+				'PRAGMA table_info(`'.$table.'`)',
 				'name','type','dflt_value','notnull',0,'pk',TRUE],
 			'mysql'=>[
 				'SHOW columns FROM `'.$this->dbname.'`.`'.$table.'`',
