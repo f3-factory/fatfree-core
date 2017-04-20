@@ -1000,7 +1000,7 @@ final class Base extends Prefab implements ArrayAccess {
 			$locales[]=$locale;
 		}
 		setlocale(LC_ALL,$locales);
-		return implode(',',$this->languages);
+		return $this->hive['LANGUAGE']=implode(',',$this->languages);
 	}
 
 	/**
