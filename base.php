@@ -2772,7 +2772,7 @@ class Preview extends View {
 		$fw=Base::instance();
 		$locale=setlocale(LC_NUMERIC,0);
 		setlocale(LC_NUMERIC,'C');
-		$out=(string)$val;
+		$out=(string)(float)$val;
 		$locale=setlocale(LC_NUMERIC,$locale);
 		return $out;
 	}
