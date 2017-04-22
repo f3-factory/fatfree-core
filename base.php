@@ -2756,11 +2756,26 @@ class Preview extends View {
 	protected
 		//! token filter
 		$filter=[
+			'c'=>'$this->c',
 			'esc'=>'$this->esc',
 			'raw'=>'$this->raw',
 			'alias'=>'Base::instance()->alias',
 			'format'=>'Base::instance()->format'
 		];
+
+	/**
+	*	Return C-locale equivalent of number
+	*	@return string
+	*	@param $val int|float
+	**/
+	function c($val) {
+		$fw=Base::instance();
+		$locale=setlocale(LC_NUMERIC,0);
+		setlocale(LC_NUMERIC,'C');
+		$out=(string)$val;
+		$locale=setlocale(LC_NUMERIC,$locale);
+		return $out;
+	}
 
 	/**
 	*	Convert token to variable
