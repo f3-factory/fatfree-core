@@ -2690,9 +2690,9 @@ class View extends Prefab {
 			$hive=$fw->hive();
 		}
 		if ($this->level<1 || $implicit) {
-			if (!$fw->CLI && !headers_sent() &&
+			if (!$fw->CLI && $mime!=NULL && !headers_sent() &&
 				!preg_grep ('/^Content-Type:/',headers_list()))
-				header('Content-Type: '.($mime?:'text/html').'; '.
+				header('Content-Type: '.$mime.'; '.
 					'charset='.$fw->ENCODING);
 			if ($fw->ESCAPE)
 				$hive=$this->esc($hive);
@@ -2718,9 +2718,10 @@ class View extends Prefab {
 	*	@param $hive array
 	*	@param $ttl int
 	**/
-	function render($file,$mime=NULL,array $hive=NULL,$ttl=0) {
+	function render($file,$mime='text/html',array $hive=NULL,$ttl=0) {
 		$fw=Base::instance();
 		$cache=Cache::instance();
+		$this->file = $file;
 		if ($cache->exists($hash=$fw->hash($file),$data))
 			return $data;
 		foreach ($fw->split($fw->UI) as $dir)
@@ -2752,6 +2753,7 @@ class View extends Prefab {
 
 //! Lightweight template engine
 class Preview extends View {
+	public $actualfile;
 
 	protected
 		//! token filter
@@ -2903,9 +2905,11 @@ class Preview extends View {
 	*	@param $hive array
 	*	@param $ttl int
 	**/
-	function render($file,$mime=NULL,array $hive=NULL,$ttl=0) {
+	function render($file,$mime='text/html',array $hive=NULL,$ttl=0) {
 		$fw=Base::instance();
 		$cache=Cache::instance();
+		$this->actualfile = $file;
+
 		if (!is_dir($tmp=$fw->TEMP))
 			mkdir($tmp,Base::MODE,TRUE);
 		foreach ($fw->split($fw->UI) as $dir) {
