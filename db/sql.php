@@ -319,31 +319,31 @@ class SQL {
 				'Field','Type','Default','Null','YES','Key','PRI'],
 			'mssql|sqlsrv|sybase|dblib|pgsql|odbc'=>[
 				'SELECT '.
-					'c.column_name AS field,'.
-					'c.data_type AS type,'.
-					'c.column_default AS defval,'.
-					'c.is_nullable AS nullable,'.
-					't.constraint_type AS pkey '.
-				'FROM information_schema.columns AS c '.
+					'C.COLUMN_NAME AS field,'.
+					'C.DATA_TYPE AS type,'.
+					'C.COLUMN_DEFAULT AS defval,'.
+					'C.IS_NULLABLE AS nullable,'.
+					'T.CONSTRAINT_TYPE AS pkey '.
+				'FROM INFORMATION_SCHEMA.COLUMNS AS C '.
 				'LEFT OUTER JOIN '.
-					'information_schema.key_column_usage AS k '.
+					'INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS K '.
 					'ON '.
-						'c.table_name=k.table_name AND '.
-						'c.column_name=k.column_name AND '.
-						'c.table_schema=k.table_schema '.
+						'C.TABLE_NAME=K.TABLE_NAME AND '.
+						'C.COLUMN_NAME=K.COLUMN_NAME AND '.
+						'C.TABLE_SCHEMA=K.TABLE_SCHEMA '.
 						($this->dbname?
-							('AND c.table_catalog=k.table_catalog '):'').
+							('AND C.TABLE_CATALOG=K.TABLE_CATALOG '):'').
 				'LEFT OUTER JOIN '.
-					'information_schema.table_constraints AS t ON '.
-						'k.table_name=t.table_name AND '.
-						'k.constraint_name=t.constraint_name AND '.
-						'k.table_schema=t.table_schema '.
+					'INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS T ON '.
+						'K.TABLE_NAME=T.TABLE_NAME AND '.
+						'K.CONSTRAINT_NAME=T.CONSTRAINT_NAME AND '.
+						'K.TABLE_SCHEMA=T.TABLE_SCHEMA '.
 						($this->dbname?
-							('AND k.table_catalog=t.table_catalog '):'').
+							('AND K.TABLE_CATALOG=T.TABLE_CATALOG '):'').
 				'WHERE '.
-					'c.table_name='.$this->quote($table).
+					'C.TABLE_NAME='.$this->quote($table).
 					($this->dbname?
-						(' AND c.table_catalog='.
+						(' AND C.TABLE_CATALOG='.
 							$this->quote($this->dbname)):''),
 				'field','type','defval','nullable','YES','pkey','PRIMARY KEY'],
 			'oci'=>[
