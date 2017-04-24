@@ -2721,6 +2721,7 @@ class View extends Prefab {
 	function render($file,$mime='text/html',array $hive=NULL,$ttl=0) {
 		$fw=Base::instance();
 		$cache=Cache::instance();
+		$this->file = $file;
 		if ($cache->exists($hash=$fw->hash($file),$data))
 			return $data;
 		foreach ($fw->split($fw->UI) as $dir)
@@ -2752,6 +2753,7 @@ class View extends Prefab {
 
 //! Lightweight template engine
 class Preview extends View {
+	public $actualfile;
 
 	protected
 		//! token filter
@@ -2891,6 +2893,8 @@ class Preview extends View {
 	function render($file,$mime='text/html',array $hive=NULL,$ttl=0) {
 		$fw=Base::instance();
 		$cache=Cache::instance();
+		$this->actualfile = $file;
+
 		if (!is_dir($tmp=$fw->TEMP))
 			mkdir($tmp,Base::MODE,TRUE);
 		foreach ($fw->split($fw->UI) as $dir) {
