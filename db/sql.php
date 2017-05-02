@@ -282,7 +282,7 @@ class SQL {
 	}
 
 	/**
-	*	Return SQL profiler results (or disable logging)
+	*	Return SQL profiler results (or clear the log)
 	*	@param $flag bool
 	*	@return string
 	**/
