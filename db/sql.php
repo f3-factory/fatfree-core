@@ -494,8 +494,10 @@ class SQL {
 	*	@param $user string
 	*	@param $pw string
 	*	@param $options array
+	*	@param $auto bool
 	**/
-	function __construct($dsn,$user=NULL,$pw=NULL,array $options=NULL) {
+	function __construct(
+		$dsn,$user=NULL,$pw=NULL,array $options=NULL,$auto=FALSE) {
 		$fw=\Base::instance();
 		$this->uuid=$fw->hash($this->dsn=$dsn);
 		if (preg_match('/^.+?(?:dbname|database)=(.+?)(?=;|$)/is',$dsn,$parts))
@@ -507,14 +509,16 @@ class SQL {
 				strtolower(str_replace('-','',$fw->ENCODING)).';'];
 		$this->pdo=new \PDO($dsn,$user,$pw,$options);
 		$this->engine=$this->pdo->getattribute(\PDO::ATTR_DRIVER_NAME);
-		$this->begin();
+		if ($auto)
+			$this->begin();
 	}
 
 	/**
 	*	Destroy instance
 	**/
 	function __destruct() {
-		$this->commit();
+		if ($this->trans)
+			$this->commit();
 	}
 
 }
