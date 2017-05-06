@@ -507,6 +507,14 @@ class SQL {
 				strtolower(str_replace('-','',$fw->ENCODING)).';'];
 		$this->pdo=new \PDO($dsn,$user,$pw,$options);
 		$this->engine=$this->pdo->getattribute(\PDO::ATTR_DRIVER_NAME);
+		$this->begin();
+	}
+
+	/**
+	*	Destroy instance
+	**/
+	function __destruct() {
+		$this->commit();
 	}
 
 }
