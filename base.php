@@ -1608,7 +1608,7 @@ final class Base extends Prefab implements ArrayAccess {
 						$this->hive['BODY']=file_get_contents('php://input');
 					ob_start();
 					// Call route handler
-					$result=$this->call($handler,[$this,$args],
+					$result=$this->call($handler,[$this,$args,$handler],
 						'beforeroute,afterroute');
 					$body=ob_get_clean();
 					if (isset($cache) && !error_get_last()) {
