@@ -520,38 +520,38 @@ class Mapper extends \DB\Cursor {
 				$args=is_array($args)?$args:[1=>$args];
 				list($filter)=$filter;
 			}
-			return $this->db->
-				exec('DELETE FROM '.$this->table.
-				($filter?' WHERE '.$filter:'').';',$args);
 		}
-		$args=[];
-		$ctr=0;
-		$filter='';
-		$pkeys=[];
-		foreach ($this->fields as $key=>&$field) {
-			if ($field['pkey']) {
-				$filter.=($filter?' AND ':'').$this->db->quotekey($key).'=?';
-				$args[$ctr+1]=[$field['previous'],$field['pdo_type']];
-				$pkeys[$key]=$field['previous'];
-				$ctr++;
+		else {
+			$args=[];
+			$ctr=0;
+			$filter='';
+			$pkeys=[];
+			foreach ($this->fields as $key=>&$field) {
+				if ($field['pkey']) {
+					$filter.=($filter?' AND ':'').
+						$this->db->quotekey($key).'=?';
+					$args[$ctr+1]=[$field['previous'],$field['pdo_type']];
+					$pkeys[$key]=$field['previous'];
+					$ctr++;
+				}
+				$field['value']=NULL;
+				$field['changed']=(bool)$field['default'];
+				if ($field['pkey'])
+					$field['previous']=NULL;
+				unset($field);
 			}
-			$field['value']=NULL;
-			$field['changed']=(bool)$field['default'];
-			if ($field['pkey'])
-				$field['previous']=NULL;
-			unset($field);
+			foreach ($this->adhoc as &$field) {
+				$field['value']=NULL;
+				unset($field);
+			}
+			parent::erase();
 		}
-		foreach ($this->adhoc as &$field) {
-			$field['value']=NULL;
-			unset($field);
-		}
-		parent::erase();
 		if (isset($this->trigger['beforeerase']) &&
 			\Base::instance()->call($this->trigger['beforeerase'],
 				[$this,$pkeys])===FALSE)
 			return 0;
 		$out=$this->db->
-			exec('DELETE FROM '.$this->table.' WHERE '.$filter.';',$args);
+			exec('DELETE FROM '.$this->table.' WHERE '.$filter,$args);
 		if (isset($this->trigger['aftererase']))
 			\Base::instance()->call($this->trigger['aftererase'],
 				[$this,$pkeys]);
