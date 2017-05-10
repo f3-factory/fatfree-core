@@ -531,7 +531,7 @@ class SQL {
 	*	Destroy instance
 	**/
 	function __destruct() {
-		if ($this->trans)
+		if (!error_get_last() && $this->trans)
 			$this->commit();
 	}
 
