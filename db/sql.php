@@ -283,13 +283,27 @@ class SQL {
 
 	/**
 	*	Return SQL profiler results (or disable logging)
-	*	@param $flag bool
 	*	@return string
+	*	@param $flag bool
 	**/
 	function log($flag=TRUE) {
 		if ($flag)
 			return $this->log;
 		$this->log=FALSE;
+	}
+
+	/**
+	*	Return TRUE if table exists
+	*	@return bool
+	*	@param $table string
+	**/
+	function exists($table) {
+		$mode=$this->pdo->getAttribute(\PDO::ATTR_ERRMODE);
+		$this->pdo->setAttribute(\PDO::ATTR_ERRMODE,\PDO::ERRMODE_SILENT);
+		$out=$this->pdo->
+			query('SELECT 1 FROM '.$this->quotekey($table).' LIMIT 1');
+		$this->pdo->setAttribute(\PDO::ATTR_ERRMODE,$mode);
+		return is_object($out);
 	}
 
 	/**
