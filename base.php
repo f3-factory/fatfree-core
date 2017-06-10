@@ -1255,7 +1255,7 @@ final class Base extends Prefab implements ArrayAccess {
 				'</body>'.$eol.
 				'</html>');
 		if ($this->hive['HALT'])
-			die;
+			die(1);
 	}
 
 	/**
