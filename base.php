@@ -45,7 +45,7 @@ final class Base extends Prefab implements ArrayAccess {
 	//@{ Framework details
 	const
 		PACKAGE='Fat-Free Framework',
-		VERSION='3.6.2-Dev';
+		VERSION='3.6.3-Dev';
 	//@}
 
 	//@{ HTTP status codes (RFC 2616)
@@ -1255,7 +1255,7 @@ final class Base extends Prefab implements ArrayAccess {
 				'</body>'.$eol.
 				'</html>');
 		if ($this->hive['HALT'])
-			die;
+			die(1);
 	}
 
 	/**
