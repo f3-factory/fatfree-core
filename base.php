@@ -1735,6 +1735,8 @@ final class Base extends Prefab implements ArrayAccess {
 			if ($parts[2]=='->') {
 				if (is_subclass_of($parts[1],'Prefab'))
 					$parts[1]=call_user_func($parts[1].'::instance');
+				elseif ($container=$this->get('CONTAINER'))
+					$parts[1]=call_user_func($container.'::instance')->get($parts[1]);
 				else {
 					$ref=new ReflectionClass($parts[1]);
 					$parts[1]=method_exists($parts[1],'__construct') && $args?
