@@ -2829,7 +2829,7 @@ class Preview extends View {
 				elseif ($expr[3])
 					$str=$expr[3];
 				else {
-					$str='<?= '.trim($this->token($expr[4])).
+					$str='<?= ('.trim($this->token($expr[4])).')'.
 						(!empty($expr[5])?'.PHP_EOL':'').' ?>';
 					if (isset($expr[5]))
 						$str.=$expr[5];
