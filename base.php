@@ -1737,7 +1737,7 @@ final class Base extends Prefab implements ArrayAccess {
 					$parts[1]=call_user_func($parts[1].'::instance');
 				elseif ($container=$this->get('CONTAINER')) {
 					if (is_object($container) && is_callable([$container,'has']) && $container->has($parts[1]))	//PSR11
-						$parts[1]=call_user_func([$container,'get'])->get($parts[1]);
+						$parts[1]=call_user_func([$container,'get'],$parts[1]);
 					elseif (is_callable($container))
 						$parts[1]=call_user_func($container,$parts[1]);
 					elseif (is_string($container) && is_subclass_of($container,'Prefab'))
