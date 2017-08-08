@@ -2820,7 +2820,7 @@ class Preview extends View {
 	protected function build($node) {
 		return preg_replace_callback(
 			'/\{~(.+?)~\}|\{\*(.+?)\*\}|\{\-(.+?)\-\}|'.
-			'\{\{(.+?)\}\}((?:\r?\n)*)/s',
+			'\{\{(.+?)\}\}((\r?\n)*)/s',
 			function($expr) {
 				if ($expr[1])
 					$str='<?php '.$this->token($expr[1]).' ?>';
@@ -2830,7 +2830,7 @@ class Preview extends View {
 					$str=$expr[3];
 				else {
 					$str='<?= ('.trim($this->token($expr[4])).')'.
-						(!empty($expr[5])?'.PHP_EOL':'').' ?>';
+						(!empty($expr[6])?'."'.$expr[6].'"':'').' ?>';
 					if (isset($expr[5]))
 						$str.=$expr[5];
 				}
