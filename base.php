@@ -1836,6 +1836,8 @@ final class Base extends Prefab implements ArrayAccess {
 	function config($source,$allow=FALSE) {
 		if (is_string($source))
 			$source=$this->split($source);
+		if ($allow)
+			$preview=Preview::instance();
 		foreach ($source as $file) {
 			preg_match_all(
 				'/(?<=^|\n)(?:'.
@@ -1861,10 +1863,8 @@ final class Base extends Prefab implements ArrayAccess {
 						continue;
 					}
 					if ($allow) {
-						$match['lval']=Preview::instance()->
-							resolve($match['lval']);
-						$match['rval']=Preview::instance()->
-							resolve($match['rval']);
+						$match['lval']=$preview->resolve($match['lval']);
+						$match['rval']=$preview->resolve($match['rval']);
 					}
 					if (!empty($cmd)) {
 						isset($cmd[3])?
@@ -2783,12 +2783,13 @@ class Preview extends View {
 	*	@param $str string
 	**/
 	function token($str) {
+		$fw = Base::instance();
 		$str=trim(preg_replace('/\{\{(.+?)\}\}/s',trim('\1'),
-			Base::instance()->compile($str)));
+			$fw->compile($str)));
 		if (preg_match('/^(.+)(?<!\|)\|((?:\h*\w+(?:\h*[,;]?))+)$/s',
 			$str,$parts)) {
 			$str=trim($parts[1]);
-			foreach (Base::instance()->split($parts[2]) as $func)
+			foreach ($fw->split($parts[2]) as $func)
 				$str=is_string($cmd=$this->filter($func))?
 					$cmd.'('.$str.')':
 					'Base::instance()->'.
