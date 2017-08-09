@@ -124,7 +124,7 @@ class SQL {
 					$val=str_replace(',','.',$val);
 				return $val;
 			case \PDO::PARAM_NULL:
-				return (unset)$val;
+				return NULL;
 			case \PDO::PARAM_INT:
 				return (int)$val;
 			case \PDO::PARAM_BOOL:
