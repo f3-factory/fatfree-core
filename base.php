@@ -2763,6 +2763,19 @@ class Preview extends View {
 			'format'=>'Base::instance()->format'
 		];
 
+	protected
+		//! newline interpolation
+		$interpolation=true;
+
+	/**
+	 * enable/disable markup parsing interpolation
+	 * mainly used for adding appropriate newlines
+	 * @param $bool bool
+	 */
+	function interpolation($bool) {
+		$this->interpolation=$bool;
+	}
+
 	/**
 	*	Return C-locale equivalent of number
 	*	@return string
@@ -2831,7 +2844,8 @@ class Preview extends View {
 					$str=$expr[3];
 				else {
 					$str='<?= ('.trim($this->token($expr[4])).')'.
-						(!empty($expr[6])?'."'.$expr[6].'"':'').' ?>';
+						($this->interpolation?
+							(!empty($expr[6])?'."'.$expr[6].'"':''):'').' ?>';
 					if (isset($expr[5]))
 						$str.=$expr[5];
 				}
