@@ -206,6 +206,20 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
+	 * cast string variable to php type or constant
+	 * @param $val
+	 * @return mixed
+	 */
+	function cast($val) {
+		if (is_numeric($val))
+			return $val+0;
+		$val=trim($val);
+		if (preg_match('/^\w+$/i',$val) && defined($val))
+			return constant($val);
+		return $val;
+	}
+
+	/**
 	*	Convert JS-style token to PHP expression
 	*	@return string
 	*	@param $str string
@@ -1873,7 +1887,7 @@ final class Base extends Prefab implements ArrayAccess {
 						call_user_func_array(
 							[$this,$cmd[1]],
 							array_merge([$match['lval']],
-								str_getcsv($match['rval']))
+								str_getcsv($this->cast($match['rval'])))
 						);
 					}
 					else {
@@ -1886,13 +1900,10 @@ final class Base extends Prefab implements ArrayAccess {
 						}
 						$args=array_map(
 							function($val) {
-								if (is_numeric($val))
-									return $val+0;
-								$val=trim($val);
-								if (preg_match('/^\w+$/i',$val) &&
-									defined($val))
-									return constant($val);
-								return preg_replace('/\\\\"/','"',$val);
+								$val=$this->cast($val);
+								return is_string($val)
+									? preg_replace('/\\\\"/','"',$val)
+									: $val;
 							},
 							// Mark quoted strings with 0x00 whitespace
 							str_getcsv(preg_replace(
