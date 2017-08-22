@@ -1863,8 +1863,8 @@ final class Base extends Prefab implements ArrayAccess {
 						continue;
 					}
 					if ($allow) {
-						$match['lval']=$preview->resolve($match['lval']);
-						$match['rval']=$preview->resolve($match['rval']);
+						$match['lval']=$preview->resolve($match['lval'],NULL,0,FALSE,FALSE);
+						$match['rval']=$preview->resolve($match['rval'],NULL,0,FALSE,FALSE);
 					}
 					if (!empty($cmd)) {
 						isset($cmd[3])?
@@ -2862,10 +2862,15 @@ class Preview extends View {
 	*	@param $hive array
 	*	@param $ttl int
 	*	@param $persist bool
+	*	@param $escape bool
 	**/
-	function resolve($node,array $hive=NULL,$ttl=0,$persist=FALSE) {
+	function resolve($node,array $hive=NULL,$ttl=0,$persist=FALSE,$escape=NULL) {
 		$fw=Base::instance();
 		$cache=Cache::instance();
+		if ($escape!==NULL) {
+			$esc=$fw->ESCAPE;
+			$fw->ESCAPE=$escape;
+		}
 		if ($ttl || $persist)
 			$hash=$fw->hash($fw->serialize($node));
 		if ($ttl && $cache->exists($hash,$data))
@@ -2895,6 +2900,8 @@ class Preview extends View {
 		}
 		if ($ttl)
 			$cache->set($hash,$data,$ttl);
+		if (isset($esc))
+			$fw->ESCAPE=$esc;
 		return $data;
 	}
 
