@@ -2911,7 +2911,7 @@ class Preview extends View {
 		}
 		if ($ttl)
 			$cache->set($hash,$data,$ttl);
-		if (isset($esc))
+		if ($escape!==NULL)
 			$fw->ESCAPE=$esc;
 		return $data;
 	}
