@@ -2732,9 +2732,9 @@ class View extends Prefab {
 	function render($file,$mime='text/html',array $hive=NULL,$ttl=0) {
 		$fw=Base::instance();
 		$cache=Cache::instance();
-		if ($cache->exists($hash=$fw->hash($file),$data))
-			return $data;
 		foreach ($fw->split($fw->UI) as $dir)
+			if ($cache->exists($hash=$fw->hash($dir.$file),$data))
+				return $data;
 			if (is_file($this->file=$fw->fixslashes($dir.$file))) {
 				if (isset($_COOKIE[session_name()]) &&
 					!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
