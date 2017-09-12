@@ -1,5 +1,32 @@
 CHANGELOG
 
+3.6.2 (26 June 2017)
+*   Return a status code > 0 when dying on error [#220](https://github.com/bcosca/fatfree-core/issues/220)
+*   fix SMTP line width [#215](https://github.com/bcosca/fatfree-core/issues/215)
+*   Allow using a custom field for ldap user id checking [#217](https://github.com/bcosca/fatfree-core/issues/217)
+*   NEW: DB\SQL->exists: generic method to check if SQL table exists
+*   Pass handler to route handler and hooks [#1035](https://github.com/bcosca/fatfree/issues/1035)
+*   pass carriage return of multiline dictionary keys
+*   Better Web->slug customization
+*   fix incorrect header issue [#211](https://github.com/bcosca/fatfree-core/issues/211)
+*   fix schema issue on databases with case-sensitive collation, fixes [#209](https://github.com/bcosca/fatfree-core/issues/209)
+*   Add filter for deriving C-locale equivalent of a number
+*   Bug fix: @LANGUAGE remains unchanged after override
+*   abort: added Header pre-check
+*   Assemble URL after ONREROUTE
+*   Add reroute argument to skip script termination
+*   Invoke ONREROUTE after headers are sent
+*   SQLite switch to backtick as quote
+*   Bug fix: Incorrect timing in SQL query logs
+*   DB\SQL\Mapper: Cast return value of count to integer
+*   Patched $_SERVER['REQUEST_URI'] to ensure it contains a relative URI
+*   Tweak debug verbosity
+*   fix php carriage return issue in preview->build [#205](https://github.com/bcosca/fatfree-core/pull/205)
+*   fixed template string resolution [#205](https://github.com/bcosca/fatfree-core/pull/205)
+*   Fixed unexpected default seed on CACHE set [#1028](https://github.com/bcosca/fatfree/issues/1028)
+*   DB\SQL\Mapper: Optimized field escaping on options
+*   Optimize template conversion to PHP file
+
 3.6.1 (2 April 2017)
 *	NEW: Recaptcha plugin [#194](https://github.com/bcosca/fatfree-core/pull/194)
 *	NEW: MB variable for detecting multibyte support
@@ -55,7 +82,6 @@ CHANGELOG
 *	Bug fix: Reroute authoritative relative references (#181)
 *	Bug fix: locales order and charset hyphen
 *	Bug fix: base stripped twice in router (#176)
-
 
 3.6.0 (19 November 2016)
 *	NEW: [cli] request type
@@ -146,6 +172,7 @@ CHANGELOG
 *	Bug fix: encode CLI parameters
 *	Bug fix: Close connection on abort explicitly (#162)
 *	Bug fix: Image->identicon, Avoid double-size sprite rotation (and possible segfault)
+*	Bug fix: Image->render and Image->dump, removed unnecessary 2nd argument (#146)
 *	Bug fix: Magic->offsetset, access property as array element (#147)
 *	Bug fix: multi-line custom template tag parsing (bcosca/fatfree#935)
 *	Bug fix: cache headers on errors (bcosca/fatfree#885)

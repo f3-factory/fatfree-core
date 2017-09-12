@@ -45,7 +45,7 @@ final class Base extends Prefab implements ArrayAccess {
 	//@{ Framework details
 	const
 		PACKAGE='Fat-Free Framework',
-		VERSION='3.6.2-Dev';
+		VERSION='3.6.3-Dev';
 	//@}
 
 	//@{ HTTP status codes (RFC 2616)
@@ -203,6 +203,20 @@ final class Base extends Prefab implements ArrayAccess {
 			else
 				$out[$pair[1]]=trim($pair[3]);
 		return $out;
+	}
+
+	/**
+	 * cast string variable to php type or constant
+	 * @param $val
+	 * @return mixed
+	 */
+	function cast($val) {
+		if (is_numeric($val))
+			return $val+0;
+		$val=trim($val);
+		if (preg_match('/^\w+$/i',$val) && defined($val))
+			return constant($val);
+		return $val;
 	}
 
 	/**
@@ -1038,7 +1052,7 @@ final class Base extends Prefab implements ArrayAccess {
 							elseif (!array_key_exists(
 								$key=$prefix.$match['lval'],$lex))
 								$lex[$key]=trim(preg_replace(
-									'/\\\\\h*\r?\n/','',$match['rval']));
+									'/\\\\\h*\r?\n/',"\n",$match['rval']));
 					}
 				}
 		if ($ttl)
@@ -1255,7 +1269,7 @@ final class Base extends Prefab implements ArrayAccess {
 				'</body>'.$eol.
 				'</html>');
 		if ($this->hive['HALT'])
-			die;
+			die(1);
 	}
 
 	/**
@@ -1608,7 +1622,7 @@ final class Base extends Prefab implements ArrayAccess {
 						$this->hive['BODY']=file_get_contents('php://input');
 					ob_start();
 					// Call route handler
-					$result=$this->call($handler,[$this,$args],
+					$result=$this->call($handler,[$this,$args,$handler],
 						'beforeroute,afterroute');
 					$body=ob_get_clean();
 					if (isset($cache) && !error_get_last()) {
@@ -1836,6 +1850,8 @@ final class Base extends Prefab implements ArrayAccess {
 	function config($source,$allow=FALSE) {
 		if (is_string($source))
 			$source=$this->split($source);
+		if ($allow)
+			$preview=Preview::instance();
 		foreach ($source as $file) {
 			preg_match_all(
 				'/(?<=^|\n)(?:'.
@@ -1861,10 +1877,8 @@ final class Base extends Prefab implements ArrayAccess {
 						continue;
 					}
 					if ($allow) {
-						$match['lval']=Preview::instance()->
-							resolve($match['lval']);
-						$match['rval']=Preview::instance()->
-							resolve($match['rval']);
+						$match['lval']=$preview->resolve($match['lval'],NULL,0,FALSE,FALSE);
+						$match['rval']=$preview->resolve($match['rval'],NULL,0,FALSE,FALSE);
 					}
 					if (!empty($cmd)) {
 						isset($cmd[3])?
@@ -1873,7 +1887,7 @@ final class Base extends Prefab implements ArrayAccess {
 						call_user_func_array(
 							[$this,$cmd[1]],
 							array_merge([$match['lval']],
-								str_getcsv($match['rval']))
+								str_getcsv($this->cast($match['rval'])))
 						);
 					}
 					else {
@@ -1886,13 +1900,10 @@ final class Base extends Prefab implements ArrayAccess {
 						}
 						$args=array_map(
 							function($val) {
-								if (is_numeric($val))
-									return $val+0;
-								$val=trim($val);
-								if (preg_match('/^\w+$/i',$val) &&
-									defined($val))
-									return constant($val);
-								return preg_replace('/\\\\"/','"',$val);
+								$val=$this->cast($val);
+								return is_string($val)
+									? preg_replace('/\\\\"/','"',$val)
+									: $val;
 							},
 							// Mark quoted strings with 0x00 whitespace
 							str_getcsv(preg_replace(
@@ -2690,7 +2701,7 @@ class View extends Prefab {
 			$hive=$fw->hive();
 		}
 		if ($this->level<1 || $implicit) {
-			if (!$fw->CLI && $mime!=NULL && !headers_sent() &&
+			if (!$fw->CLI && $mime && !headers_sent() &&
 				!preg_grep ('/^Content-Type:/',headers_list()))
 				header('Content-Type: '.$mime.'; '.
 					'charset='.$fw->ENCODING);
@@ -2758,11 +2769,39 @@ class Preview extends View {
 	protected
 		//! token filter
 		$filter=[
+			'c'=>'$this->c',
 			'esc'=>'$this->esc',
 			'raw'=>'$this->raw',
 			'alias'=>'Base::instance()->alias',
 			'format'=>'Base::instance()->format'
 		];
+
+	protected
+		//! newline interpolation
+		$interpolation=true;
+
+	/**
+	 * enable/disable markup parsing interpolation
+	 * mainly used for adding appropriate newlines
+	 * @param $bool bool
+	 */
+	function interpolation($bool) {
+		$this->interpolation=$bool;
+	}
+
+	/**
+	*	Return C-locale equivalent of number
+	*	@return string
+	*	@param $val int|float
+	**/
+	function c($val) {
+		$fw=Base::instance();
+		$locale=setlocale(LC_NUMERIC,0);
+		setlocale(LC_NUMERIC,'C');
+		$out=(string)(float)$val;
+		$locale=setlocale(LC_NUMERIC,$locale);
+		return $out;
+	}
 
 	/**
 	*	Convert token to variable
@@ -2770,12 +2809,13 @@ class Preview extends View {
 	*	@param $str string
 	**/
 	function token($str) {
+		$fw = Base::instance();
 		$str=trim(preg_replace('/\{\{(.+?)\}\}/s',trim('\1'),
-			Base::instance()->compile($str)));
+			$fw->compile($str)));
 		if (preg_match('/^(.+)(?<!\|)\|((?:\h*\w+(?:\h*[,;]?))+)$/s',
 			$str,$parts)) {
 			$str=trim($parts[1]);
-			foreach (Base::instance()->split($parts[2]) as $func)
+			foreach ($fw->split($parts[2]) as $func)
 				$str=is_string($cmd=$this->filter($func))?
 					$cmd.'('.$str.')':
 					'Base::instance()->'.
@@ -2807,7 +2847,7 @@ class Preview extends View {
 	protected function build($node) {
 		return preg_replace_callback(
 			'/\{~(.+?)~\}|\{\*(.+?)\*\}|\{\-(.+?)\-\}|'.
-			'\{\{(.+?)\}\}((?:\r?\n)*)/s',
+			'\{\{(.+?)\}\}((\r?\n)*)/s',
 			function($expr) {
 				if ($expr[1])
 					$str='<?php '.$this->token($expr[1]).' ?>';
@@ -2816,8 +2856,9 @@ class Preview extends View {
 				elseif ($expr[3])
 					$str=$expr[3];
 				else {
-					$str='<?= '.trim($this->token($expr[4])).
-						(!empty($expr[5])?'.PHP_EOL':'').' ?>';
+					$str='<?= ('.trim($this->token($expr[4])).')'.
+						($this->interpolation?
+							(!empty($expr[6])?'."'.$expr[6].'"':''):'').' ?>';
 					if (isset($expr[5]))
 						$str.=$expr[5];
 				}
@@ -2834,10 +2875,15 @@ class Preview extends View {
 	*	@param $hive array
 	*	@param $ttl int
 	*	@param $persist bool
+	*	@param $escape bool
 	**/
-	function resolve($node,array $hive=NULL,$ttl=0,$persist=FALSE) {
+	function resolve($node,array $hive=NULL,$ttl=0,$persist=FALSE,$escape=NULL) {
 		$fw=Base::instance();
 		$cache=Cache::instance();
+		if ($escape!==NULL) {
+			$esc=$fw->ESCAPE;
+			$fw->ESCAPE=$escape;
+		}
 		if ($ttl || $persist)
 			$hash=$fw->hash($fw->serialize($node));
 		if ($ttl && $cache->exists($hash,$data))
@@ -2867,6 +2913,8 @@ class Preview extends View {
 		}
 		if ($ttl)
 			$cache->set($hash,$data,$ttl);
+		if ($escape!==NULL)
+			$fw->ESCAPE=$esc;
 		return $data;
 	}
 
