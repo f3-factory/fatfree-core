@@ -2729,6 +2729,9 @@ class View extends Prefab {
 					!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
 					session_start();
 				$fw->sync('SESSION');
+				if(isset($this->trigger['beforerender']))
+					foreach($this->trigger['beforerender'] as $func)
+						$fw->call($func,$file);
 				$data=$this->sandbox($hive,$mime);
 				if(isset($this->trigger['afterrender']))
 					foreach($this->trigger['afterrender'] as $func)
@@ -2738,6 +2741,14 @@ class View extends Prefab {
 				return $data;
 			}
 		user_error(sprintf(Base::E_Open,$file),E_USER_ERROR);
+	}
+
+	/**
+	*	pre rendering handler
+	*	@param $func callback
+	*/
+	function beforerender($func) {
+		$this->trigger['beforerender'][]=$func;
 	}
 
 	/**
@@ -2752,6 +2763,7 @@ class View extends Prefab {
 
 //! Lightweight template engine
 class Preview extends View {
+    public $actualfile;
 
 	protected
 		//! token filter
@@ -2891,12 +2903,16 @@ class Preview extends View {
 	function render($file,$mime='text/html',array $hive=NULL,$ttl=0) {
 		$fw=Base::instance();
 		$cache=Cache::instance();
+		$this->actualfile = $file;
 		if (!is_dir($tmp=$fw->TEMP))
 			mkdir($tmp,Base::MODE,TRUE);
 		foreach ($fw->split($fw->UI) as $dir) {
 			if ($cache->exists($hash=$fw->hash($dir.$file),$data))
 				return $data;
 			if (is_file($view=$fw->fixslashes($dir.$file))) {
+				if(isset($this->trigger['beforerender']))
+					foreach ($this->trigger['beforerender'] as $func)
+						$data=$fw->call($func, $view);
 				if (!is_file($this->file=($tmp.
 					$fw->SEED.'.'.$fw->hash($view).'.php')) ||
 					filemtime($this->file)<filemtime($view)) {

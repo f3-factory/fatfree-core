@@ -42,11 +42,13 @@ class Image {
 		POS_Bottom=32;
 	//@}
 
+	public
+		//! Image resource
+		$data;
+		
 	protected
 		//! Source filename
 		$file,
-		//! Image resource
-		$data,
 		//! Enable/disable history
 		$flag=FALSE,
 		//! Filter count
