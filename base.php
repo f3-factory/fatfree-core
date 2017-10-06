@@ -1254,7 +1254,7 @@ final class Base extends Prefab implements ArrayAccess {
 				'beforeroute,afterroute')===FALSE) &&
 			!$prior && !$this->hive['CLI'] && !$this->hive['QUIET'])
 			echo $this->hive['AJAX']?
-				json_encode($this->hive['ERROR']):
+				json_encode(array_diff_key($this->hive['ERROR'],$this->hive['DEBUG']?[]:['trace'=>1])):
 				('<!DOCTYPE html>'.$eol.
 				'<html>'.$eol.
 				'<head>'.
