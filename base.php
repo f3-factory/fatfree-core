@@ -2474,7 +2474,7 @@ class Cache extends Prefab {
 			case 'xcache':
 				return xcache_set($ndx,$data,$ttl);
 			case 'folder':
-				return $fw->write($parts[1].$ndx,$data);
+				return $fw->write($parts[1].str_replace(['/','\\'],'',$ndx),$data);
 		}
 		return FALSE;
 	}
