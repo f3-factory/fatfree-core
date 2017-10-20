@@ -348,7 +348,7 @@ class Mapper extends \DB\Cursor {
 		foreach ($this->adhoc as $key=>$field)
 			$adhoc.=','.$field['expr'].' AS '.$this->db->quotekey($key);
 		$fields='*'.$adhoc;
-		if (preg_match('/mssql|dblib|sqlsrv/',$this->engine) && (strncmp($this->db->version(),'11',2)<0))
+		if (preg_match('/mssql|dblib|sqlsrv/',$this->engine))
 			$fields='TOP 100 PERCENT '.$fields;
 		list($sql,$args)=$this->stringify($fields,$filter,$options);
 		$sql='SELECT COUNT(*) AS '.$this->db->quotekey('_rows').' '.
