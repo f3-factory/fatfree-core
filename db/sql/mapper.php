@@ -424,22 +424,23 @@ class Mapper extends \DB\Cursor {
 			}
 		}
 		if ($fields) {
-			$this->db->exec(
+			$add='';
+			if ($this->engine=='pgsql') {
+				$names=array_keys($pkeys);
+				$aik=end($names);
+				$add=' RETURNING '.$this->db->quotekey($aik);
+			}
+			$lID=$this->db->exec(
 				(preg_match('/mssql|dblib|sqlsrv/',$this->engine) &&
 				array_intersect(array_keys($pkeys),$ckeys)?
 					'SET IDENTITY_INSERT '.$this->table.' ON;':'').
 				'INSERT INTO '.$this->table.' ('.$fields.') '.
-				'VALUES ('.$values.')',$args
+				'VALUES ('.$values.')'.$add,$args
 			);
-			$seq=NULL;
-			if ($this->engine=='pgsql') {
-				$names=array_keys($pkeys);
-				$aik=end($names);
-				if ($this->fields[$aik]['pdo_type']==\PDO::PARAM_INT)
-					$seq=$this->source.'_'.$aik.'_seq';
-			}
-			if ($this->engine!='oci' && !($this->engine=='pgsql' && !$seq))
-				$this->_id=$this->db->lastinsertid($seq);
+			if ($this->engine=='pgsql' && $lID)
+				$this->_id=$lID[0][$aik];
+			elseif ($this->engine!='oci')
+				$this->_id=$this->db->lastinsertid();
 			// Reload to obtain default and auto-increment field values
 			if ($reload=($inc || $filter))
 				$this->load($inc?
