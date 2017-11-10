@@ -52,6 +52,7 @@ final class Base extends Prefab implements ArrayAccess {
 	const
 		HTTP_100='Continue',
 		HTTP_101='Switching Protocols',
+		HTTP_103='Early Hints',
 		HTTP_200='OK',
 		HTTP_201='Created',
 		HTTP_202='Accepted',
