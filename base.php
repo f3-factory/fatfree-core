@@ -2572,7 +2572,16 @@ class Cache extends Prefab {
 						wincache_ucache_delete($item['key_name']);
 				return TRUE;
 			case 'xcache':
-				xcache_unset_by_prefix($this->prefix.'.');
+				if ($suffix && !ini_get('xcache.admin.enable_auth')) {
+					$cnt=xcache_count(XC_TYPE_VAR);
+					for ($i=0;$i<$cnt;$i++) {
+						$list=xcache_list(XC_TYPE_VAR,$i);
+						foreach ($list['cache_list'] as $item)
+							if (preg_match($regex,$item['name']))
+								xcache_unset($item['name']);
+					}
+				} else
+					xcache_unset_by_prefix($this->prefix.'.');
 				return TRUE;
 			case 'folder':
 				if ($glob=@glob($parts[1].'*'))
