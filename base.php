@@ -1877,10 +1877,10 @@ final class Base extends Prefab implements ArrayAccess {
 							'^((?:\.?\w)+)\s*\>\s*(.*)/i',$sec,$cmd);
 						continue;
 					}
-					if ($allow) {
-						$match['lval']=$preview->resolve($match['lval'],NULL,0,FALSE,FALSE);
-						$match['rval']=$preview->resolve($match['rval'],NULL,0,FALSE,FALSE);
-					}
+					if ($allow)
+						foreach (['lval','rval'] as $ndx)
+							$match[$ndx]=$preview->
+								resolve($match[$ndx],NULL,0,FALSE,FALSE);
 					if (!empty($cmd)) {
 						isset($cmd[3])?
 						$this->call($cmd[3],
