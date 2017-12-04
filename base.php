@@ -352,13 +352,14 @@ final class Base extends Prefab implements ArrayAccess {
 			if ($expr[1]=='COOKIE') {
 				$parts=$this->cut($key);
 				$jar=$this->unserialize($this->serialize($this->hive['JAR']));
+				// Convert expire time to seconds (lifetime)
 				if (isset($_COOKIE[$parts[1]])) {
-					$jar['expire']=strtotime('-1 year');
+					$jar['expire']=0;
 					call_user_func_array('setcookie',
 						array_merge([$parts[1],NULL],$jar));
 				}
 				if ($ttl)
-					$jar['expire']=$time+$ttl;
+					$jar['expire']=$ttl;
 				call_user_func_array('setcookie',[$parts[1],$val]+$jar);
 				$_COOKIE[$parts[1]]=$val;
 				return $val;
@@ -442,7 +443,7 @@ final class Base extends Prefab implements ArrayAccess {
 			if ($expr[1]=='COOKIE') {
 				$parts=$this->cut($key);
 				$jar=$this->hive['JAR'];
-				$jar['expire']=strtotime('-1 year');
+				$jar['expire']=0;
 				call_user_func_array('setcookie',
 					array_merge([$parts[1],NULL],$jar));
 				unset($_COOKIE[$parts[1]]);
@@ -2269,7 +2270,7 @@ final class Base extends Prefab implements ArrayAccess {
 		session_cache_limiter('');
 		call_user_func_array('session_set_cookie_params',
 			$jar=[
-				'expire'=>0,
+				'expire'=>time(),
 				'path'=>$base?:'/',
 				'domain'=>is_int(strpos($_SERVER['SERVER_NAME'],'.')) &&
 					!filter_var($_SERVER['SERVER_NAME'],FILTER_VALIDATE_IP)?
