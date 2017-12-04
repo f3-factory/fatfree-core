@@ -396,6 +396,7 @@ final class Base extends Prefab implements ArrayAccess {
 		$ref=$val;
 		if (preg_match('/^JAR\b/',$key)) {
 			$jar=$this->unserialize($this->serialize($this->hive['JAR']));
+			$jar['expire']-=$time;
 			call_user_func_array('session_set_cookie_params',$jar);
 		}
 		if ($ttl)
@@ -2268,7 +2269,7 @@ final class Base extends Prefab implements ArrayAccess {
 		session_cache_limiter('');
 		call_user_func_array('session_set_cookie_params',
 			$jar=[
-				'expire'=>0,
+				'expire'=>$_SERVER['REQUEST_TIME'],
 				'path'=>$base?:'/',
 				'domain'=>is_int(strpos($_SERVER['SERVER_NAME'],'.')) &&
 					!filter_var($_SERVER['SERVER_NAME'],FILTER_VALIDATE_IP)?
