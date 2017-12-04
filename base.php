@@ -352,7 +352,6 @@ final class Base extends Prefab implements ArrayAccess {
 			if ($expr[1]=='COOKIE') {
 				$parts=$this->cut($key);
 				$jar=$this->unserialize($this->serialize($this->hive['JAR']));
-				// Convert expire time to seconds (lifetime)
 				if (isset($_COOKIE[$parts[1]])) {
 					$jar['expire']=0;
 					call_user_func_array('setcookie',
@@ -397,7 +396,6 @@ final class Base extends Prefab implements ArrayAccess {
 		$ref=$val;
 		if (preg_match('/^JAR\b/',$key)) {
 			$jar=$this->unserialize($this->serialize($this->hive['JAR']));
-			$jar['expire']-=$time;
 			call_user_func_array('session_set_cookie_params',$jar);
 		}
 		if ($ttl)
