@@ -2270,7 +2270,7 @@ final class Base extends Prefab implements ArrayAccess {
 		session_cache_limiter('');
 		call_user_func_array('session_set_cookie_params',
 			$jar=[
-				'expire'=>time(),
+				'expire'=>0,
 				'path'=>$base?:'/',
 				'domain'=>is_int(strpos($_SERVER['SERVER_NAME'],'.')) &&
 					!filter_var($_SERVER['SERVER_NAME'],FILTER_VALIDATE_IP)?
