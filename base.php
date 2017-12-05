@@ -346,18 +346,19 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $ttl int
 	**/
 	function set($key,$val,$ttl=0) {
+		$time=$this->hive['TIME'];
 		if (preg_match('/^(GET|POST|COOKIE)\b(.+)/',$key,$expr)) {
 			$this->set('REQUEST'.$expr[2],$val);
 			if ($expr[1]=='COOKIE') {
 				$parts=$this->cut($key);
 				$jar=$this->unserialize($this->serialize($this->hive['JAR']));
 				if (isset($_COOKIE[$parts[1]])) {
-					$jar['expire']-=$this->hive['TIME'];
+					$jar['expire']=0;
 					call_user_func_array('setcookie',
 						array_merge([$parts[1],NULL],$jar));
 				}
 				if ($ttl)
-					$jar['expire']=$ttl;
+					$jar['expire']=$time+$ttl;
 				call_user_func_array('setcookie',[$parts[1],$val]+$jar);
 				$_COOKIE[$parts[1]]=$val;
 				return $val;
@@ -395,7 +396,7 @@ final class Base extends Prefab implements ArrayAccess {
 		$ref=$val;
 		if (preg_match('/^JAR\b/',$key)) {
 			$jar=$this->unserialize($this->serialize($this->hive['JAR']));
-			$jar['expire']-=$this->hive['TIME'];
+			$jar['expire']-=$time;
 			call_user_func_array('session_set_cookie_params',$jar);
 		}
 		if ($ttl)
@@ -441,7 +442,7 @@ final class Base extends Prefab implements ArrayAccess {
 			if ($expr[1]=='COOKIE') {
 				$parts=$this->cut($key);
 				$jar=$this->hive['JAR'];
-				$jar['expire']=$this->hive['TIME'];
+				$jar['expire']=0;
 				call_user_func_array('setcookie',
 					array_merge([$parts[1],NULL],$jar));
 				unset($_COOKIE[$parts[1]]);
@@ -2266,17 +2267,17 @@ final class Base extends Prefab implements ArrayAccess {
 			(isset($uri['fragment'])?'#'.$uri['fragment']:'');
 		$path=preg_replace('/^'.preg_quote($base,'/').'/','',$uri['path']);
 		session_cache_limiter('');
-		call_user_func_array('session_set_cookie_params',
-			$jar=[
-				'expire'=>$_SERVER['REQUEST_TIME_FLOAT'],
-				'path'=>$base?:'/',
-				'domain'=>is_int(strpos($_SERVER['SERVER_NAME'],'.')) &&
-					!filter_var($_SERVER['SERVER_NAME'],FILTER_VALIDATE_IP)?
-					$_SERVER['SERVER_NAME']:'',
-				'secure'=>($scheme=='https'),
-				'httponly'=>TRUE
-			]
-		);
+		$jar=[
+			'expire'=>0,
+			'path'=>$base?:'/',
+			'domain'=>is_int(strpos($_SERVER['SERVER_NAME'],'.')) &&
+				!filter_var($_SERVER['SERVER_NAME'],FILTER_VALIDATE_IP)?
+				$_SERVER['SERVER_NAME']:'',
+			'secure'=>($scheme=='https'),
+			'httponly'=>TRUE
+		];
+		call_user_func_array('session_set_cookie_params',$jar);
+		$jar['expire']=$_SERVER['REQUEST_TIME_FLOAT'];
 		$port=80;
 		if (isset($headers['X-Forwarded-Port']))
 			$port=$headers['X-Forwarded-Port'];
