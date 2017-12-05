@@ -294,8 +294,10 @@ class SMTP extends Magic {
 			$out.=$str.$eol;
 			$out.=$message.$eol;
 			foreach ($this->attachments as $attachment) {
-				if (is_array($attachment['filename']))
-					list($alias,$file)=array_shift($attachment['filename']);
+				if (is_array($attachment['filename'])) {
+					$alias=key($attachment['filename']);
+					$file=current($attachment['filename']);
+				}
 				else
 					$alias=basename($file=$attachment['filename']);
 				$out.='--'.$hash.$eol;
