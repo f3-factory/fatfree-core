@@ -171,7 +171,7 @@ class SMTP extends Magic {
 		if (!is_file($file))
 			user_error(sprintf(self::E_Attach,$file),E_USER_ERROR);
 		if ($alias)
-			$file=[$alias=>$file];
+			$file=[$alias,$file];
 		$this->attachments[]=['filename'=>$file,'cid'=>$cid];
 	}
 
@@ -294,10 +294,8 @@ class SMTP extends Magic {
 			$out.=$str.$eol;
 			$out.=$message.$eol;
 			foreach ($this->attachments as $attachment) {
-				if (is_array($attachment['filename'])) {
-					$alias=key($attachment['filename']);
-					$file=current($attachment['filename']);
-				}
+				if (is_array($attachment['filename']))
+					list($alias,$file)=$attachment['filename'];
 				else
 					$alias=basename($file=$attachment['filename']);
 				$out.='--'.$hash.$eol;
