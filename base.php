@@ -2199,23 +2199,28 @@ final class Base extends Prefab implements ArrayAccess {
 				$_SERVER['argc']++;
 				$_SERVER['argv'][1]='/';
 			}
-			if (substr($_SERVER['argv'][1],0,1)=='/')
-				$_SERVER['REQUEST_URI']=$_SERVER['argv'][1];
-			else {
-				$req=$opts='';
+			$req=$query='';
+			if (substr($_SERVER['argv'][1],0,1)=='/') {
+				$req=$_SERVER['argv'][1];
+				$query=parse_url($req,PHP_URL_QUERY);
+			} else {
 				foreach($_SERVER['argv'] as $i=>$arg) {
 					if (!$i) continue;
 					if (preg_match('/^\-(\-)?(\w+)(?:\=(.*))?$/',$arg,$m)) {
 						foreach($m[1]?[$m[2]]:str_split($m[2]) as $k)
-							$opts.=($opts?'&':'').urlencode($k).'=';
+							$query.=($query?'&':'').urlencode($k).'=';
 						if (isset($m[3]))
-							$opts.=urlencode($m[3]);
+							$query.=urlencode($m[3]);
 					} else
 						$req.='/'.$arg;
 				}
-				$_SERVER['REQUEST_URI']=($req?:'/').'?'.$opts;
-				parse_str($opts,$GLOBALS['_GET']);
+				if (!$req)
+					$req='/';
+				if ($query)
+					$req.='?'.$query;
 			}
+			$_SERVER['REQUEST_URI']=$req;
+			parse_str($query,$GLOBALS['_GET']);
 		}
 		$headers=[];
 		if (!$cli) {
