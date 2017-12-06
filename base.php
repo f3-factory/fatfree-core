@@ -2207,13 +2207,13 @@ final class Base extends Prefab implements ArrayAccess {
 					if (!$i) continue;
 					if (preg_match('/^\-(\-)?(\w+)(?:\=(.*))?$/',$arg,$m)) {
 						foreach($m[1]?[$m[2]]:str_split($m[2]) as $k)
-							$opts.=($opts?'&':'').$k.'=';
+							$opts.=($opts?'&':'').urlencode($k).'=';
 						if (isset($m[3]))
-							$opts.=$m[3];
+							$opts.=urlencode($m[3]);
 					} else
 						$req.='/'.$arg;
 				}
-				$_SERVER['REQUEST_URI']=($req?:'/').'?'.urlencode($opts);
+				$_SERVER['REQUEST_URI']=($req?:'/').'?'.$opts;
 				parse_str($opts,$GLOBALS['_GET']);
 			}
 		}
