@@ -115,7 +115,7 @@ class Auth {
 	*	@param $pw string
 	**/
 	protected function _ldap($id,$pw) {
-		$port=intval($this->args['port']?:389);
+		$port=(int)($this->args['port']?:389);
 		$filter=$this->args['filter']=$this->args['filter']?:"uid=".$id;
 		$this->args['attr']=$this->args['attr']?:["uid"];
 		array_walk($this->args['attr'],
