@@ -2282,7 +2282,6 @@ final class Base extends Prefab implements ArrayAccess {
 			'httponly'=>TRUE
 		];
 		call_user_func_array('session_set_cookie_params',$jar);
-		$jar['expire']=$_SERVER['REQUEST_TIME_FLOAT'];
 		$port=80;
 		if (isset($headers['X-Forwarded-Port']))
 			$port=$headers['X-Forwarded-Port'];
