@@ -2531,7 +2531,7 @@ class Cache extends Prefab {
 	function reset($suffix=NULL) {
 		if (!$this->dsn)
 			return TRUE;
-		$regex='/'.preg_quote($this->prefix.'.','/').'.+'.
+		$regex='/'.preg_quote($this->prefix.'.','/').'.*'.
 			preg_quote($suffix,'/').'/';
 		$parts=explode('=',$this->dsn,2);
 		switch ($parts[0]) {
