@@ -244,14 +244,8 @@ class SMTP extends Magic {
 			if (empty($headers[$id]))
 				user_error(sprintf(self::E_Header,$id),E_USER_ERROR);
 		$eol="\r\n";
-		$str='';
 		// Stringify headers
 		foreach ($headers as $key=>&$val) {
-			if (!in_array($key,$reqd) &&
-				(!$this->attachments ||
-				$key!='Content-Type' &&
-				$key!='Content-Transfer-Encoding'))
-				$str.=$key.': '.$val.$eol;
 			if (in_array($key,['From','To','Cc','Bcc'])) {
 				$email='';
 				preg_match_all('/(?:".+?" )?(?:<.+?>|[^ ,]+)/',
@@ -291,7 +285,7 @@ class SMTP extends Magic {
 			$out.='--'.$hash.$eol;
 			$out.='Content-Type: '.$type.$eol;
 			$out.='Content-Transfer-Encoding: '.$enc.$eol;
-			$out.=$str.$eol;
+			$out.=$eol;
 			$out.=$message.$eol;
 			foreach ($this->attachments as $attachment) {
 				if (is_array($attachment['filename']))
