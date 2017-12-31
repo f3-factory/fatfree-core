@@ -45,7 +45,7 @@ final class Base extends Prefab implements ArrayAccess {
 	//@{ Framework details
 	const
 		PACKAGE='Fat-Free Framework',
-		VERSION='3.6.3-Release';
+		VERSION='3.6.4-Dev';
 	//@}
 
 	//@{ HTTP status codes (RFC 2616)
