@@ -400,8 +400,7 @@ final class Base extends Prefab implements ArrayAccess {
 				if ($key=='JAR.expire')
 					$this->hive['JAR']['lifetime']=($val-$time);
 				$jar=$this->unserialize($this->serialize($this->hive['JAR']));
-				unset($jar['lifetime']);
-				$jar['expire']-=$time;
+				unset($jar['expire']);
 				call_user_func_array('session_set_cookie_params',$jar);
 			}
 		}
