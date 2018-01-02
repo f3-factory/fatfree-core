@@ -401,7 +401,8 @@ final class Base extends Prefab implements ArrayAccess {
 					$this->hive['JAR']['lifetime']=($val-$time);
 				$jar=$this->unserialize($this->serialize($this->hive['JAR']));
 				unset($jar['expire']);
-				call_user_func_array('session_set_cookie_params',$jar);
+				if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
+					call_user_func_array('session_set_cookie_params',$jar);
 			}
 		}
 		if ($ttl)
@@ -2277,7 +2278,6 @@ final class Base extends Prefab implements ArrayAccess {
 			(isset($uri['query'])?'?'.$uri['query']:'').
 			(isset($uri['fragment'])?'#'.$uri['fragment']:'');
 		$path=preg_replace('/^'.preg_quote($base,'/').'/','',$uri['path']);
-		session_cache_limiter('');
 		$jar=[
 			'expire'=>0,
 			'lifetime'=>0,
@@ -2369,8 +2369,11 @@ final class Base extends Prefab implements ArrayAccess {
 			'VERSION'=>self::VERSION,
 			'XFRAME'=>'SAMEORIGIN'
 		];
-		unset($jar['expire']);
-		call_user_func_array('session_set_cookie_params',$jar);
+		if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE) {
+			unset($jar['expire']);
+			session_cache_limiter('');
+			call_user_func_array('session_set_cookie_params',$jar);
+		}
 		if (PHP_SAPI=='cli-server' &&
 			preg_match('/^'.preg_quote($base,'/').'$/',$this->hive['URI']))
 			$this->reroute('/');
