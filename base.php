@@ -346,12 +346,13 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $ttl int
 	**/
 	function set($key,$val,$ttl=0) {
-		$time=$this->hive['TIME'];
+		$time=(int)$this->hive['TIME'];
 		if (preg_match('/^(GET|POST|COOKIE)\b(.+)/',$key,$expr)) {
 			$this->set('REQUEST'.$expr[2],$val);
 			if ($expr[1]=='COOKIE') {
 				$parts=$this->cut($key);
 				$jar=$this->unserialize($this->serialize($this->hive['JAR']));
+				unset($jar['lifetime']);
 				if (isset($_COOKIE[$parts[1]]))
 					call_user_func_array('setcookie',
 						array_merge([$parts[1],NULL],['expire'=>0]+$jar));
@@ -393,9 +394,16 @@ final class Base extends Prefab implements ArrayAccess {
 		$ref=&$this->ref($key);
 		$ref=$val;
 		if (preg_match('/^JAR\b/',$key)) {
-			$jar=$this->unserialize($this->serialize($this->hive['JAR']));
-			$jar['expire']-=$time;
-			call_user_func_array('session_set_cookie_params',$jar);
+			if ($key=='JAR.lifetime')
+				$this->set('JAR.expire',is_int($val)?$time+$val:strtotime($val));
+			else {
+				if ($key=='JAR.expire')
+					$this->hive['JAR']['lifetime']=($val-$time);
+				$jar=$this->unserialize($this->serialize($this->hive['JAR']));
+				unset($jar['lifetime']);
+				$jar['expire']-=$time;
+				call_user_func_array('session_set_cookie_params',$jar);
+			}
 		}
 		if ($ttl)
 			// Persist the key-value pair
@@ -440,6 +448,7 @@ final class Base extends Prefab implements ArrayAccess {
 			if ($expr[1]=='COOKIE') {
 				$parts=$this->cut($key);
 				$jar=$this->hive['JAR'];
+				unset($jar['lifetime']);
 				$jar['expire']=0;
 				call_user_func_array('setcookie',
 					array_merge([$parts[1],NULL],$jar));
@@ -2272,6 +2281,7 @@ final class Base extends Prefab implements ArrayAccess {
 		session_cache_limiter('');
 		$jar=[
 			'expire'=>0,
+			'lifetime'=>0,
 			'path'=>$base?:'/',
 			'domain'=>is_int(strpos($_SERVER['SERVER_NAME'],'.')) &&
 				!filter_var($_SERVER['SERVER_NAME'],FILTER_VALIDATE_IP)?
@@ -2279,7 +2289,6 @@ final class Base extends Prefab implements ArrayAccess {
 			'secure'=>($scheme=='https'),
 			'httponly'=>TRUE
 		];
-		call_user_func_array('session_set_cookie_params',$jar);
 		$port=80;
 		if (isset($headers['X-Forwarded-Port']))
 			$port=$headers['X-Forwarded-Port'];
@@ -2361,6 +2370,8 @@ final class Base extends Prefab implements ArrayAccess {
 			'VERSION'=>self::VERSION,
 			'XFRAME'=>'SAMEORIGIN'
 		];
+		unset($jar['expire']);
+		call_user_func_array('session_set_cookie_params',$jar);
 		if (PHP_SAPI=='cli-server' &&
 			preg_match('/^'.preg_quote($base,'/').'$/',$this->hive['URI']))
 			$this->reroute('/');
