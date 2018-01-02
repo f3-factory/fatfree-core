@@ -2744,7 +2744,7 @@ class View extends Prefab {
 	function render($file,$mime='text/html',array $hive=NULL,$ttl=0) {
 		$fw=Base::instance();
 		$cache=Cache::instance();
-		foreach ($fw->split($fw->UI) as $dir)
+		foreach ($fw->split($fw->UI) as $dir) {
 			if ($cache->exists($hash=$fw->hash($dir.$file),$data))
 				return $data;
 			if (is_file($this->file=$fw->fixslashes($dir.$file))) {
@@ -2760,6 +2760,7 @@ class View extends Prefab {
 					$cache->set($hash,$data,$ttl);
 				return $data;
 			}
+		}
 		user_error(sprintf(Base::E_Open,$file),E_USER_ERROR);
 	}
 
