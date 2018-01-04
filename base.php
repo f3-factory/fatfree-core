@@ -346,7 +346,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $ttl int
 	**/
 	function set($key,$val,$ttl=0) {
-		$time=$this->hive['TIME'];
+		$time=(int)$this->hive['TIME'];
 		if (preg_match('/^(GET|POST|COOKIE)\b(.+)/',$key,$expr)) {
 			$this->set('REQUEST'.$expr[2],$val);
 			if ($expr[1]=='COOKIE') {
