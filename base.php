@@ -395,10 +395,11 @@ final class Base extends Prefab implements ArrayAccess {
 		$ref=$val;
 		if (preg_match('/^JAR\b/',$key)) {
 			if ($key=='JAR.lifetime')
-				$this->set('JAR.expire',is_int($val)?$time+$val:strtotime($val));
+				$this->set('JAR.expire',$val==0?0:
+					(is_int($val)?$time+$val:strtotime($val)));
 			else {
 				if ($key=='JAR.expire')
-					$this->hive['JAR']['lifetime']=($val-$time);
+					$this->hive['JAR']['lifetime']=max(0,$val-$time);
 				$jar=$this->unserialize($this->serialize($this->hive['JAR']));
 				unset($jar['expire']);
 				if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
