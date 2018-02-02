@@ -1363,7 +1363,7 @@ final class Base extends Prefab implements ArrayAccess {
 				$this->route($item,$handler,$ttl,$kbps);
 			return;
 		}
-		preg_match('/([\|\w]+)\h+(?:(?:@?(.+?)\h*:\h*)?(@(\w+)|[^\h]+))'.
+		preg_match('/([\|\w]+)\h+(?:(?:@(\w+)\h*:\h*)?(@(\w+)|[^\h]+))'.
 			'(?:\h+\[('.implode('|',$types).')\])?/u',$pattern,$parts);
 		if (isset($parts[2]) && $parts[2])
 			$this->hive['ALIASES'][$alias=$parts[2]]=$parts[3];
