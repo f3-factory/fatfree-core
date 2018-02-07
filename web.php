@@ -52,7 +52,7 @@ class Web extends Prefab {
 				'hqx'=>'application/mac-binhex40',
 				'html?'=>'text/html',
 				'jar'=>'application/java-archive',
-				'jpe?g'=>'image/jpeg',
+				'jpe?g|jfif?'=>'image/jpeg',
 				'js'=>'application/x-javascript',
 				'midi'=>'audio/x-midi',
 				'mp3'=>'audio/mpeg',
