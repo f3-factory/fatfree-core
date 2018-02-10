@@ -1239,11 +1239,18 @@ final class Base extends Prefab implements ArrayAccess {
 			$req.='?'.$this->hive['QUERY'];
 		if (!$text)
 			$text='HTTP '.$code.' ('.$req.')';
-		error_log($text);
 		$trace=$this->trace($trace);
-		foreach (explode("\n",$trace) as $nexus)
-			if ($nexus)
-				error_log($nexus);
+		$loggable=$this->hive['LOGGABLE'];
+		if (!is_array($loggable))
+			$loggable=$this->split($loggable);
+		foreach ($loggable as $status)
+			if ($status=='*' || preg_match('/^'.preg_replace('/\D/','\d',$status).'$/',$code)) {
+				error_log($text);
+				foreach (explode("\n",$trace) as $nexus)
+					if ($nexus)
+						error_log($nexus);
+				break;
+			}
 		if ($highlight=!$this->hive['CLI'] && !$this->hive['AJAX'] &&
 			$this->hive['HIGHLIGHT'] && is_file($css=__DIR__.'/'.self::CSS))
 			$trace=$this->highlight($trace);
@@ -2335,6 +2342,7 @@ final class Base extends Prefab implements ArrayAccess {
 				$this->language($headers['Accept-Language']):
 				$this->fallback,
 			'LOCALES'=>'./',
+			'LOGGABLE'=>'*',
 			'LOGS'=>'./',
 			'MB'=>extension_loaded('mbstring'),
 			'ONERROR'=>NULL,
