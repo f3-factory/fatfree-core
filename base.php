@@ -2848,7 +2848,7 @@ class Preview extends View {
 		if (preg_match('/^(.+)(?<!\|)\|((?:\h*\w+(?:\h*[,;]?))+)$/s',
 			$str,$parts)) {
 			$str=trim($parts[1]);
-			foreach ($fw->split($parts[2]) as $func)
+			foreach ($fw->split(trim($parts[2],"\xC2\xA0")) as $func)
 				$str=is_string($cmd=$this->filter($func))?
 					$cmd.'('.$str.')':
 					'Base::instance()->'.
