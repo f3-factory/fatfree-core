@@ -540,9 +540,9 @@ class Web extends Prefab {
 			foreach ($options['header'] as &$header)
 				if (preg_match('/^Host:/',$header)) {
 					$header='Host: '.$parts['host'];
-					unset($header);
 					break;
 				}
+			unset($header);
 			$this->subst($options['header'],'Host: '.$parts['host']);
 		}
 		$this->subst($options['header'],
