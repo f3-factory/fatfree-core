@@ -246,7 +246,7 @@ class Mapper extends \DB\Cursor {
 				explode(',',$options['order'])));
 		}
 		// SQL Server fixes
-		if (preg_match('/mssql|sqlsrv|odbc/', $this->engine) &&
+		if (preg_match('/mssql|sqlsrv|dblib|odbc/', $this->engine) &&
 			($options['limit'] || $options['offset'])) {
 			// order by pkey when no ordering option was given
 			if (!$options['order'])
@@ -257,7 +257,8 @@ class Mapper extends \DB\Cursor {
 					}
 			$ofs=$options['offset']?(int)$options['offset']:0;
 			$lmt=$options['limit']?(int)$options['limit']:0;
-			if (strncmp($db->version(),'11',2)>=0) {
+            if (preg_match('/dblib/', $this->engine) ||
+                    strncmp($db->version(),'11',2)>=0) {
 				// SQL Server >= 2012
 				$sql.=$order.' OFFSET '.$ofs.' ROWS';
 				if ($lmt)
