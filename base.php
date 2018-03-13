@@ -2205,7 +2205,7 @@ final class Base extends Prefab implements ArrayAccess {
 					$this->error(500,$text,NULL,$level);
 			}
 		);
-		if (!isset($_SERVER['SERVER_NAME']))
+		if (empty($_SERVER['SERVER_NAME']))
 			$_SERVER['SERVER_NAME']=gethostname();
 		if ($cli=PHP_SAPI=='cli') {
 			// Emulate HTTP request
