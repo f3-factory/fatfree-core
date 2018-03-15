@@ -341,7 +341,7 @@ class Template extends Preview {
 	*	return object
 	**/
 	function __construct() {
-		$ref=new ReflectionClass(__CLASS__);
+		$ref=new ReflectionClass(static::class);
 		$this->tags='';
 		foreach ($ref->getmethods() as $method)
 			if (preg_match('/^_(?=[[:alpha:]])/',$method->name))
