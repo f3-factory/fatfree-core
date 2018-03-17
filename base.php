@@ -2693,16 +2693,22 @@ class View extends Prefab {
 		//! Nesting level
 		$level=0;
 
+	/** @var \Base Framework instance */
+	protected $fw;
+
+	function __construct() {
+		$this->fw=\Base::instance();
+	}
+
 	/**
 	*	Encode characters to equivalent HTML entities
 	*	@return string
 	*	@param $arg mixed
 	**/
 	function esc($arg) {
-		$fw=Base::instance();
-		return $fw->recursive($arg,
-			function($val) use($fw) {
-				return is_string($val)?$fw->encode($val):$val;
+		return $this->fw->recursive($arg,
+			function($val) {
+				return is_string($val)?$this->fw->encode($val):$val;
 			}
 		);
 	}
@@ -2713,10 +2719,9 @@ class View extends Prefab {
 	*	@param $arg mixed
 	**/
 	function raw($arg) {
-		$fw=Base::instance();
-		return $fw->recursive($arg,
-			function($val) use($fw) {
-				return is_string($val)?$fw->decode($val):$val;
+		return $this->fw->recursive($arg,
+			function($val) {
+				return is_string($val)?$this->fw->decode($val):$val;
 			}
 		);
 	}
@@ -2728,7 +2733,7 @@ class View extends Prefab {
 	*	@param $mime string
 	**/
 	protected function sandbox(array $hive=NULL,$mime=NULL) {
-		$fw=Base::instance();
+		$fw=$this->fw;
 		$implicit=FALSE;
 		if (is_null($hive)) {
 			$implicit=TRUE;
@@ -2764,7 +2769,7 @@ class View extends Prefab {
 	*	@param $ttl int
 	**/
 	function render($file,$mime='text/html',array $hive=NULL,$ttl=0) {
-		$fw=Base::instance();
+		$fw=$this->fw;
 		$cache=Cache::instance();
 		foreach ($fw->split($fw->UI) as $dir) {
 			if ($cache->exists($hash=$fw->hash($dir.$file),$data))
@@ -2828,7 +2833,6 @@ class Preview extends View {
 	*	@param $val int|float
 	**/
 	function c($val) {
-		$fw=Base::instance();
 		$locale=setlocale(LC_NUMERIC,0);
 		setlocale(LC_NUMERIC,'C');
 		$out=(string)(float)$val;
@@ -2842,7 +2846,7 @@ class Preview extends View {
 	*	@param $str string
 	**/
 	function token($str) {
-		$fw = Base::instance();
+		$fw=$this->fw;
 		$str=trim(preg_replace('/\{\{(.+?)\}\}/s',trim('\1'),
 			$fw->compile($str)));
 		if (preg_match('/^(.+)(?<!\|)\|((?:\h*\w+(?:\h*[,;]?))+)$/s',
@@ -2911,7 +2915,7 @@ class Preview extends View {
 	*	@param $escape bool
 	**/
 	function resolve($node,array $hive=NULL,$ttl=0,$persist=FALSE,$escape=NULL) {
-		$fw=Base::instance();
+		$fw=$this->fw;
 		$cache=Cache::instance();
 		if ($escape!==NULL) {
 			$esc=$fw->ESCAPE;
@@ -2972,7 +2976,7 @@ class Preview extends View {
 	*	@param $ttl int
 	**/
 	function render($file,$mime='text/html',array $hive=NULL,$ttl=0) {
-		$fw=Base::instance();
+		$fw=$this->fw;
 		$cache=Cache::instance();
 		if (!is_dir($tmp=$fw->TEMP))
 			mkdir($tmp,Base::MODE,TRUE);

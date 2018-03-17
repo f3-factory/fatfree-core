@@ -347,6 +347,7 @@ class Template extends Preview {
 			if (preg_match('/^_(?=[[:alpha:]])/',$method->name))
 				$this->tags.=(strlen($this->tags)?'|':'').
 					substr($method->name,1);
+		parent::__construct();
 	}
 
 }
