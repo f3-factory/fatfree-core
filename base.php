@@ -1903,7 +1903,8 @@ final class Base extends Prefab implements ArrayAccess {
 						call_user_func_array(
 							[$this,$cmd[1]],
 							array_merge([$match['lval']],
-								str_getcsv($this->cast($match['rval'])))
+								str_getcsv($cmd[1]=='config'?$this->cast($match['rval']):
+									$match['rval']))
 						);
 					}
 					else {
