@@ -2282,7 +2282,7 @@ final class Base extends Prefab implements ArrayAccess {
 			$base=rtrim($this->fixslashes(
 				dirname($_SERVER['SCRIPT_NAME'])),'/');
 		$uri=parse_url((preg_match('/^\w+:\/\//',$_SERVER['REQUEST_URI'])?'':
-			'//'.$_SERVER['SERVER_NAME']).$_SERVER['REQUEST_URI']);
+			$_SERVER['REQUEST_SCHEME'].'://'.$_SERVER['SERVER_NAME']).$_SERVER['REQUEST_URI']);
 		$_SERVER['REQUEST_URI']=$uri['path'].
 			(isset($uri['query'])?'?'.$uri['query']:'').
 			(isset($uri['fragment'])?'#'.$uri['fragment']:'');
