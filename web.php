@@ -537,12 +537,6 @@ class Web extends Prefab {
 			$this->engine();
 		if ($this->wrapper!='stream') {
 			// PHP streams can't cope with redirects when Host header is set
-			foreach ($options['header'] as &$header)
-				if (preg_match('/^Host:/',$header)) {
-					$header='Host: '.$parts['host'];
-					break;
-				}
-			unset($header);
 			$this->subst($options['header'],'Host: '.$parts['host']);
 		}
 		$this->subst($options['header'],

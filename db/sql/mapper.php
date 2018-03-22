@@ -153,7 +153,7 @@ class Mapper extends \DB\Cursor {
 
 	/**
 	*	Convert array to mapper object
-	*	@return object
+	*	@return static
 	*	@param $row array
 	**/
 	protected function factory($row) {
@@ -286,7 +286,7 @@ class Mapper extends \DB\Cursor {
 
 	/**
 	*	Build query string and execute
-	*	@return object
+	*	@return static[]
 	*	@param $fields string
 	*	@param $filter string|array
 	*	@param $options array
@@ -361,7 +361,7 @@ class Mapper extends \DB\Cursor {
 	/**
 	*	Return record at specified offset using same criteria as
 	*	previous load() call and make it active
-	*	@return array
+	*	@return static
 	*	@param $ofs int
 	**/
 	function skip($ofs=1) {
@@ -386,7 +386,7 @@ class Mapper extends \DB\Cursor {
 
 	/**
 	*	Insert new record
-	*	@return object
+	*	@return static
 	**/
 	function insert() {
 		$args=[];
@@ -425,8 +425,8 @@ class Mapper extends \DB\Cursor {
 			}
 		}
 		if ($fields) {
-			$add='';
-			if ($this->engine=='pgsql') {
+			$add=$aik='';
+			if ($this->engine=='pgsql' && !empty($pkeys)) {
 				$names=array_keys($pkeys);
 				$aik=end($names);
 				$add=' RETURNING '.$this->db->quotekey($aik);
@@ -438,12 +438,12 @@ class Mapper extends \DB\Cursor {
 				'INSERT INTO '.$this->table.' ('.$fields.') '.
 				'VALUES ('.$values.')'.$add,$args
 			);
-			if ($this->engine=='pgsql' && $lID)
+			if ($this->engine=='pgsql' && $lID && $aik)
 				$this->_id=$lID[0][$aik];
 			elseif ($this->engine!='oci')
 				$this->_id=$this->db->lastinsertid();
 			// Reload to obtain default and auto-increment field values
-			if ($reload=($inc || $filter))
+			if ($reload=(($inc && $this->_id) || $filter))
 				$this->load($inc?
 					[$inc.'=?',$this->db->value(
 						$this->fields[$inc]['pdo_type'],$this->_id)]:
@@ -464,7 +464,7 @@ class Mapper extends \DB\Cursor {
 
 	/**
 	*	Update current record
-	*	@return object
+	*	@return static
 	**/
 	function update() {
 		$args=[];
@@ -653,7 +653,7 @@ class Mapper extends \DB\Cursor {
 
 	/**
 	*	Instantiate class
-	*	@param $db object
+	*	@param $db \DB\SQL
 	*	@param $table string
 	*	@param $fields array|string
 	*	@param $ttl int|array
