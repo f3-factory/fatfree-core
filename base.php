@@ -2783,8 +2783,6 @@ class View extends Prefab {
 	*	@param $ttl int
 	**/
 	function render($file,$mime='text/html',array $hive=NULL,$ttl=0) {
-		var_dump($this->fw);
-		die;
 		$fw=$this->fw;
 		$cache=Cache::instance();
 		foreach ($fw->split($fw->UI) as $dir) {
