@@ -156,7 +156,7 @@ class Mapper extends \DB\Cursor {
 	*	@return static
 	*	@param $row array
 	**/
-	protected function factory($row) {
+	function factory($row) {
 		$mapper=clone($this);
 		$mapper->reset();
 		foreach ($row as $key=>$val) {
