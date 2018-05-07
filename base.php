@@ -45,7 +45,7 @@ final class Base extends Prefab implements ArrayAccess {
 	//@{ Framework details
 	const
 		PACKAGE='Fat-Free Framework',
-		VERSION='3.6.4-Dev';
+		VERSION='3.6.5-Dev';
 	//@}
 
 	//@{ HTTP status codes (RFC 2616)
@@ -2783,8 +2783,6 @@ class View extends Prefab {
 	*	@param $ttl int
 	**/
 	function render($file,$mime='text/html',array $hive=NULL,$ttl=0) {
-		var_dump($this->fw);
-		die;
 		$fw=$this->fw;
 		$cache=Cache::instance();
 		foreach ($fw->split($fw->UI) as $dir) {

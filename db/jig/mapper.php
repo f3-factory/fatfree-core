@@ -93,7 +93,7 @@ class Mapper extends \DB\Cursor {
 	*	@param $id string
 	*	@param $row array
 	**/
-	protected function factory($id,$row) {
+	function factory($id,$row) {
 		$mapper=clone($this);
 		$mapper->reset();
 		$mapper->id=$id;

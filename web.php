@@ -903,7 +903,7 @@ class Web extends Prefab {
 		for ($i=0,$add=$count-(int)$std;$i<$add;$i++) {
 			shuffle($rnd);
 			$words=array_slice($rnd,0,mt_rand(3,$max));
-			$out.=' '.ucfirst(implode(' ',$words)).'.';
+			$out.=(!$std&&$i==0?'':' ').ucfirst(implode(' ',$words)).'.';
 		}
 		return $out;
 	}
