@@ -204,9 +204,9 @@ class Session extends Mapper {
 		register_shutdown_function('session_commit');
 		$fw=\Base::instance();
 		$headers=$fw->HEADERS;
-		$this->_csrf=$fw->SEED.'.'.$fw->hash(
+		$this->_csrf=$fw->hash($fw->SEED.
 			extension_loaded('openssl')?
-				array_pop(unpack('L',openssl_random_pseudo_bytes(4))):
+				implode(unpack('L',openssl_random_pseudo_bytes(4))):
 				mt_rand()
 			);
 		if ($key)
