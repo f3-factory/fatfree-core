@@ -2,7 +2,7 @@
 
 /*
 
-	Copyright (c) 2009-2017 F3::Factory/Bong Cosca, All rights reserved.
+	Copyright (c) 2009-2018 F3::Factory/Bong Cosca, All rights reserved.
 
 	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
 
@@ -35,7 +35,9 @@ class Auth {
 		//! Mapper object
 		$mapper,
 		//! Storage options
-		$args;
+		$args,
+		//! Custom compare function
+		$func;
 
 	/**
 	*	Jig storage handler
@@ -43,9 +45,8 @@ class Auth {
 	*	@param $id string
 	*	@param $pw string
 	*	@param $realm string
-	 *	@param $func callable
 	**/
-	protected function _jig($id,$pw,$realm,$func) {
+	protected function _jig($id,$pw,$realm) {
 		$success = (bool)
 			call_user_func_array(
 				[$this->mapper,'load'],
@@ -53,18 +54,18 @@ class Auth {
 					array_merge(
 						[
 							'@'.$this->args['id'].'==?'.
-							($func?'':' AND @'.$this->args['pw'].'==?').
+							($this->func?'':' AND @'.$this->args['pw'].'==?').
 							(isset($this->args['realm'])?
 								(' AND @'.$this->args['realm'].'==?'):''),
 							$id
 						],
-						($func?[]:[$pw]),
+						($this->func?[]:[$pw]),
 						(isset($this->args['realm'])?[$realm]:[])
 					)
 				]
 			);
-		if ($success && $func)
-			$success = call_user_func($func,$pw,$this->mapper->get($this->args['pw']));
+		if ($success && $this->func)
+			$success = call_user_func($this->func,$pw,$this->mapper->get($this->args['pw']));
 		return $success;
 	}
 
@@ -74,18 +75,17 @@ class Auth {
 	*	@param $id string
 	*	@param $pw string
 	*	@param $realm string
-	 *	@param $func callable
 	**/
-	protected function _mongo($id,$pw,$realm,$func) {
+	protected function _mongo($id,$pw,$realm) {
 		$success = (bool)
 			$this->mapper->load(
 				[$this->args['id']=>$id]+
-				($func?[]:[$this->args['pw']=>$pw])+
+				($this->func?[]:[$this->args['pw']=>$pw])+
 				(isset($this->args['realm'])?
 					[$this->args['realm']=>$realm]:[])
 			);
-		if ($success && $func)
-			$success = call_user_func($func,$pw,$this->mapper->get($this->args['pw']));
+		if ($success && $this->func)
+			$success = call_user_func($this->func,$pw,$this->mapper->get($this->args['pw']));
 		return $success;
 	}
 
@@ -95,9 +95,8 @@ class Auth {
 	*	@param $id string
 	*	@param $pw string
 	*	@param $realm string
-	*	@param $func callable
 	**/
-	protected function _sql($id,$pw,$realm,$func) {
+	protected function _sql($id,$pw,$realm) {
 		$success = (bool)
 			call_user_func_array(
 				[$this->mapper,'load'],
@@ -105,18 +104,18 @@ class Auth {
 					array_merge(
 						[
 							$this->args['id'].'=?'.
-							($func?'':' AND '.$this->args['pw'].'=?').
+							($this->func?'':' AND '.$this->args['pw'].'=?').
 							(isset($this->args['realm'])?
 								(' AND '.$this->args['realm'].'=?'):''),
 							$id
 						],
-						($func?[]:[$pw]),
+						($this->func?[]:[$pw]),
 						(isset($this->args['realm'])?[$realm]:[])
 					)
 				]
 			);
-		if ($success && $func)
-			$success = call_user_func($func,$pw,$this->mapper->get($this->args['pw']));
+		if ($success && $this->func)
+			$success = call_user_func($this->func,$pw,$this->mapper->get($this->args['pw']));
 		return $success;
 	}
 
@@ -205,10 +204,9 @@ class Auth {
 	*	@param $id string
 	*	@param $pw string
 	*	@param $realm string
-	 *	@param $func callable
 	**/
-	function login($id,$pw,$realm=NULL,$func=NULL) {
-		return $this->{'_'.$this->storage}($id,$pw,$realm,$func);
+	function login($id,$pw,$realm=NULL) {
+		return $this->{'_'.$this->storage}($id,$pw,$realm);
 	}
 
 	/**
@@ -247,8 +245,9 @@ class Auth {
 	*	@return object
 	*	@param $storage string|object
 	*	@param $args array
+	*	@param $func callback
 	**/
-	function __construct($storage,array $args=NULL) {
+	function __construct($storage,array $args=NULL,$func=NULL) {
 		if (is_object($storage) && is_a($storage,'DB\Cursor')) {
 			$this->storage=$storage->dbtype();
 			$this->mapper=$storage;
@@ -257,6 +256,7 @@ class Auth {
 		else
 			$this->storage=$storage;
 		$this->args=$args;
+		$this->func=$func;
 	}
 
 }
