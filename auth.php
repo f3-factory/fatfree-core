@@ -43,24 +43,29 @@ class Auth {
 	*	@param $id string
 	*	@param $pw string
 	*	@param $realm string
+	 *	@param $func callable
 	**/
-	protected function _jig($id,$pw,$realm) {
-		return (bool)
+	protected function _jig($id,$pw,$realm,$func) {
+		$success = (bool)
 			call_user_func_array(
 				[$this->mapper,'load'],
 				[
 					array_merge(
 						[
-							'@'.$this->args['id'].'==? AND '.
-							'@'.$this->args['pw'].'==?'.
+							'@'.$this->args['id'].'==?'.
+							($func?'':' AND @'.$this->args['pw'].'==?').
 							(isset($this->args['realm'])?
 								(' AND @'.$this->args['realm'].'==?'):''),
-							$id,$pw
+							$id
 						],
+						($func?[]:[$pw]),
 						(isset($this->args['realm'])?[$realm]:[])
 					)
 				]
 			);
+		if ($success && $func)
+			$success = call_user_func($func,$pw,$this->mapper->get($this->args['pw']));
+		return $success;
 	}
 
 	/**
@@ -69,17 +74,19 @@ class Auth {
 	*	@param $id string
 	*	@param $pw string
 	*	@param $realm string
+	 *	@param $func callable
 	**/
-	protected function _mongo($id,$pw,$realm) {
-		return (bool)
+	protected function _mongo($id,$pw,$realm,$func) {
+		$success = (bool)
 			$this->mapper->load(
-				[
-					$this->args['id']=>$id,
-					$this->args['pw']=>$pw
-				]+
+				[$this->args['id']=>$id]+
+				($func?[]:[$this->args['pw']=>$pw])+
 				(isset($this->args['realm'])?
 					[$this->args['realm']=>$realm]:[])
 			);
+		if ($success && $func)
+			$success = call_user_func($func,$pw,$this->mapper->get($this->args['pw']));
+		return $success;
 	}
 
 	/**
@@ -88,24 +95,29 @@ class Auth {
 	*	@param $id string
 	*	@param $pw string
 	*	@param $realm string
+	*	@param $func callable
 	**/
-	protected function _sql($id,$pw,$realm) {
-		return (bool)
+	protected function _sql($id,$pw,$realm,$func) {
+		$success = (bool)
 			call_user_func_array(
 				[$this->mapper,'load'],
 				[
 					array_merge(
 						[
-							$this->args['id'].'=? AND '.
-							$this->args['pw'].'=?'.
+							$this->args['id'].'=?'.
+							($func?'':' AND '.$this->args['pw'].'=?').
 							(isset($this->args['realm'])?
 								(' AND '.$this->args['realm'].'=?'):''),
-							$id,$pw
+							$id
 						],
+						($func?[]:[$pw]),
 						(isset($this->args['realm'])?[$realm]:[])
 					)
 				]
 			);
+		if ($success && $func)
+			$success = call_user_func($func,$pw,$this->mapper->get($this->args['pw']));
+		return $success;
 	}
 
 	/**
@@ -193,9 +205,10 @@ class Auth {
 	*	@param $id string
 	*	@param $pw string
 	*	@param $realm string
+	 *	@param $func callable
 	**/
-	function login($id,$pw,$realm=NULL) {
-		return $this->{'_'.$this->storage}($id,$pw,$realm);
+	function login($id,$pw,$realm=NULL,$func=NULL) {
+		return $this->{'_'.$this->storage}($id,$pw,$realm,$func);
 	}
 
 	/**
