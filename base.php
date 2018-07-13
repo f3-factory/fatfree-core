@@ -1741,9 +1741,11 @@ final class Base extends Prefab implements ArrayAccess {
 		$out='';
 		while (ob_get_level())
 			$out=ob_get_clean().$out;
-		header('Content-Encoding: none');
-		header('Content-Length: '.strlen($out));
-		header('Connection: close');
+		if (!headers_sent()) {
+			header('Content-Encoding: none');
+			header('Content-Length: '.strlen($out));
+			header('Connection: close');
+		}
 		session_commit();
 		echo $out;
 		flush();
