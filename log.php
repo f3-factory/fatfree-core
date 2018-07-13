@@ -35,7 +35,7 @@ class Log {
 	**/
 	function write($text,$format='r') {
 		$fw=Base::instance();
-		foreach (preg_split('/\r\n|\r|\n/',$text) as $line)
+		foreach (preg_split('/\r?\n|\r/',trim($text)) as $line)
 			$fw->write(
 				$this->file,
 				date($format).
