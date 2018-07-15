@@ -1918,7 +1918,8 @@ final class Base extends Prefab implements ArrayAccess {
 						call_user_func_array(
 							[$this,$cmd[1]],
 							array_merge([$match['lval']],
-								str_getcsv($cmd[1]=='config'?$this->cast($match['rval']):
+								str_getcsv($cmd[1]=='config'?
+								$this->cast($match['rval']):
 									$match['rval']))
 						);
 					}
@@ -1933,9 +1934,11 @@ final class Base extends Prefab implements ArrayAccess {
 						$args=array_map(
 							function($val) {
 								$val=$this->cast($val);
-								return is_string($val)
-									? preg_replace('/\\\\"/','"',$val)
-									: $val;
+								if (is_string($val))
+									$val=strlen($val)?
+										preg_replace('/\\\\"/','"',$val):
+										NULL;
+								return $val;
 							},
 							// Mark quoted strings with 0x00 whitespace
 							str_getcsv(preg_replace(
@@ -2259,7 +2262,7 @@ final class Base extends Prefab implements ArrayAccess {
 				foreach (getallheaders() as $key=>$val) {
 					$tmp=strtoupper(strtr($key,'-','_'));
 					// TODO: use ucwords delimiters for php 5.4.32+ & 5.5.16+
-					$key=strtr(ucwords(strtolower(strtr($key,'-',' '))),' ','-');
+					$key=strtr(ucwords($tmp),' ','-');
 					$headers[$key]=$val;
 					if (isset($_SERVER['HTTP_'.$tmp]))
 						$headers[$key]=&$_SERVER['HTTP_'.$tmp];
@@ -2515,7 +2518,8 @@ class Cache extends Prefab {
 			case 'xcache':
 				return xcache_set($ndx,$data,$ttl);
 			case 'folder':
-				return $fw->write($parts[1].str_replace(['/','\\'],'',$ndx),$data);
+				return $fw->write($parts[1].
+					str_replace(['/','\\'],'',$ndx),$data);
 		}
 		return FALSE;
 	}
