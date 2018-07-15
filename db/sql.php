@@ -220,7 +220,7 @@ class SQL {
 						'/';
 				}
 				if ($log)
-					$this->log.=($stamp?(date('r').' '):'').' (-0ms) '.
+					$this->log.=($stamp?(date('r').' '):'').'(-0ms) '.
 						preg_replace($keys,$vals,
 							str_replace('?',chr(0).'?',$cmd),1).PHP_EOL;
 				$query->execute();
