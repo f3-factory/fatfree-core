@@ -2226,6 +2226,7 @@ final class Base extends Prefab implements ArrayAccess {
 		);
 		if (!isset($_SERVER['SERVER_NAME']) || $_SERVER['SERVER_NAME']==='')
 			$_SERVER['SERVER_NAME']=gethostname();
+		$headers=[];
 		if ($cli=PHP_SAPI=='cli') {
 			// Emulate HTTP request
 			$_SERVER['REQUEST_METHOD']='GET';
@@ -2256,28 +2257,25 @@ final class Base extends Prefab implements ArrayAccess {
 			$_SERVER['REQUEST_URI']=$req;
 			parse_str($query,$GLOBALS['_GET']);
 		}
-		$headers=[];
-		if (!$cli) {
-			if (function_exists('getallheaders')) {
-				foreach (getallheaders() as $key=>$val) {
-					$tmp=strtoupper(strtr($key,'-','_'));
-					// TODO: use ucwords delimiters for php 5.4.32+ & 5.5.16+
-					$key=strtr(ucwords(strtolower(strtr($key,'-',' '))),' ','-');
-					$headers[$key]=$val;
-					if (isset($_SERVER['HTTP_'.$tmp]))
-						$headers[$key]=&$_SERVER['HTTP_'.$tmp];
-				}
+		elseif (function_exists('getallheaders')) {
+			foreach (getallheaders() as $key=>$val) {
+				$tmp=strtoupper(strtr($key,'-','_'));
+				// TODO: use ucwords delimiters for php 5.4.32+ & 5.5.16+
+				$key=strtr(ucwords(strtolower(strtr($key,'-',' '))),' ','-');
+				$headers[$key]=$val;
+				if (isset($_SERVER['HTTP_'.$tmp]))
+					$headers[$key]=&$_SERVER['HTTP_'.$tmp];
 			}
-			else {
-				if (isset($_SERVER['CONTENT_LENGTH']))
-					$headers['Content-Length']=&$_SERVER['CONTENT_LENGTH'];
-				if (isset($_SERVER['CONTENT_TYPE']))
-					$headers['Content-Type']=&$_SERVER['CONTENT_TYPE'];
-				foreach (array_keys($_SERVER) as $key)
-					if (substr($key,0,5)=='HTTP_')
-						$headers[strtr(ucwords(strtolower(strtr(
-							substr($key,5),'_',' '))),' ','-')]=&$_SERVER[$key];
-			}
+		}
+		else {
+			if (isset($_SERVER['CONTENT_LENGTH']))
+				$headers['Content-Length']=&$_SERVER['CONTENT_LENGTH'];
+			if (isset($_SERVER['CONTENT_TYPE']))
+				$headers['Content-Type']=&$_SERVER['CONTENT_TYPE'];
+			foreach (array_keys($_SERVER) as $key)
+				if (substr($key,0,5)=='HTTP_')
+					$headers[strtr(ucwords(strtolower(strtr(
+						substr($key,5),'_',' '))),' ','-')]=&$_SERVER[$key];
 		}
 		if (isset($headers['X-HTTP-Method-Override']))
 			$_SERVER['REQUEST_METHOD']=$headers['X-HTTP-Method-Override'];
