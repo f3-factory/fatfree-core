@@ -204,7 +204,7 @@ class SMTP extends Magic {
 			stream_set_blocking($socket,TRUE);
 		}
 		// Get server's initial response
-		$this->dialog(NULL,TRUE,$mock);
+		$this->dialog(NULL,$log,$mock);
 		// Announce presence
 		$reply=$this->dialog('EHLO '.$fw->HOST,$log,$mock);
 		if (strtolower($this->scheme)=='tls') {
