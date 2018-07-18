@@ -603,12 +603,13 @@ class Mapper extends \DB\Cursor {
 	}
 
 	/**
-	*	Populate hive array variable with mapper fields
+	*	Populate array variable with mapper fields
 	*	@return NULL
-	*	@param $key string
+	*	@param $var mixed
 	**/
-	function copyto($key) {
-		$var=&\Base::instance()->ref($key);
+	function copyto(&$var) {
+		if (is_string($var))
+			$var=&\Base::instance()->ref($var);
 		foreach ($this->fields+$this->adhoc as $key=>$field)
 			$var[$key]=$field['value'];
 	}

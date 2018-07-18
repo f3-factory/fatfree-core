@@ -96,11 +96,11 @@ abstract class Cursor extends \Magic implements \IteratorAggregate {
 	abstract function copyfrom($var,$func=NULL);
 
 	/**
-	*	Populate hive array variable with mapper fields
+	*	Populate array variable with mapper fields
 	*	@return NULL
-	*	@param $key string
+	*	@param $var mixed
 	**/
-	abstract function copyto($key);
+	abstract function copyto(&$var);
 
 	/**
 	*	Get cursor's equivalent external iterator
