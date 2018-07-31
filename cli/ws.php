@@ -105,20 +105,21 @@ class WS {
 			return;
 		}
 		// Handshake
-		$bytes=$this->write(
-			$socket,
-			$str='HTTP/1.1 101 Switching Protocols'.$CRLF.
-				'Upgrade: websocket'.$CRLF.
-				'Connection: Upgrade'.$CRLF.
-				'Sec-WebSocket-Accept: '.
-					base64_encode(
-						sha1(
-							$hdrs['Sec-Websocket-Key'].
-							self::Magic,
-							TRUE
-						)
-					).$CRLF.$CRLF
-		);
+		$str='HTTP/1.1 101 Switching Protocols'.$CRLF.
+			'Upgrade: websocket'.$CRLF.
+			'Connection: Upgrade'.$CRLF;
+		if (isset($hdrs['Sec-Websocket-Protocol']))
+			$str.='Sec-WebSocket-Protocol: '.
+				$hdrs['Sec-Websocket-Protocol'].$CRLF;
+		$str.='Sec-WebSocket-Accept: '.
+			base64_encode(
+				sha1(
+					$hdrs['Sec-Websocket-Key'].
+					self::Magic,
+					TRUE
+				)
+			).$CRLF.$CRLF;
+		$bytes=$this->write($socket,$str);
 		if ($bytes) {
 			// Connect agent to server
 			$this->sockets[]=$socket;
