@@ -964,8 +964,12 @@ final class Base extends Prefab implements ArrayAccess {
 											$args[$pos]*100,0,$decimal_point,
 											$thousands_sep).'%';
 								}
+							$frac=$args[$pos]-(int)$args[$pos];
 							return number_format(
-								$args[$pos],isset($prop)?$prop:2,
+								$args[$pos],
+								isset($prop)?
+									$prop:
+									$frac?strlen($frac)-2:0,
 								$decimal_point,$thousands_sep);
 						case 'date':
 							if (empty($mod) || $mod=='short')
