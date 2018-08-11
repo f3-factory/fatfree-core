@@ -345,16 +345,20 @@ class Mapper extends \DB\Cursor {
 	*	@param $ttl int|array
 	**/
 	function count($filter=NULL,array $options=NULL,$ttl=0) {
+		if (!$subquery_mode=$options && !empty($options['group']))
+			$this->adhoc['_rows']=['expr'=>'COUNT(*)','value'=>NULL];
 		$adhoc='';
 		foreach ($this->adhoc as $key=>$field)
 			$adhoc.=','.$field['expr'].' AS '.$this->db->quotekey($key);
 		$fields='*'.$adhoc;
-		if (preg_match('/mssql|dblib|sqlsrv/',$this->engine))
+		if ($subquery_mode && preg_match('/mssql|dblib|sqlsrv/',$this->engine))
 			$fields='TOP 100 PERCENT '.$fields;
 		list($sql,$args)=$this->stringify($fields,$filter,$options);
-		$sql='SELECT COUNT(*) AS '.$this->db->quotekey('_rows').' '.
-			'FROM ('.$sql.') AS '.$this->db->quotekey('_temp');
+		if ($subquery_mode)
+			$sql='SELECT COUNT(*) AS '.$this->db->quotekey('_rows').' '.
+				'FROM ('.$sql.') AS '.$this->db->quotekey('_temp');
 		$result=$this->db->exec($sql,$args,$ttl);
+		unset($this->adhoc['_rows']);
 		return (int)$result[0]['_rows'];
 	}
 
