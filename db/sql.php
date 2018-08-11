@@ -235,7 +235,7 @@ class SQL {
 					user_error('PDOStatement: '.$error[2],E_USER_ERROR);
 				}
 				if (preg_match('/(?:^[\s\(]*'.
-					'(?:EXPLAIN|SELECT|PRAGMA|SHOW)|RETURNING)\b/is',$cmd) ||
+					'(?:WITH|EXPLAIN|SELECT|PRAGMA|SHOW)|RETURNING)\b/is',$cmd) ||
 					(preg_match('/^\s*(?:CALL|EXEC)\b/is',$cmd) &&
 						$query->columnCount())) {
 					$result=$query->fetchall(\PDO::FETCH_ASSOC);
