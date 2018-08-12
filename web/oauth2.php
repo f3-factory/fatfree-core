@@ -67,7 +67,7 @@ class OAuth2 extends \Magic {
 		if (isset($response['body'])
 			&& preg_grep('/HTTP\/1\.\d 200/',$response['headers'])) {
 			return (preg_grep('/^Content-Type:.*application\/json/',$response['headers'])
-				&& $token = json_decode($response['body'],TRUE))
+				&& ($token = json_decode($response['body'],TRUE)))
 				? $token : $response['body'];
 		}
 		return FALSE;
