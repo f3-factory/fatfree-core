@@ -1781,7 +1781,7 @@ final class Base extends Prefab implements ArrayAccess {
 						$parts[1]=call_user_func($container.'::instance')->get($parts[1]);
 					else
 						user_error(sprintf(self::E_Class,
-							$this->stringify($container)),
+							$this->stringify($parts[1])),
 							E_USER_ERROR);
 				}
 				else {
