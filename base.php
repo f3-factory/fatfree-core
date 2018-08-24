@@ -1751,8 +1751,8 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
-	*	Disconnect HTTP client; Requires setting FcgidOutputBufferSize to zero
-	*	if server uses Apache mod_fcgid module
+	*	Disconnect HTTP client;
+	*	Set FcgidOutputBufferSize to zero if server uses mod_fcgid
 	**/
 	function abort() {
 		if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
@@ -1761,7 +1761,6 @@ final class Base extends Prefab implements ArrayAccess {
 		while (ob_get_level())
 			$out=ob_get_clean().$out;
 		if (!headers_sent()) {
-			header('Content-Encoding: none');
 			header('Content-Length: '.strlen($out));
 			header('Connection: close');
 		}
