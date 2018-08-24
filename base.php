@@ -890,8 +890,14 @@ final class Base extends Prefab implements ArrayAccess {
 					return $expr[0];
 				if (isset($type)) {
 					if (isset($this->hive['FORMATS'][$type]))
-						return $this->call($this->hive['FORMATS'][$type],
-							[$args[$pos],isset($mod)?$mod:null,isset($prop)?$prop:null]);
+						return $this->call(
+							$this->hive['FORMATS'][$type],
+							[
+								$args[$pos],
+								isset($mod)?$mod:null,
+								isset($prop)?$prop:null
+							]
+						);
 					switch ($type) {
 						case 'plural':
 							preg_match_all('/(?<tag>\w+)'.
@@ -1248,7 +1254,8 @@ final class Base extends Prefab implements ArrayAccess {
 		if (!is_array($loggable))
 			$loggable=$this->split($loggable);
 		foreach ($loggable as $status)
-			if ($status=='*' || preg_match('/^'.preg_replace('/\D/','\d',$status).'$/',$code)) {
+			if ($status=='*' ||
+				preg_match('/^'.preg_replace('/\D/','\d',$status).'$/',$code)) {
 				error_log($text);
 				foreach (explode("\n",$trace) as $nexus)
 					if ($nexus)
@@ -1274,7 +1281,14 @@ final class Base extends Prefab implements ArrayAccess {
 				'beforeroute,afterroute')===FALSE) &&
 			!$prior && !$this->hive['CLI'] && !$this->hive['QUIET'])
 			echo $this->hive['AJAX']?
-				json_encode(array_diff_key($this->hive['ERROR'],$this->hive['DEBUG']?[]:['trace'=>1])):
+				json_encode(
+					array_diff_key(
+						$this->hive['ERROR'],
+						$this->hive['DEBUG']?
+							[]:
+							['trace'=>1]
+					)
+				):
 				('<!DOCTYPE html>'.$eol.
 				'<html>'.$eol.
 				'<head>'.
@@ -1778,8 +1792,10 @@ final class Base extends Prefab implements ArrayAccess {
 						$parts[1]=call_user_func([$container,'get'],$parts[1]);
 					elseif (is_callable($container))
 						$parts[1]=call_user_func($container,$parts[1],$args);
-					elseif (is_string($container) && is_subclass_of($container,'Prefab'))
-						$parts[1]=call_user_func($container.'::instance')->get($parts[1]);
+					elseif (is_string($container) &&
+						is_subclass_of($container,'Prefab'))
+						$parts[1]=call_user_func($container.'::instance')->
+							get($parts[1]);
 					else
 						user_error(sprintf(self::E_Class,
 							$this->stringify($parts[1])),
