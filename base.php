@@ -1752,7 +1752,8 @@ final class Base extends Prefab implements ArrayAccess {
 
 	/**
 	*	Disconnect HTTP client;
-	*	Set FcgidOutputBufferSize to zero if server uses mod_fcgid
+	*	Set FcgidOutputBufferSize to zero if server uses mod_fcgid;
+	*	Disable mod_deflate when rendering text/html output
 	**/
 	function abort() {
 		if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
