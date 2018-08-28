@@ -207,7 +207,8 @@ class Mapper extends \DB\Cursor {
 			'group'=>NULL,
 			'order'=>NULL,
 			'limit'=>0,
-			'offset'=>0
+			'offset'=>0,
+			'comment'=>NULL
 		];
 		$db=$this->db;
 		$sql='SELECT '.$fields.' FROM '.$this->table;
@@ -281,6 +282,8 @@ class Mapper extends \DB\Cursor {
 			if ($options['offset'])
 				$sql.=' OFFSET '.(int)$options['offset'];
 		}
+		if ($options['comment'])
+			$sql.="\n".' /* '.$options['comment'].' */';
 		return [$sql,$args];
 	}
 
