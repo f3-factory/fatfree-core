@@ -238,9 +238,10 @@ class Mapper extends \DB\Cursor {
 		}
 		if ($options['order']) {
 			$char=substr($db->quotekey(''),0,1);// quoting char
-			$order=' ORDER BY '.(FALSE===strpos($options['order'],$char)?
+			$order=' ORDER BY '.(is_bool(strpos($options['order'],$char))?
 				implode(',',array_map(function($str) use($db) {
-					return preg_match('/^\h*(\w+[._\-\w]*)(?:\h+((?:ASC|DESC)[\w\h]*))?\h*$/i',
+					return preg_match('/^\h*(\w+[._\-\w]*)'.
+						'(?:\h+((?:ASC|DESC)[\w\h]*))?\h*$/i',
 						$str,$parts)?
 						($db->quotekey($parts[1]).
 						(isset($parts[2])?(' '.$parts[2]):'')):$str;
