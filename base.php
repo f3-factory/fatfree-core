@@ -2517,10 +2517,9 @@ class Cache extends Prefab {
 		if (!$this->dsn)
 			return TRUE;
 		$ndx=$this->prefix.'.'.$key;
-		$time=microtime(TRUE);
 		if ($cached=$this->exists($key))
-			list($time,$ttl)=$cached;
-		$data=$fw->serialize([$val,$time,$ttl]);
+			$ttl=$cached[1];
+		$data=$fw->serialize([$val,microtime(TRUE),$ttl]);
 		$parts=explode('=',$this->dsn,2);
 		switch ($parts[0]) {
 			case 'apc':
