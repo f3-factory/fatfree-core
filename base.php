@@ -207,11 +207,13 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
-	 * cast string variable to php type or constant
+	 * Cast string variable to php type or constant
 	 * @param $val
 	 * @return mixed
 	 */
 	function cast($val) {
+		if (preg_match('/^0x/',$val))
+			return intval($val,0);
 		if (is_numeric($val))
 			return $val+0;
 		$val=trim($val);
@@ -2857,7 +2859,7 @@ class Preview extends View {
 		$interpolation=true;
 
 	/**
-	 * enable/disable markup parsing interpolation
+	 * Enable/disable markup parsing interpolation
 	 * mainly used for adding appropriate newlines
 	 * @param $bool bool
 	 */
@@ -2900,7 +2902,7 @@ class Preview extends View {
 	}
 
 	/**
-	*	Register or get (a specific one or all) token filters
+	*	Register or get (one specific or all) token filters
 	*	@param string $key
 	*	@param string|closure $func
 	*	@return array|closure|string
