@@ -212,7 +212,7 @@ final class Base extends Prefab implements ArrayAccess {
 	 * @return mixed
 	 */
 	function cast($val) {
-		if (preg_match('/^0x/',$val))
+		if (preg_match('/^(?:0x[0-9a-f]+|0[0-7]+|0b[01]+)$/i',$val))
 			return intval($val,0);
 		if (is_numeric($val))
 			return $val+0;
