@@ -980,9 +980,11 @@ final class Base extends Prefab implements ArrayAccess {
 									$frac?strlen($frac)-2:0,
 								$decimal_point,$thousands_sep);
 						case 'date':
-							$prop='%A, %d %B %Y';
+							$prop='%d %B %Y';
 							if (empty($mod) || $mod=='short')
 								$prop='%x';
+							elseif ($mod=='full')
+								$prop='%A, '.$prop;
 							return strftime($prop,$args[$pos]);
 						case 'time':
 							$prop='%r';
