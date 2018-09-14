@@ -353,12 +353,14 @@ class Mapper extends \DB\Cursor {
 			$this->adhoc['_rows']=['expr'=>'COUNT(*)','value'=>NULL];
 		$adhoc=[];
 		foreach ($this->adhoc as $key=>$field)
-			// add all adhoc fields (make them available for grouping, sorting, having)
+			// Add all adhoc fields
+			// (make them available for grouping, sorting, having)
 			$adhoc[]=$field['expr'].' AS '.$this->db->quotekey($key);
 		$fields=implode(',',$adhoc);
 		if ($subquery_mode) {
 			if (empty($fields))
-				// select at least one field, ideally the grouping fields or sqlsrv fails
+				// Select at least one field, ideally the grouping fields
+				// or sqlsrv fails
 				$fields=preg_replace('/HAVING.+$/i','',$options['group']);
 			if (preg_match('/mssql|dblib|sqlsrv/',$this->engine))
 				$fields='TOP 100 PERCENT '.$fields;
