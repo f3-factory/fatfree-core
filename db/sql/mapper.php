@@ -349,14 +349,20 @@ class Mapper extends \DB\Cursor {
 	*	@param $ttl int|array
 	**/
 	function count($filter=NULL,array $options=NULL,$ttl=0) {
-		if (!$subquery_mode=$options && !empty($options['group']))
+		if (!($subquery_mode=($options && !empty($options['group']))))
 			$this->adhoc['_rows']=['expr'=>'COUNT(*)','value'=>NULL];
-		$adhoc='';
+		$adhoc=[];
 		foreach ($this->adhoc as $key=>$field)
-			$adhoc.=','.$field['expr'].' AS '.$this->db->quotekey($key);
-		$fields='*'.$adhoc;
-		if ($subquery_mode && preg_match('/mssql|dblib|sqlsrv/',$this->engine))
-			$fields='TOP 100 PERCENT '.$fields;
+			// add all adhoc fields (make them available for grouping, sorting, having)
+			$adhoc[]=$field['expr'].' AS '.$this->db->quotekey($key);
+		$fields=implode(',',$adhoc);
+		if ($subquery_mode) {
+			if (empty($fields))
+				// select at least one field, ideally the grouping fields or sqlsrv fails
+				$fields=preg_replace('/HAVING.+$/i','',$options['group']);
+			if (preg_match('/mssql|dblib|sqlsrv/',$this->engine))
+				$fields='TOP 100 PERCENT '.$fields;
+		}
 		list($sql,$args)=$this->stringify($fields,$filter,$options);
 		if ($subquery_mode)
 			$sql='SELECT COUNT(*) AS '.$this->db->quotekey('_rows').' '.
@@ -365,7 +371,6 @@ class Mapper extends \DB\Cursor {
 		unset($this->adhoc['_rows']);
 		return (int)$result[0]['_rows'];
 	}
-
 	/**
 	*	Return record at specified offset using same criteria as
 	*	previous load() call and make it active
