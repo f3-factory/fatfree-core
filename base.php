@@ -207,7 +207,7 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
-	 * Cast string variable to php type or constant
+	 * Cast string variable to PHP type or constant
 	 * @param $val
 	 * @return mixed
 	 */
@@ -243,13 +243,13 @@ final class Base extends Prefab implements ArrayAccess {
 								$out='['.
 									(isset($sub[3])?
 										$this->compile($sub[3]):
-										var_export($sub[1],TRUE)).
+										$this->export($sub[1])).
 								']';
 							}
 							else
 								$out=function_exists($sub[1])?
 									$sub[0]:
-									('['.var_export($sub[1],TRUE).']'.$sub[2]);
+									('['.$this->export($sub[1]).']'.$sub[2]);
 							return $out;
 						},
 						$expr[2]
@@ -682,7 +682,7 @@ final class Base extends Prefab implements ArrayAccess {
 				$str='';
 				foreach (get_object_vars($arg) as $key=>$val)
 					$str.=($str?',':'').
-						var_export($key,TRUE).'=>'.
+						$this->export($key).'=>'.
 						$this->stringify($val,
 							array_merge($stack,[$arg]));
 				return get_class($arg).'::__set_state(['.$str.'])';
@@ -692,11 +692,11 @@ final class Base extends Prefab implements ArrayAccess {
 					ctype_digit(implode('',array_keys($arg)));
 				foreach ($arg as $key=>$val)
 					$str.=($str?',':'').
-						($num?'':(var_export($key,TRUE).'=>')).
+						($num?'':($this->export($key).'=>')).
 						$this->stringify($val,array_merge($stack,[$arg]));
 				return '['.$str.']';
 			default:
-				return var_export($arg,TRUE);
+				return $this->export($arg);
 		}
 	}
 
@@ -999,6 +999,15 @@ final class Base extends Prefab implements ArrayAccess {
 			},
 			$val
 		);
+	}
+
+	/**
+	*	Return string representation of expression
+	*	@return string
+	*	@param $expr mixed
+	**/
+	function export($expr) {
+		return var_export($expr,TRUE);
 	}
 
 	/**
@@ -1579,7 +1588,7 @@ final class Base extends Prefab implements ArrayAccess {
 			$cors=$this->hive['CORS'];
 			header('Access-Control-Allow-Origin: '.$cors['origin']);
 			header('Access-Control-Allow-Credentials: '.
-				var_export($cors['credentials'],TRUE));
+				$this->export($cors['credentials']));
 			$preflight=
 				isset($this->hive['HEADERS']['Access-Control-Request-Method']);
 		}
@@ -2852,6 +2861,7 @@ class Preview extends View {
 			'c'=>'$this->c',
 			'esc'=>'$this->esc',
 			'raw'=>'$this->raw',
+			'export'=>'Base::instance()->export',
 			'alias'=>'Base::instance()->alias',
 			'format'=>'Base::instance()->format'
 		];
