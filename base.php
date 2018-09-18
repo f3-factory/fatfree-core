@@ -1473,10 +1473,11 @@ final class Base extends Prefab implements ArrayAccess {
 			return;
 		}
 		foreach (explode('|',self::VERBS) as $method)
-			$this->route($method.' '.$url,is_string($class)?
-				$class.'->'.$this->hive['PREMAP'].strtolower($method):
-				[$class,$this->hive['PREMAP'].strtolower($method)],
-				$ttl,$kbps);
+			if (is_callable([$class,$this->hive['PREMAP'].strtolower($method)]))
+				$this->route($method.' '.$url,is_string($class)?
+					$class.'->'.$this->hive['PREMAP'].strtolower($method):
+					[$class,$this->hive['PREMAP'].strtolower($method)],
+					$ttl,$kbps);
 	}
 
 	/**
