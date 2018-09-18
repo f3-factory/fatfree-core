@@ -2905,10 +2905,11 @@ class Preview extends View {
 			$str,$parts)) {
 			$str=trim($parts[1]);
 			foreach ($fw->split(trim($parts[2],"\xC2\xA0")) as $func)
-				$str=is_string($cmd=$this->filter($func))?
+				$str=(!isset($this->filter[$func]) ||
+					is_string($cmd=$this->filter($func)))?
 					$cmd.'('.$str.')':
 					'Base::instance()->'.
-					'call($this->filter(\''.$func.'\'),['.$str.'])';
+						'call($this->filter(\''.$func.'\'),['.$str.'])';
 		}
 		return $str;
 	}
