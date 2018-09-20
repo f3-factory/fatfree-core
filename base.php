@@ -1705,8 +1705,9 @@ final class Base extends Prefab implements ArrayAccess {
 			// URL doesn't match any route
 			$this->error(404);
 		elseif (!$this->hive['CLI']) {
-			// Unhandled HTTP method
-			header('Allow: '.implode(',',array_unique($allowed)));
+			if (!preg_grep('/Allow:/',headers_list()))
+				// Unhandled HTTP method
+				header('Allow: '.implode(',',array_unique($allowed)));
 			if ($cors) {
 				header('Access-Control-Allow-Methods: OPTIONS,'.
 					implode(',',$allowed));
