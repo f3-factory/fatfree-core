@@ -2906,7 +2906,7 @@ class Preview extends View {
 			$str,$parts)) {
 			$str=trim($parts[1]);
 			foreach ($fw->split(trim($parts[2],"\xC2\xA0")) as $func)
-				$str=(!isset($this->filter[$func]) ||
+				$str=((!isset($this->filter[$cmd=$func]) && function_exists($cmd)) ||
 					is_string($cmd=$this->filter($func)))?
 					$cmd.'('.$str.')':
 					'Base::instance()->'.
