@@ -99,7 +99,7 @@ class Matrix extends Prefab {
 		$out=FALSE;
 		if (extension_loaded('calendar')) {
 			if (is_string($date))
-				$date=strotime($date);
+				$date=strtotime($date);
 			$parts=getdate($date);
 			$days=cal_days_in_month(CAL_GREGORIAN,$parts['mon'],$parts['year']);
 			$ref=date('w',strtotime(date('Y-m',$parts[0]).'-01'))+(7-$first)%7;
