@@ -1351,11 +1351,11 @@ final class Base extends Prefab implements ArrayAccess {
 		$GLOBALS['_POST']=$verb=='POST'?$args:[];
 		$GLOBALS['_REQUEST']=array_merge($GLOBALS['_GET'],$GLOBALS['_POST']);
 		foreach ($headers?:[] as $key=>$val){
-            $this->hive['HEADERS'][$key]=$val;
-		    if (in_array(strtolower($key),['content-length','content-type']))
-                $_SERVER[strtr(strtoupper($key),'-','_')]=$val;
-		    else
-                $_SERVER['HTTP_'.strtr(strtoupper($key),'-','_')]=$val;
+			$this->hive['HEADERS'][$key]=$val;
+			if (in_array(strtolower($key),['content-length','content-type']))
+				$_SERVER[strtr(strtoupper($key),'-','_')]=$val;
+			else
+				$_SERVER['HTTP_'.strtr(strtoupper($key),'-','_')]=$val;
 		}
 		$this->hive['VERB']=$verb;
 		$this->hive['PATH']=$url['path'];
