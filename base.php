@@ -2906,7 +2906,8 @@ class Preview extends View {
 			$str,$parts)) {
 			$str=trim($parts[1]);
 			foreach ($fw->split(trim($parts[2],"\xC2\xA0")) as $func)
-				$str=((!isset($this->filter[$cmd=$func]) && function_exists($cmd)) ||
+				$str=((empty($this->filter[$cmd=$func]) &&
+					function_exists($cmd)) ||
 					is_string($cmd=$this->filter($func)))?
 					$cmd.'('.$str.')':
 					'Base::instance()->'.
@@ -2937,21 +2938,18 @@ class Preview extends View {
 	**/
 	protected function build($node) {
 		return preg_replace_callback(
-			'/\{~(.+?)~\}|\{\*(.+?)\*\}|\{\-(.+?)\-\}|'.
-			'\{\{(.+?)\}\}((\r?\n)*)/s',
+			'/\{~(.+?)~\}|\{\*(.+?)\*\}|\{\{(.+?)\}\}((\r?\n)*)/s',
 			function($expr) {
 				if ($expr[1])
 					$str='<?php '.$this->token($expr[1]).' ?>';
 				elseif ($expr[2])
 					return '';
-				elseif ($expr[3])
-					$str=$expr[3];
 				else {
-					$str='<?= ('.trim($this->token($expr[4])).')'.
+					$str='<?= ('.trim($this->token($expr[3])).')'.
 						($this->interpolation?
-							(!empty($expr[6])?'."'.$expr[6].'"':''):'').' ?>';
-					if (isset($expr[5]))
-						$str.=$expr[5];
+							(!empty($expr[5])?'."'.$expr[5].'"':''):'').' ?>';
+					if (isset($expr[4]))
+						$str.=$expr[4];
 				}
 				return $str;
 			},
