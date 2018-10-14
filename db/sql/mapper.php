@@ -34,6 +34,8 @@ class Mapper extends \DB\Cursor {
 		$source,
 		//! SQL table (quoted)
 		$table,
+		//! Alias for SQL table
+		$as,
 		//! Last insert ID
 		$_id,
 		//! Defined fields
@@ -212,6 +214,8 @@ class Mapper extends \DB\Cursor {
 		];
 		$db=$this->db;
 		$sql='SELECT '.$fields.' FROM '.$this->table;
+		if (isset($this->as))
+			$sql.=' AS '.$this->db->quotekey($this->as);
 		$args=[];
 		if (is_array($filter)) {
 			$args=isset($filter[1]) && is_array($filter[1])?
@@ -664,6 +668,15 @@ class Mapper extends \DB\Cursor {
 	**/
 	function getiterator() {
 		return new \ArrayIterator($this->cast());
+	}
+
+	/**
+	*	Assign alias for table
+	*	@param $alias string
+	**/
+	function alias($alias) {
+		$this->as=$alias;
+		return $this;
 	}
 
 	/**
