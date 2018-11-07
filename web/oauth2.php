@@ -66,7 +66,7 @@ class OAuth2 extends \Magic {
 		if ($response['error'])
 			user_error($response['error'],E_USER_ERROR);
 		if (isset($response['body'])) {
-			if (preg_grep('/^Content-Type:.*application\/json/',
+			if (preg_grep('/^Content-Type:.*application\/json/i',
 				$response['headers'])) {
 				$token=json_decode($response['body'],TRUE);
 				if (isset($token['error_description']))
