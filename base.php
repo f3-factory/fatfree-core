@@ -2542,7 +2542,7 @@ class Cache extends Prefab {
 			case 'apcu':
 				return call_user_func($parts[0].'_store',$ndx,$data,$ttl);
 			case 'redis':
-				return $this->ref->set($ndx,$data,$ttl?['ex'=>$ttl]:[]);
+				return $this->ref->setex($ndx, $ttl,$data);
 			case 'memcache':
 				return memcache_set($this->ref,$ndx,$data,0,$ttl);
 			case 'memcached':
@@ -2582,7 +2582,7 @@ class Cache extends Prefab {
 			case 'apcu':
 				return call_user_func($parts[0].'_delete',$ndx);
 			case 'redis':
-				return $this->ref->del($ndx);
+				return $this->ref->delete($ndx);
 			case 'memcache':
 				return memcache_delete($this->ref,$ndx);
 			case 'memcached':
@@ -2729,6 +2729,36 @@ class Cache extends Prefab {
 		if ($dsn)
 			$this->load($dsn);
 	}
+	
+
+	    /**
+	     * * A helper static function to remove cache
+	     * @param $name
+	     * @return bool
+	     */
+	    public static function delete( $name ){
+		$cache_key = md5($name);
+		Cache::instance()->clear($cache_key);
+		return true;
+	    }
+
+	    /**
+	     * A helper static function to use cache
+	     * @param $cacheKey
+	     * @param int $ttl
+	     * @param $function_call
+	     * @return FALSE|mixed
+	     */
+	    public static function remember( $name , $ttl = 0 , $function_call){
+		$cache_key = md5($name);
+		if(!$output = Cache::instance()->get($cache_key)) {
+		    $output = $function_call();
+		    Cache::instance()->clear($cache_key);
+		    Cache::instance()->set($cache_key , $output , $ttl);
+		}
+		return $output;
+	    }
+
 
 }
 
