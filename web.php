@@ -269,7 +269,7 @@ class Web extends Prefab {
 	**/
 	protected function _curl($url,$options) {
 		$curl=curl_init($url);
-		if (!ini_get('open_basedir'))
+		if (!$open_basedir=ini_get('open_basedir'))
 			curl_setopt($curl,CURLOPT_FOLLOWLOCATION,
 				$options['follow_location']);
 		curl_setopt($curl,CURLOPT_MAXREDIRS,
@@ -306,7 +306,7 @@ class Web extends Prefab {
 		curl_close($curl);
 		$body=ob_get_clean();
 		if (!$err &&
-			$options['follow_location'] &&
+			$options['follow_location'] && $open_basedir &&
 			preg_grep('/HTTP\/1\.\d 3\d{2}/',$headers) &&
 			preg_match('/^Location: (.+)$/m',implode(PHP_EOL,$headers),$loc)) {
 			$options['max_redirects']--;
