@@ -2,7 +2,7 @@
 
 /*
 
-	Copyright (c) 2009-2017 F3::Factory/Bong Cosca, All rights reserved.
+	Copyright (c) 2009-2019 F3::Factory/Bong Cosca, All rights reserved.
 
 	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
 
@@ -45,7 +45,7 @@ final class Base extends Prefab implements ArrayAccess {
 	//@{ Framework details
 	const
 		PACKAGE='Fat-Free Framework',
-		VERSION='3.6.6-Dev';
+		VERSION='3.7.0-Dev';
 	//@}
 
 	//@{ HTTP status codes (RFC 2616)
@@ -436,7 +436,6 @@ final class Base extends Prefab implements ArrayAccess {
 
 	/**
 	*	Unset hive key
-	*	@return NULL
 	*	@param $key string
 	**/
 	function clear($key) {
@@ -512,7 +511,6 @@ final class Base extends Prefab implements ArrayAccess {
 
 	/**
 	*	Multi-variable assignment using associative array
-	*	@return NULL
 	*	@param $vars array
 	*	@param $prefix string
 	*	@param $ttl int
@@ -886,7 +884,22 @@ final class Base extends Prefab implements ArrayAccess {
 			'(?:,\s*(?P<mod>(?:\w+(?:\s*\{.+?\}\s*,?\s*)?)*)'.
 			'(?:,\s*(?P<prop>.+?))?)?)?\s*\}/',
 			function($expr) use($args,$conv) {
+				/**
+				 * @var string $pos
+				 * @var string $mod
+				 * @var string $type
+				 * @var string $prop
+				 */
 				extract($expr);
+				/**
+				 * @var string $thousands_sep
+				 * @var string $negative_sign
+				 * @var string $positive_sign
+				 * @var string $frac_digits
+				 * @var string $decimal_point
+				 * @var string $int_curr_symbol
+				 * @var string $currency_symbol
+				 */
 				extract($conv);
 				if (!array_key_exists($pos,$args))
 					return $expr[0];
@@ -907,6 +920,8 @@ final class Base extends Prefab implements ArrayAccess {
 								$mod,$matches,PREG_SET_ORDER);
 							$ord=['zero','one','two'];
 							foreach ($matches as $match) {
+								/** @var string $tag */
+								/** @var string $data */
 								extract($match);
 								if (isset($ord[$args[$pos]]) &&
 									$tag==$ord[$args[$pos]] || $tag=='other')
@@ -1134,7 +1149,6 @@ final class Base extends Prefab implements ArrayAccess {
 
 	/**
 	*	Send cache metadata to HTTP client
-	*	@return NULL
 	*	@param $secs int
 	**/
 	function expire($secs=0) {
@@ -1248,7 +1262,6 @@ final class Base extends Prefab implements ArrayAccess {
 	*	Log error; Execute ONERROR handler if defined, else display
 	*	default error page (HTML for synchronous requests, JSON string
 	*	for AJAX requests)
-	*	@return NULL
 	*	@param $code int
 	*	@param $text string
 	*	@param $trace array
@@ -2086,7 +2099,6 @@ final class Base extends Prefab implements ArrayAccess {
 
 	/**
 	*	Dump expression with syntax highlighting
-	*	@return NULL
 	*	@param $expr mixed
 	**/
 	function dump($expr) {
@@ -2110,6 +2122,7 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	protected function autoload($class) {
 		$class=$this->fixslashes(ltrim($class,'\\'));
+		/** @var callable $func */
 		$func=NULL;
 		if (is_array($path=$this->hive['AUTOLOAD']) &&
 			isset($path[1]) && is_callable($path[1]))
@@ -2155,7 +2168,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	Convenience method for assigning hive value
 	*	@return mixed
 	*	@param $key string
-	*	@param $val scalar
+	*	@param $val mixed
 	**/
 	function offsetset($key,$val) {
 		return $this->set($key,$val);
@@ -2173,7 +2186,6 @@ final class Base extends Prefab implements ArrayAccess {
 
 	/**
 	*	Convenience method for removing hive key
-	*	@return NULL
 	*	@param $key string
 	**/
 	function offsetunset($key) {
@@ -2211,7 +2223,6 @@ final class Base extends Prefab implements ArrayAccess {
 
 	/**
 	*	Alias for offsetunset()
-	*	@return mixed
 	*	@param $key string
 	**/
 	function __unset($key) {
@@ -2248,6 +2259,7 @@ final class Base extends Prefab implements ArrayAccess {
 		$check=error_reporting((E_ALL|E_STRICT)&~(E_NOTICE|E_USER_NOTICE));
 		set_exception_handler(
 			function($obj) {
+				/** @var Exception $obj */
 				$this->hive['EXCEPTION']=$obj;
 				$this->error(500,
 					$obj->getmessage().' '.
@@ -3475,7 +3487,6 @@ final class Registry {
 
 	/**
 	*	Delete object from catalog
-	*	@return NULL
 	*	@param $key string
 	**/
 	static function clear($key) {
