@@ -59,14 +59,15 @@ abstract class Magic implements ArrayAccess {
 	**/
 	function offsetexists($key) {
 		return Base::instance()->visible($this,$key)?
-			isset($this->$key):$this->exists($key);
+			isset($this->$key):
+			($this->exists($key) && $this->get($key)!==NULL);
 	}
 
 	/**
 	*	Convenience method for assigning property value
 	*	@return mixed
 	*	@param $key string
-	*	@param $val scalar
+	*	@param $val mixed
 	**/
 	function offsetset($key,$val) {
 		return Base::instance()->visible($this,$key)?
@@ -111,7 +112,7 @@ abstract class Magic implements ArrayAccess {
 	*	Alias for offsetset()
 	*	@return mixed
 	*	@param $key string
-	*	@param $val scalar
+	*	@param $val mixed
 	**/
 	function __set($key,$val) {
 		return $this->offsetset($key,$val);
@@ -129,7 +130,6 @@ abstract class Magic implements ArrayAccess {
 
 	/**
 	*	Alias for offsetunset()
-	*	@return NULL
 	*	@param $key string
 	**/
 	function __unset($key) {
