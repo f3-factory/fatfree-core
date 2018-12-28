@@ -46,19 +46,19 @@ class Mapper extends \DB\Cursor {
 	}
 
 	/**
-	*	Return TRUE if field is defined and not NULL
+	*	Return TRUE if field is defined
 	*	@return bool
 	*	@param $key string
 	**/
 	function exists($key) {
-		return isset($this->document[$key]);
+		return array_key_exists($key,$this->document);
 	}
 
 	/**
 	*	Assign value to field
-	*	@return mixed|FALSE
+	*	@return scalar|FALSE
 	*	@param $key string
-	*	@param $val mixed
+	*	@param $val scalar
 	**/
 	function set($key,$val) {
 		return ($key=='_id')?FALSE:($this->document[$key]=$val);
@@ -66,7 +66,7 @@ class Mapper extends \DB\Cursor {
 
 	/**
 	*	Retrieve value of field
-	*	@return mixed|FALSE
+	*	@return scalar|FALSE
 	*	@param $key string
 	**/
 	function &get($key) {
@@ -79,6 +79,7 @@ class Mapper extends \DB\Cursor {
 
 	/**
 	*	Delete field
+	*	@return NULL
 	*	@param $key string
 	**/
 	function clear($key) {
