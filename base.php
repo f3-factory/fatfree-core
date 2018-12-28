@@ -2067,7 +2067,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $append bool
 	**/
 	function write($file,$data,$append=FALSE) {
-		return file_put_contents($file,$data,LOCK_EX|($append?FILE_APPEND:0));
+		return file_put_contents($file,$data,$this->hive['LOCK']|($append?FILE_APPEND:0));
 	}
 
 	/**
@@ -2408,6 +2408,7 @@ final class Base extends Prefab implements ArrayAccess {
 				$this->language($headers['Accept-Language']):
 				$this->fallback,
 			'LOCALES'=>'./',
+			'LOCK'=>LOCK_EX,
 			'LOGGABLE'=>'*',
 			'LOGS'=>'./',
 			'MB'=>extension_loaded('mbstring'),
