@@ -34,9 +34,15 @@ class OAuth2 extends \Magic {
 	*	@return string
 	*	@param $endpoint string
 	*	@param $query bool
+	*       @param $url_encode bool
 	**/
-	function uri($endpoint,$query=TRUE) {
-		return $endpoint.($query?('?'.http_build_query($this->args)):'');
+	function uri($endpoint,$query=TRUE,$url_encode=true) {
+	    if ($url_encode) 
+	        return $endpoint.($query?('?'.http_build_query($this->args)):'');
+        $output = '';
+	    foreach( $this->args as $key => $value )
+	        $output .= "{$key}={$value}&";
+	        return $endpoint.($query?'?'.rtrim($output,"&"):'');	
 	}
 
 	/**
