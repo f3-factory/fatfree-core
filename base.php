@@ -1453,7 +1453,7 @@ final class Base extends Prefab implements ArrayAccess {
 		$url=$this->build($url,isset($parts[2])?$this->parse($parts[2]):[]).
 			(isset($parts[3])?$parts[3]:'');
 		if (($handler=$this->hive['ONREROUTE']) &&
-			$this->call($handler,[$url,$permanent])!==FALSE)
+			$this->call($handler,[$url,$permanent,$die])!==FALSE)
 			return;
 		if ($url[0]=='/' && (empty($url[1]) || $url[1]!='/')) {
 			$port=$this->hive['PORT'];
