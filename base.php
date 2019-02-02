@@ -1083,6 +1083,9 @@ final class Base extends Prefab implements ArrayAccess {
 					is_file($file=$base.'.php')) &&
 					is_array($dict=require($file)))
 					$lex+=$dict;
+				elseif (is_file($file=$base.'.json') &&
+					is_array($dict=json_decode(file_get_contents($file), true)))
+					$lex+=$dict;
 				elseif (is_file($file=$base.'.ini')) {
 					preg_match_all(
 						'/(?<=^|\n)(?:'.
