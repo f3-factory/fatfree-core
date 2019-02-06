@@ -2,7 +2,7 @@
 
 /*
 
-	Copyright (c) 2009-2017 F3::Factory/Bong Cosca, All rights reserved.
+	Copyright (c) 2009-2019 F3::Factory/Bong Cosca, All rights reserved.
 
 	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
 
@@ -48,7 +48,7 @@ class Web extends Prefab {
 					$mime=trim(exec('file -bI '.escapeshellarg($file)));
 				elseif (!preg_match('/^win/i',PHP_OS))
 					$mime=trim(exec('file -bi '.escapeshellarg($file)));
-				if ($mime){
+				if (isset($mime) && !empty($mime)){
 					// cut charset information if any
 					$exp=explode(';',$mime,2);
 					$mime=$exp[0];
@@ -991,6 +991,7 @@ if (!function_exists('gzdecode')) {
 	/**
 	*	Decode gzip-compressed string
 	*	@param $str string
+	*	@return string
 	**/
 	function gzdecode($str) {
 		$fw=Base::instance();
