@@ -992,7 +992,7 @@ final class Base extends Prefab implements ArrayAccess {
 								$args[$pos],
 								isset($prop)?
 									$prop:
-									$frac?strlen($frac)-2:0,
+									($frac?strlen($frac)-2:0),
 								$decimal_point,$thousands_sep);
 						case 'date':
 							$prop='%d %B %Y';
