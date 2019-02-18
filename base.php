@@ -1074,7 +1074,7 @@ final class Base extends Prefab implements ArrayAccess {
 		$languages=$this->languages?:explode(',',$this->fallback);
 		$cache=Cache::instance();
 		if ($cache->exists(
-			$hash=$this->hash(implode(',',$languages)).'.dic',$lex))
+			$hash=$this->hash(implode(',',$languages).$path).'.dic',$lex))
 			return $lex;
 		$lex=[];
 		foreach ($languages as $lang)
