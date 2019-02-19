@@ -165,8 +165,9 @@ class Session extends Mapper {
 	*	@param $force bool
 	*	@param $onsuspect callback
 	*	@param $key string
+	*	@param $type string, column type for data field
 	**/
-	function __construct(\DB\SQL $db,$table='sessions',$force=TRUE,$onsuspect=NULL,$key=NULL) {
+	function __construct(\DB\SQL $db,$table='sessions',$force=TRUE,$onsuspect=NULL,$key=NULL,$type='TEXT') {
 		if ($force) {
 			$eol="\n";
 			$tab="\t";
@@ -182,7 +183,7 @@ class Session extends Mapper {
 				$db->quotekey($table,FALSE).' ('.$eol.
 					($sqlsrv?$tab.$db->quotekey('id').' INT IDENTITY,'.$eol:'').
 					$tab.$db->quotekey('session_id').' VARCHAR(255),'.$eol.
-					$tab.$db->quotekey('data').' TEXT,'.$eol.
+					$tab.$db->quotekey('data').' '.$type.','.$eol.
 					$tab.$db->quotekey('ip').' VARCHAR(45),'.$eol.
 					$tab.$db->quotekey('agent').' VARCHAR(300),'.$eol.
 					$tab.$db->quotekey('stamp').' INTEGER,'.$eol.
