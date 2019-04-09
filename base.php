@@ -1955,7 +1955,7 @@ final class Base extends Prefab implements ArrayAccess {
 						$sec=$match['section'];
 						if (preg_match(
 							'/^(?!(?:global|config|route|map|redirect)s\b)'.
-							'((?:\.?\w)+)/i',$sec,$msec) &&
+							'((?:[^:])+)/i',$sec,$msec) &&
 							!$this->exists($msec[0]))
 							$this->set($msec[0],NULL);
 						preg_match('/^(config|route|map|redirect)s\b|'.
