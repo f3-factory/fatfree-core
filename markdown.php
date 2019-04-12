@@ -141,7 +141,7 @@ class Markdown extends Prefab {
 						'/(?<=^|\n)(?:'.
 						'(;[^\n]*)|(?:<\?php.+?\?>?)|'.
 						'(?:\[(.+?)\])|'.
-						'(.+?)\h*=\h*'.
+						'(.+?)(\h*=\h*)'.
 						'((?:\\\\\h*\r?\n|.+?)*)'.
 						')((?:\r?\n)+|$)/',
 						$str,$matches,PREG_SET_ORDER
@@ -156,14 +156,14 @@ class Markdown extends Prefab {
 								'</span>';
 						elseif ($match[3])
 							$out.='<span class="ini_key">'.$match[3].
-								'</span>='.
-								($match[4]?
+								'</span>'.$match[4].
+								($match[5]?
 									('<span class="ini_value">'.
-										$match[4].'</span>'):'');
+										$match[5].'</span>'):'');
 						else
 							$out.=$match[0];
-						if (isset($match[5]))
-							$out.=$match[5];
+						if (isset($match[6]))
+							$out.=$match[6];
 					}
 					$str='<code>'.$out.'</code>';
 					break;
