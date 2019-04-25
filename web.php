@@ -718,6 +718,12 @@ class Web extends Prefab {
 								$ptr+=strlen($parts[0]);
 								continue;
 							}
+							if ($ext[0]=='css'&&preg_match('/^url\(([^\'"].*?[^\'"])\)/i',
+									substr($src,$ptr),$parts)) {
+								$data.=$parts[0];
+								$ptr+=strlen($parts[0]);
+								continue;
+							}
 							if ($src[$ptr]=='/') {
 								if ($src[$ptr+1]=='*') {
 									// Multiline comment
