@@ -412,50 +412,51 @@ class Agent {
 
 	/**
 	*	Retrieve and unmask payload
-	*	@return array|FALSE
 	**/
 	function fetch() {
 		// Unmask payload
 		$server=$this->server;
 		if (is_bool($buf=$server->read($this->socket)))
 			return FALSE;
-		$op=ord($buf[0]) & WS::OpCode;
-		$len=ord($buf[1]) & WS::Length;
-		$pos=2;
-		if ($len==0x7e) {
-			$len=ord($buf[2])*256+ord($buf[3]);
-			$pos+=2;
+		while($buf) {
+			$op=ord($buf[0]) & WS::OpCode;
+			$len=ord($buf[1]) & WS::Length;
+			$pos=2;
+			if ($len==0x7e) {
+				$len=ord($buf[2])*256+ord($buf[3]);
+				$pos+=2;
+			}
+			else
+			if ($len==0x7f) {
+				for ($i=0,$len=0;$i<8;$i++)
+					$len=$len*256+ord($buf[$i+2]);
+				$pos+=8;
+			}
+			for ($i=0,$mask=[];$i<4;$i++)
+				$mask[$i]=ord($buf[$pos+$i]);
+			$pos+=4;
+			if (strlen($buf)<$len+$pos)
+				return FALSE;
+			for ($i=0,$data='';$i<$len;$i++)
+				$data.=chr(ord($buf[$pos+$i])^$mask[$i%4]);
+			// Dispatch
+			switch ($op & WS::OpCode) {
+			case WS::Ping:
+				$this->send(WS::Pong);
+				break;
+			case WS::Close:
+				$server->close($this->socket);
+				break;
+			case WS::Text:
+				$data=trim($data);
+			case WS::Binary:
+				if (isset($this->events['receive']) &&
+					is_callable($func=$this->events['receive']))
+					$func($this,$op,$data);
+				break;
+			}
+			$buf = substr($buf, $len+$pos);
 		}
-		else
-		if ($len==0x7f) {
-			for ($i=0,$len=0;$i<8;$i++)
-				$len=$len*256+ord($buf[$i+2]);
-			$pos+=8;
-		}
-		for ($i=0,$mask=[];$i<4;$i++)
-			$mask[$i]=ord($buf[$pos+$i]);
-		$pos+=4;
-		if (strlen($buf)<$len+$pos)
-			return FALSE;
-		for ($i=0,$data='';$i<$len;$i++)
-			$data.=chr(ord($buf[$pos+$i])^$mask[$i%4]);
-		// Dispatch
-		switch ($op & WS::OpCode) {
-		case WS::Ping:
-			$this->send(WS::Pong);
-			break;
-		case WS::Close:
-			$server->close($this->socket);
-			break;
-		case WS::Text:
-			$data=trim($data);
-		case WS::Binary:
-			if (isset($this->events['receive']) &&
-				is_callable($func=$this->events['receive']))
-				$func($this,$op,$data);
-			break;
-		}
-		return [$op,$data];
 	}
 
 	/**
