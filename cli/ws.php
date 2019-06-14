@@ -138,11 +138,13 @@ class WS {
 	*	Read from stream socket
 	*	@return string|FALSE
 	*	@param $socket resource
+  * @param $len int
 	**/
-	function read($socket) {
-		if (is_string($buf=@fread($socket,WS::Packet)) &&
-			strlen($buf) &&
-			strlen($buf)<WS::Packet)
+	function read($socket,$len=0) {
+		if (!$len)
+			$len=WS::Packet;
+		if (is_string($buf=@fread($socket,$len)) &&
+			strlen($buf) && strlen($buf)<$len)
 			return $buf;
 		if (isset($this->events['error']) &&
 			is_callable($func=$this->events['error']))
@@ -483,6 +485,7 @@ class Agent {
 		$this->uri=$uri;
 		$this->headers=$hdrs;
 		$this->events=$server->events();
+
 		if (isset($this->events['connect']) &&
 			is_callable($func=$this->events['connect']))
 			$func($this);
