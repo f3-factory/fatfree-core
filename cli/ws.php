@@ -138,7 +138,7 @@ class WS {
 	*	Read from stream socket
 	*	@return string|FALSE
 	*	@param $socket resource
-  * @param $len int
+	*	@param $len int
 	**/
 	function read($socket,$len=0) {
 		if (!$len)
@@ -181,6 +181,10 @@ class WS {
 	function agents($uri=NULL) {
 		return array_filter(
 			$this->agents,
+			/**
+			 * @var $val Agent
+			 * @return bool
+			 */
 			function($val) use($uri) {
 				return $uri?($val->uri()==$uri):TRUE;
 			}
@@ -208,19 +212,15 @@ class WS {
 
 	/**
 	*	Terminate server
-	*	@return NULL
-	*	@param $signal int
 	**/
-	function kill($signal) {
+	function kill() {
 		die;
 	}
 
 	/**
 	*	Execute the server process
-	*	@return object
 	**/
 	function run() {
-		$fw=\Base::instance();
 		// Assign signal handlers
 		declare(ticks=1);
 		pcntl_signal(SIGINT,[$this,'kill']);
@@ -305,8 +305,6 @@ class WS {
 	}
 
 	/**
-	*	Instantiate object
-	*	@return object
 	*	@param $addr string
 	*	@param $ctx resource
 	*	@param $wait int
@@ -335,7 +333,7 @@ class Agent {
 
 	/**
 	*	Return server instance
-	*	@return object
+	*	@return WS
 	**/
 	function server() {
 		return $this->server;
@@ -351,7 +349,7 @@ class Agent {
 
 	/**
 	*	Return socket
-	*	@return object
+	*	@return resource
 	**/
 	function socket() {
 		return $this->socket;
@@ -375,7 +373,7 @@ class Agent {
 
 	/**
 	*	Return socket headers
-	*	@return string
+	*	@return array
 	**/
 	function headers() {
 		return $this->headers;
@@ -384,9 +382,8 @@ class Agent {
 	/**
 	*	Frame and transmit payload
 	*	@return string|FALSE
-	*	@param $socket resource
 	*	@param $op int
-	*	@param $payload string
+	*	@param $data string
 	**/
 	function send($op,$data='') {
 		$server=$this->server;
@@ -395,8 +392,7 @@ class Agent {
 		$buf='';
 		if ($len>0xffff)
 			$buf=pack('CCNN',$mask,0x7f,$len);
-		else
-		if ($len>0x7d)
+		elseif ($len>0x7d)
 			$buf=pack('CCn',$mask,0x7e,$len);
 		else
 			$buf=pack('CC',$mask,$len);
@@ -412,6 +408,7 @@ class Agent {
 
 	/**
 	*	Retrieve and unmask payload
+	*	@return bool|NULL
 	**/
 	function fetch() {
 		// Unmask payload
@@ -461,7 +458,6 @@ class Agent {
 
 	/**
 	*	Destroy object
-	*	@return NULL
 	**/
 	function __destruct() {
 		if (isset($this->events['disconnect']) &&
@@ -470,9 +466,7 @@ class Agent {
 	}
 
 	/**
-	*	Instantiate object
-	*	@return object
-	*	@param $server object
+	*	@param $server WS
 	*	@param $socket resource
 	*	@param $verb string
 	*	@param $uri string
