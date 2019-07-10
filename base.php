@@ -1959,7 +1959,7 @@ final class Base extends Prefab implements ArrayAccess {
 							!$this->exists($msec[0]))
 							$this->set($msec[0],NULL);
 						preg_match('/^(config|route|map|redirect)s\b|'.
-							'^((?:\.?\w)+)\s*\>\s*(.*)/i',$sec,$cmd);
+							'^((?:[^:])+)\s*\>\s*(.*)/i',$sec,$cmd);
 						continue;
 					}
 					if ($allow)
