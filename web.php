@@ -693,7 +693,7 @@ class Web extends Prefab {
 		$dst='';
 		if (!isset($path))
 			$path=$fw->UI.';./';
-		foreach ($fw->split($path,FALSE) as $dir)
+		foreach (array_unique($fw->split($path,FALSE)) as $dir)
 			foreach ($files as $file)
 				if (is_file($save=$fw->fixslashes($dir.$file)) &&
 					is_bool(strpos($save,'../')) &&
@@ -815,6 +815,7 @@ class Web extends Prefab {
 							$cache->set($hash,$data);
 						$dst.=$data;
 					}
+					break;
 				}
 		if (PHP_SAPI!='cli' && $header)
 			header('Content-Type: '.$mime.'; charset='.$fw->ENCODING);

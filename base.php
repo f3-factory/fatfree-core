@@ -2842,7 +2842,7 @@ class View extends Prefab {
 	function render($file,$mime='text/html',array $hive=NULL,$ttl=0) {
 		$fw=$this->fw;
 		$cache=Cache::instance();
-		foreach ($fw->split($fw->UI) as $dir) {
+		foreach (array_unique($fw->split($fw->UI)) as $dir) {
 			if ($cache->exists($hash=$fw->hash($dir.$file),$data))
 				return $data;
 			if (is_file($this->file=$fw->fixslashes($dir.$file))) {
@@ -3054,7 +3054,7 @@ class Preview extends View {
 		$cache=Cache::instance();
 		if (!is_dir($tmp=$fw->TEMP))
 			mkdir($tmp,Base::MODE,TRUE);
-		foreach ($fw->split($fw->UI) as $dir) {
+		foreach (array_unique($fw->split($fw->UI)) as $dir) {
 			if ($cache->exists($hash=$fw->hash($dir.$file),$data))
 				return $data;
 			if (is_file($view=$fw->fixslashes($dir.$file))) {
