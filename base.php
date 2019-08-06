@@ -1060,7 +1060,7 @@ final class Base extends Prefab implements ArrayAccess {
 			$locales[]=$locale.'.'.ini_get('default_charset');
 			$locales[]=$locale;
 		}
-		setlocale(LC_ALL,$locales);
+		//setlocale(LC_ALL,$locales);
 		return $this->hive['LANGUAGE']=implode(',',$this->languages);
 	}
 
@@ -2905,10 +2905,10 @@ class Preview extends View {
 	*	@param $val int|float
 	**/
 	function c($val) {
-		$locale=setlocale(LC_NUMERIC,0);
-		setlocale(LC_NUMERIC,'C');
+		//$locale=setlocale(LC_NUMERIC,0);
+		//setlocale(LC_NUMERIC,'C');
 		$out=(string)(float)$val;
-		$locale=setlocale(LC_NUMERIC,$locale);
+		//$locale=setlocale(LC_NUMERIC,$locale);
 		return $out;
 	}
 
