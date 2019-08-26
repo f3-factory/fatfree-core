@@ -1389,8 +1389,9 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $name string
 	*	@param $params array|string
 	*	@param $query string|array
+	*	@param $fragment string
 	**/
-	function alias($name,$params=[],$query=NULL) {
+	function alias($name,$params=[],$query=NULL,$fragment=NULL) {
 		if (!is_array($params))
 			$params=$this->parse($params);
 		if (empty($this->hive['ALIASES'][$name]))
@@ -1398,7 +1399,7 @@ final class Base extends Prefab implements ArrayAccess {
 		$url=$this->build($this->hive['ALIASES'][$name],$params);
 		if (is_array($query))
 			$query=http_build_query($query);
-		return $url.($query?('?'.$query):'');
+		return $url.($query?('?'.$query):'').($fragment?'#'.$fragment:'');
 	}
 
 	/**
