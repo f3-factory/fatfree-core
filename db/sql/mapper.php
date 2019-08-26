@@ -358,8 +358,9 @@ class Mapper extends \DB\Cursor {
 		$adhoc=[];
 		foreach ($this->adhoc as $key=>$field)
 			// Add all adhoc fields
-			// (make them available for grouping, sorting, having)
-			$adhoc[]=$field['expr'].' AS '.$this->db->quotekey($key);
+			// (make them available for grouping, having)
+			if ($key=='_rows'|| ($subquery_mode && strpos($options['group'],$field)!==FALSE))
+				$adhoc[]=$field['expr'].' AS '.$this->db->quotekey($key);
 		$fields=implode(',',$adhoc);
 		if ($subquery_mode) {
 			if (empty($fields))
