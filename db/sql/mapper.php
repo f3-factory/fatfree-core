@@ -353,22 +353,25 @@ class Mapper extends \DB\Cursor {
 	*	@param $ttl int|array
 	**/
 	function count($filter=NULL,array $options=NULL,$ttl=0) {
-		if (!($subquery_mode=($options && !empty($options['group']))))
-			$this->adhoc['_rows']=['expr'=>'COUNT(*)','value'=>NULL];
 		$adhoc=[];
-		foreach ($this->adhoc as $key=>$field)
-			// Add all adhoc fields
-			// (make them available for grouping, having)
-			if ($key=='_rows'|| ($subquery_mode && strpos($options['group'],$field)!==FALSE))
-				$adhoc[]=$field['expr'].' AS '.$this->db->quotekey($key);
-		$fields=implode(',',$adhoc);
-		if ($subquery_mode) {
+		// with grouping involved, we need to wrap the actualy query and count the results
+		if ($subquery_mode=($options && !empty($options['group']))) {
+			$group_string=preg_replace('/HAVING.+$/i','',$options['group']);
+			$group_fields=array_flip(array_map('trim',explode(',',$group_string)));
+			foreach ($this->adhoc as $key=>$field)
+				// add adhoc fields that are used for grouping
+				if (isset($group_fields[$field]))
+					$adhoc[]=$field['expr'].' AS '.$this->db->quotekey($key);
+			$fields=implode(',',$adhoc);
 			if (empty($fields))
 				// Select at least one field, ideally the grouping fields
 				// or sqlsrv fails
-				$fields=preg_replace('/HAVING.+$/i','',$options['group']);
+				$fields=$group_string;
 			if (preg_match('/mssql|dblib|sqlsrv/',$this->engine))
 				$fields='TOP 100 PERCENT '.$fields;
+		} else {
+			// for simple count just add a new adhoc counter
+			$fields='COUNT(*) AS '.$this->db->quotekey('_rows');
 		}
 		list($sql,$args)=$this->stringify($fields,$filter,$options);
 		if ($subquery_mode)
