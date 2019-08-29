@@ -29,7 +29,7 @@ abstract class Prefab {
 	**/
 	static function instance() {
 		if (!Registry::exists($class=get_called_class())) {
-			$ref=new Reflectionclass($class);
+			$ref=new ReflectionClass($class);
 			$args=func_get_args();
 			Registry::set($class,
 				$args?$ref->newinstanceargs($args):new $class);
@@ -292,7 +292,7 @@ final class Base extends Prefab implements ArrayAccess {
 			elseif ($obj) {
 				$obj=FALSE;
 				if (!is_object($var))
-					$var=new stdclass;
+					$var=new stdClass;
 				if ($add || property_exists($var,$part))
 					$var=&$var->$part;
 				else {
