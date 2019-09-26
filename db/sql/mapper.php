@@ -25,6 +25,11 @@ namespace DB\SQL;
 //! SQL data mapper
 class Mapper extends \DB\Cursor {
 
+	//@{ Error messages
+	const
+		E_PKey='Table %s does not have a primary key';
+	//@}
+
 	protected
 		//! PDO wrapper
 		$db,
@@ -493,7 +498,6 @@ class Mapper extends \DB\Cursor {
 		$args=[];
 		$ctr=0;
 		$pairs='';
-		$filter='';
 		$pkeys=[];
 		foreach ($this->fields as $key=>$field)
 			if ($field['pkey'])
@@ -507,13 +511,16 @@ class Mapper extends \DB\Cursor {
 				$pairs.=($pairs?',':'').$this->db->quotekey($key).'=?';
 				$args[++$ctr]=[$field['value'],$field['pdo_type']];
 			}
-		foreach ($this->fields as $key=>$field)
-			if ($field['pkey']) {
-				$filter.=($filter?' AND ':' WHERE ').
-					$this->db->quotekey($key).'=?';
-				$args[++$ctr]=[$field['previous'],$field['pdo_type']];
-			}
 		if ($pairs) {
+			$filter='';
+			foreach ($this->fields as $key=>$field)
+				if ($field['pkey']) {
+					$filter.=($filter?' AND ':' WHERE ').
+						$this->db->quotekey($key).'=?';
+					$args[++$ctr]=[$field['previous'],$field['pdo_type']];
+				}
+			if (!$filter)
+				user_error(sprintf(self::E_PKey,$this->source),E_USER_ERROR);
 			$sql='UPDATE '.$this->table.' SET '.$pairs.$filter;
 			$this->db->exec($sql,$args);
 		}
@@ -572,6 +579,8 @@ class Mapper extends \DB\Cursor {
 				$field['previous']=NULL;
 			unset($field);
 		}
+		if (!$filter)
+			user_error(sprintf(self::E_PKey,$this->source),E_USER_ERROR);
 		foreach ($this->adhoc as &$field) {
 			$field['value']=NULL;
 			unset($field);
