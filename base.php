@@ -67,6 +67,7 @@ final class Base extends Prefab implements ArrayAccess {
 		HTTP_304='Not Modified',
 		HTTP_305='Use Proxy',
 		HTTP_307='Temporary Redirect',
+		HTTP_308='Permanent Redirect',
 		HTTP_400='Bad Request',
 		HTTP_401='Unauthorized',
 		HTTP_402='Payment Required',
@@ -85,12 +86,19 @@ final class Base extends Prefab implements ArrayAccess {
 		HTTP_415='Unsupported Media Type',
 		HTTP_416='Requested Range Not Satisfiable',
 		HTTP_417='Expectation Failed',
+		HTTP_421='Misdirected Request',
+		HTTP_422='Unprocessable Entity',
+		HTTP_423='Locked',
+		HTTP_429='Too Many Requests',
+		HTTP_451='Unavailable For Legal Reasons',
 		HTTP_500='Internal Server Error',
 		HTTP_501='Not Implemented',
 		HTTP_502='Bad Gateway',
 		HTTP_503='Service Unavailable',
 		HTTP_504='Gateway Timeout',
-		HTTP_505='HTTP Version Not Supported';
+		HTTP_505='HTTP Version Not Supported',
+		HTTP_507='Insufficient Storage',
+		HTTP_511='Network Authentication Required';
 	//@}
 
 	const
