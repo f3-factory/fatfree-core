@@ -122,6 +122,7 @@ final class Base extends Prefab implements ArrayAccess {
 	const
 		E_Pattern='Invalid routing pattern: %s',
 		E_Named='Named route does not exist: %s',
+		E_Alias='Invalid named route alias: %s',
 		E_Fatal='Fatal error: %s',
 		E_Open='Unable to open %s',
 		E_Routes='No routes specified',
@@ -1428,8 +1429,11 @@ final class Base extends Prefab implements ArrayAccess {
 		}
 		preg_match('/([\|\w]+)\h+(?:(?:@?(.+?)\h*:\h*)?(@(\w+)|[^\h]+))'.
 			'(?:\h+\[('.implode('|',$types).')\])?/u',$pattern,$parts);
-		if (isset($parts[2]) && $parts[2])
+		if (isset($parts[2]) && $parts[2]) {
+			if (!preg_match('/^\w+$/',$parts[2]))
+				user_error(sprintf(self::E_Alias,$parts[2]),E_USER_ERROR);
 			$this->hive['ALIASES'][$alias=$parts[2]]=$parts[3];
+		}
 		elseif (!empty($parts[4])) {
 			if (empty($this->hive['ALIASES'][$parts[4]]))
 				user_error(sprintf(self::E_Named,$parts[4]),E_USER_ERROR);
