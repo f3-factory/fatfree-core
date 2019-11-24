@@ -5,7 +5,7 @@ CHANGELOG
 *   NEW: Added configurable file locking via LOCK var
 *   NEW: json support for dictionary files
 *   NEW: $die parameter on ONREROUTE hook
-*   Cache, Redit: Added ability to set a forking password, [#287](https://github.com/bcosca/fatfree-core/issues/287)
+*   Cache, Redis: Added ability to set a Redis password, [#287](https://github.com/bcosca/fatfree-core/issues/287)
 *   DB\Mapper\Session: make datatype of data column configurable, [bcosca/fatfree#1130](https://github.com/bcosca/fatfree/issues/1130)
 *   DB\Mapper\SQL: only add adhoc fields in count queries that are used for grouping
 *   Magic (Mappers): fix isset check on existing properties
