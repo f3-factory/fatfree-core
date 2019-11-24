@@ -537,6 +537,41 @@ class Mapper extends \DB\Cursor {
 	}
 
 	/**
+	 * batch-update multiple records at once
+	 * @param string|array $filter
+	 * @return int
+	 */
+	function updateAll($filter=NULL) {
+		$args=[];
+		$ctr=$out=0;
+		$pairs='';
+		foreach ($this->fields as $key=>$field)
+			if ($field['changed']) {
+				$pairs.=($pairs?',':'').$this->db->quotekey($key).'=?';
+				$args[++$ctr]=[$field['value'],$field['pdo_type']];
+			}
+		if ($filter)
+			if (is_array($filter)) {
+				$cond=array_shift($filter);
+				$args=array_merge($args,$filter);
+				$filter=' WHERE '.$cond;
+			} else
+				$filter=' WHERE '.$filter;
+		if ($pairs) {
+			$sql='UPDATE '.$this->table.' SET '.$pairs.$filter;
+			$out = $this->db->exec($sql,$args);
+		}
+		// reset changed flag after calling afterupdate
+		foreach ($this->fields as $key=>&$field) {
+			$field['changed']=FALSE;
+			$field['initial']=$field['value'];
+			unset($field);
+		}
+		return $out;
+	}
+
+
+	/**
 	*	Delete current record
 	*	@return int
 	*	@param $quick bool
