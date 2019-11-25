@@ -364,12 +364,22 @@ final class Base extends Prefab implements ArrayAccess {
 				$parts=$this->cut($key);
 				$jar=$this->unserialize($this->serialize($this->hive['JAR']));
 				unset($jar['lifetime']);
-				if (isset($_COOKIE[$parts[1]]))
-					call_user_func_array('setcookie',
-						array_merge([$parts[1],NULL],['expire'=>0]+$jar));
-				if ($ttl)
-					$jar['expire']=$time+$ttl;
-				call_user_func_array('setcookie',[$parts[1],$val]+$jar);
+				if (version_compare(PHP_VERSION, '7.3.0') >= 0) {
+					unset($jar['expire']);
+					if (isset($_COOKIE[$parts[1]]))
+						setcookie($parts[1],NULL,['expires'=>0]+$jar);
+					if ($ttl)
+						$jar['expires']=$time+$ttl;
+					setcookie($parts[1],$val,$jar);
+				} else {
+					unset($jar['samesite']);
+					if (isset($_COOKIE[$parts[1]]))
+						call_user_func_array('setcookie',
+							array_merge([$parts[1],NULL],['expire'=>0]+$jar));
+					if ($ttl)
+						$jar['expire']=$time+$ttl;
+					call_user_func_array('setcookie',[$parts[1],$val]+$jar);
+				}
 				$_COOKIE[$parts[1]]=$val;
 				return $val;
 			}
@@ -414,7 +424,12 @@ final class Base extends Prefab implements ArrayAccess {
 				$jar=$this->unserialize($this->serialize($this->hive['JAR']));
 				unset($jar['expire']);
 				if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
-					call_user_func_array('session_set_cookie_params',$jar);
+					if (version_compare(PHP_VERSION, '7.3.0') >= 0)
+						session_set_cookie_params($jar);
+					else {
+						unset($jar['samesite']);
+						call_user_func_array('session_set_cookie_params',$jar);
+					}
 			}
 		}
 		if ($ttl)
@@ -461,8 +476,15 @@ final class Base extends Prefab implements ArrayAccess {
 				$jar=$this->hive['JAR'];
 				unset($jar['lifetime']);
 				$jar['expire']=0;
-				call_user_func_array('setcookie',
-					array_merge([$parts[1],NULL],$jar));
+				if (version_compare(PHP_VERSION, '7.3.0') >= 0) {
+					$jar['expires']=$jar['expire'];
+					unset($jar['expire']);
+					setcookie($parts[1],NULL,$jar);
+				} else {
+					unset($jar['samesite']);
+					call_user_func_array('setcookie',
+						array_merge([$parts[1],NULL],$jar));
+				}
 				unset($_COOKIE[$parts[1]]);
 			}
 		}
@@ -2378,7 +2400,8 @@ final class Base extends Prefab implements ArrayAccess {
 				!filter_var($_SERVER['SERVER_NAME'],FILTER_VALIDATE_IP)?
 				$_SERVER['SERVER_NAME']:'',
 			'secure'=>($scheme=='https'),
-			'httponly'=>TRUE
+			'httponly'=>TRUE,
+			'samesite'=>'Lax',
 		];
 		$port=80;
 		if (isset($headers['X-Forwarded-Port']))
@@ -2466,7 +2489,12 @@ final class Base extends Prefab implements ArrayAccess {
 		if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE) {
 			unset($jar['expire']);
 			session_cache_limiter('');
-			call_user_func_array('session_set_cookie_params',$jar);
+			if (version_compare(PHP_VERSION, '7.3.0') >= 0)
+				session_set_cookie_params($jar);
+			else {
+				unset($jar['samesite']);
+				call_user_func_array('session_set_cookie_params',$jar);
+			}
 		}
 		if (PHP_SAPI=='cli-server' &&
 			preg_match('/^'.preg_quote($base,'/').'$/',$this->hive['URI']))
