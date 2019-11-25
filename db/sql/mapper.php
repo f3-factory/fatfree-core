@@ -434,6 +434,15 @@ class Mapper extends \DB\Cursor {
 			\Base::instance()->call($this->trigger['beforeinsert'],
 				[$this,$pkeys])===FALSE)
 			return $this;
+		if ($this->valid())
+			// duplicate record
+			foreach ($this->fields as $key=>&$field) {
+				$field['changed']=true;
+				if ($field['pkey'] && !$inc && $field['pdo_type']==\PDO::PARAM_INT
+					&& !$field['nullable'])
+					$inc=$key;
+				unset($field);
+			}
 		foreach ($this->fields as $key=>&$field) {
 			if ($field['pkey']) {
 				$field['previous']=$field['value'];
@@ -451,6 +460,7 @@ class Mapper extends \DB\Cursor {
 				$actr++;
 				$ckeys[]=$key;
 			}
+			unset($field);
 		}
 		if ($fields) {
 			$add=$aik='';
