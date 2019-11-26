@@ -1,13 +1,17 @@
 CHANGELOG
 
-3.7.0 (XX. November 2019)
+3.7.0 (26. November 2019)
 *   NEW: Matrix, added select and walk methods for array processing and validation tools
 *   NEW: Added configurable file locking via LOCK var
 *   NEW: json support for dictionary files
 *   NEW: $die parameter on ONREROUTE hook
+*   NEW: Added SameSite cookie support for php7.3+ (JAR.samesite), [bcosca/fatfree#1165](https://github.com/bcosca/fatfree/issues/1165)
+*   NEW, DB\SQL\Mapper: added updateAll method to batch-update multiple records at once
+*   CHANGED, DB\SQL\Mapper: Throw error on update/erase if the table has no primary key, [#285](https://github.com/bcosca/fatfree-core/issues/285)
 *   Cache, Redis: Added ability to set a Redis password, [#287](https://github.com/bcosca/fatfree-core/issues/287)
-*   DB\Mapper\Session: make datatype of data column configurable, [bcosca/fatfree#1130](https://github.com/bcosca/fatfree/issues/1130)
-*   DB\Mapper\SQL: only add adhoc fields in count queries that are used for grouping
+*   DB\SQL\Session: make datatype of data column configurable, [bcosca/fatfree#1130](https://github.com/bcosca/fatfree/issues/1130)
+*   DB\SQL\Mapper: only add adhoc fields in count queries that are used for grouping
+*   DB\SQL\Mapper: fixed inserting an already loaded record again (duplicating), [bcosca/fatfree#1093](https://github.com/bcosca/fatfree/issues/1093)
 *   Magic (Mappers): fix isset check on existing properties
 *   SMTP: added support for Bounce mail recipient ("Sender" header)
 *   OAuth2: make query string encode type configurable, [#268](https://github.com/bcosca/fatfree-core/issues/268) [#269](https://github.com/bcosca/fatfree-core/issues/269)
@@ -22,6 +26,8 @@ CHANGELOG
 *   Added fragment argument to alias method, [#282](https://github.com/bcosca/fatfree-core/issues/282)
 *   Allow adding fragment to reroute, [#1156](https://github.com/bcosca/fatfree/issues/1156)
 *   Added additional HTTP status codes, [#283](https://github.com/bcosca/fatfree-core/issues/283)
+*   Added X-Forwarded-For IP to log entries, [bcosca/fatfree#1042](https://github.com/bcosca/fatfree/issues/1042)
+*   Bug fix: broken custom date/time formatting, [bcosca/fatfree#1147](https://github.com/bcosca/fatfree/issues/1147)
 *   Bug fix: duplicate UI path rendering edge-case in Views and minify, [bcosca/fatfree#1152](https://github.com/bcosca/fatfree/issues/1152)
 *   Bug fix: unicode chars in custom config section keys, [bcosca/fatfree#1149](https://github.com/bcosca/fatfree/issues/1149)
 *   Bug fix: ensure valid reroute path in location header, [bcosca/fatfree#1140](https://github.com/bcosca/fatfree/issues/1140)
