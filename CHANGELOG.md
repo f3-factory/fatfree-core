@@ -1,6 +1,6 @@
 CHANGELOG
 
-3.7.1 (30. Dezember 2019)
+3.7.1 (30. December 2019)
 *   Base->build: Add support for brace-enclosed route tokens
 *   Base->reroute, fix duplicate fragment issue on non-alias routes
 *   DB\SQL\Mapper: fix empty check for pkey when reloading after insert
