@@ -503,6 +503,8 @@ final class Base extends Prefab implements ArrayAccess {
 			// Reset global to default value
 			$this->hive[$parts[0]]=$this->init[$parts[0]];
 		else {
+			// Ensure we have no code injection
+			$key=preg_replace('/(\)\W*\w+.*$)/','',$key);
 			eval('unset('.$this->compile('@this->hive.'.$key).');');
 			if ($parts[0]=='SESSION') {
 				session_commit();
@@ -2963,13 +2965,11 @@ class Preview extends View {
 	*	@param $str string
 	**/
 	function token($str) {
-		$fw=$this->fw;
-		$str=trim(preg_replace('/\{\{(.+?)\}\}/s',trim('\1'),
-			$fw->compile($str)));
+		$str=trim(preg_replace('/\{\{(.+?)\}\}/s','\1',$this->fw->compile($str)));
 		if (preg_match('/^(.+)(?<!\|)\|((?:\h*\w+(?:\h*[,;]?))+)$/s',
 			$str,$parts)) {
 			$str=trim($parts[1]);
-			foreach ($fw->split(trim($parts[2],"\xC2\xA0")) as $func)
+			foreach ($this->fw->split(trim($parts[2],"\xC2\xA0")) as $func)
 				$str=((empty($this->filter[$cmd=$func]) &&
 					function_exists($cmd)) ||
 					is_string($cmd=$this->filter($func)))?
