@@ -365,7 +365,7 @@ class Mapper extends \DB\Cursor {
 			$group_fields=array_flip(array_map('trim',explode(',',$group_string)));
 			foreach ($this->adhoc as $key=>$field)
 				// add adhoc fields that are used for grouping
-				if (isset($group_fields[$field]))
+				if (isset($group_fields[$key]))
 					$adhoc[]=$field['expr'].' AS '.$this->db->quotekey($key);
 			$fields=implode(',',$adhoc);
 			if (empty($fields))
