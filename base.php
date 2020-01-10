@@ -972,7 +972,8 @@ final class Base extends Prefab implements ArrayAccess {
 											$cstm=!$int=($prop=='int'))
 											$currency_symbol=$prop;
 										if (!$cstm &&
-											function_exists('money_format'))
+											function_exists('money_format') &&
+											version_compare(PHP_VERSION,'7.4.0')<0)
 											return money_format(
 												'%'.($int?'i':'n'),$args[$pos]);
 										$fmt=[
