@@ -1109,7 +1109,7 @@ final class Base extends Prefab implements ArrayAccess {
 	function lexicon($path,$ttl=0) {
 		$languages=$this->languages?:explode(',',$this->fallback);
 		$cache=Cache::instance();
-		if ($cache->exists(
+		if ($ttl && $cache->exists(
 			$hash=$this->hash(implode(',',$languages).$path).'.dic',$lex))
 			return $lex;
 		$lex=[];
