@@ -1859,7 +1859,8 @@ final class Base extends Prefab implements ArrayAccess {
 			if ($parts[2]=='->') {
 				if (is_subclass_of($parts[1],'Prefab'))
 					$parts[1]=call_user_func($parts[1].'::instance');
-				elseif ($container=$this->get('CONTAINER')) {
+				elseif (isset($this->hive['CONTAINER'])) {
+					$container=$this->hive['CONTAINER'];
 					if (is_object($container) && is_callable([$container,'has'])
 						&& $container->has($parts[1])) // PSR11
 						$parts[1]=call_user_func([$container,'get'],$parts[1]);
@@ -2078,7 +2079,7 @@ final class Base extends Prefab implements ArrayAccess {
 			mkdir($tmp,self::MODE,TRUE);
 		// Use filesystem lock
 		if (is_file($lock=$tmp.
-			$this->get('SEED').'.'.$this->hash($id).'.lock') &&
+			$this->hive['SEED'].'.'.$this->hash($id).'.lock') &&
 			filemtime($lock)+ini_get('max_execution_time')<microtime(TRUE))
 			// Stale lock
 			@unlink($lock);
