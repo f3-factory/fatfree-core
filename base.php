@@ -1997,11 +1997,11 @@ final class Base extends Prefab implements ArrayAccess {
 						$sec=$match['section'];
 						if (preg_match(
 							'/^(?!(?:global|config|route|map|redirect)s\b)'.
-							'((?:[^:])+)/i',$sec,$msec) &&
-							!$this->exists($msec[0]))
-							$this->set($msec[0],NULL);
+							'(.*?)(?:\s*[:>])/i',$sec,$msec) &&
+							!$this->exists($msec[1]))
+							$this->set($msec[1],NULL);
 						preg_match('/^(config|route|map|redirect)s\b|'.
-							'^((?:[^:])+)\s*\>\s*(.*)/i',$sec,$cmd);
+							'^(.+?)\s*\>\s*(.*)/i',$sec,$cmd);
 						continue;
 					}
 					if ($allow)
