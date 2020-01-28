@@ -1494,6 +1494,8 @@ final class Base extends Prefab implements ArrayAccess {
 			$url=$this->build($this->hive['ALIASES'][$parts[1]],
 					isset($parts[2])?$this->parse($parts[2]):[]).
 				(isset($parts[3])?$parts[3]:'').(isset($parts[4])?$parts[4]:'');
+		else
+			$url=$this->build($url);
 		if (($handler=$this->hive['ONREROUTE']) &&
 			$this->call($handler,[$url,$permanent,$die])!==FALSE)
 			return;
