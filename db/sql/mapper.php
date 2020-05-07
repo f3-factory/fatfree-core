@@ -447,7 +447,8 @@ class Mapper extends \DB\Cursor {
 			if ($field['pkey']) {
 				$field['previous']=$field['value'];
 				if (!$inc && $field['pdo_type']==\PDO::PARAM_INT &&
-					is_null($field['value']) && !$field['nullable'])
+					empty($field['value']) && !$field['nullable'] &&
+					is_null($field['default']))
 					$inc=$key;
 				$filter.=($filter?' AND ':'').$this->db->quotekey($key).'=?';
 				$nkeys[$nctr+1]=[$field['value'],$field['pdo_type']];
