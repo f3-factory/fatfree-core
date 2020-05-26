@@ -70,7 +70,7 @@ class WS {
 		$verb=NULL;
 		$uri=NULL;
 		foreach (explode($EOL,trim($buf)) as $line)
-			if (preg_match('/^(\w+)\s(.+)\sHTTP\/1\.\d$/',
+			if (preg_match('/^(\w+)\s(.+)\sHTTP\/[\d.]{1,3}$/',
 				trim($line),$match)) {
 				$verb=$match[1];
 				$uri=$match[2];
