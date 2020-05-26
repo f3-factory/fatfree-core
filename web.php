@@ -778,7 +778,7 @@ class Web extends Prefab {
 								}
 								continue;
 							}
-							if (in_array($src[$ptr],['\'','"'])) {
+							if (in_array($src[$ptr],['\'','"','`'])) {
 								$match=$src[$ptr];
 								$data.=$match;
 								$ptr++;
