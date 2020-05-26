@@ -235,9 +235,31 @@ final class Base extends Prefab implements ArrayAccess {
 	*	Convert JS-style token to PHP expression
 	*	@return string
 	*	@param $str string
+	*	@param $evaluate bool compile expressions as well or only convert variable access
 	**/
-	function compile($str) {
-		return preg_replace_callback(
+	function compile($str, $evaluate=TRUE) {
+		return (!$evaluate)
+			? preg_replace_callback(
+				'/^@(\w+)((?:\..+|\[(?:(?:[^\[\]]*|(?R))*)\])*)/',
+				function($expr) {
+					$str='$'.$expr[1];
+					if (isset($expr[2]))
+						$str.=preg_replace_callback(
+							'/\.([^.\[\]]+)|\[((?:[^\[\]\'"]*|(?R))*)\]/',
+							function($sub) {
+								$val=isset($sub[2]) ? $sub[2] : $sub[1];
+								if (ctype_digit($val))
+									$val=(int)$val;
+								$out='['.$this->export($val).']';
+								return $out;
+							},
+							$expr[2]
+						);
+					return $str;
+				},
+				$str
+			)
+			: preg_replace_callback(
 			'/(?<!\w)@(\w+(?:(?:\->|::)\w+)?)'.
 			'((?:\.\w+|\[(?:(?:[^\[\]]*|(?R))*)\]|(?:\->|::)\w+|\()*)/',
 			function($expr) {
@@ -503,9 +525,9 @@ final class Base extends Prefab implements ArrayAccess {
 			// Reset global to default value
 			$this->hive[$parts[0]]=$this->init[$parts[0]];
 		else {
-			// Ensure we have no code injection
-			$key=preg_replace('/(\)\W*\w+.*$)/','',$key);
-			eval('unset('.$this->compile('@this->hive.'.$key).');');
+			$val=preg_replace('/^(\$hive)/','$this->hive',
+				$this->compile('@hive.'.$key, FALSE));
+			eval('unset('.$val.');');
 			if ($parts[0]=='SESSION') {
 				session_commit();
 				session_start();
