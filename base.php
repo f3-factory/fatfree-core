@@ -2888,7 +2888,8 @@ class View extends Prefab {
 				!preg_grep ('/^Content-Type:/',headers_list()))
 				header('Content-Type: '.$mime.'; '.
 					'charset='.$fw->ENCODING);
-			if ($fw->ESCAPE)
+			if ($fw->ESCAPE && (!$mime ||
+					preg_match('/^(text\/html|(application|text)\/(.+\+)?xml)$/i',$mime)))
 				$hive=$this->esc($hive);
 			if (isset($hive['ALIASES']))
 				$hive['ALIASES']=$fw->build($hive['ALIASES']);
