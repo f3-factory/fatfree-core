@@ -322,16 +322,16 @@ class SQL {
 			list($schema,$table)=explode('.',$table);
 		// Supported engines
 		// format: engine_name => array of:
-		//		0: query
-		//		1: field name of column name
-		//		2: field name of column type
-		//		3: field name of default value
-		//		4: field name of nullable value
-		//		5: expected field value to be nullable
-		//		6: field name of primary key flag
-		//		7: expected field value to be a primary key
-		//		8: field name of auto increment check (optional)
-		//		9: expected field value to be an auto-incremented identifier
+		//	0: query
+		//	1: field name of column name
+		//	2: field name of column type
+		//	3: field name of default value
+		//	4: field name of nullable value
+		//	5: expected field value to be nullable
+		//	6: field name of primary key flag
+		//	7: expected field value to be a primary key
+		//	8: field name of auto increment check (optional)
+		//	9: expected field value to be an auto-incremented identifier
 		$cmd=[
 			'sqlite2?'=>[
 				'SELECT * FROM pragma_table_info('.$this->quote($table).') JOIN ('.
