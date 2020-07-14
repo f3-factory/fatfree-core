@@ -2433,9 +2433,9 @@ final class Base extends Prefab implements ArrayAccess {
 			'samesite'=>'Lax',
 		];
 		$port=80;
-		if (isset($headers['X-Forwarded-Port']))
+		if (!empty($headers['X-Forwarded-Port']))
 			$port=$headers['X-Forwarded-Port'];
-		elseif (isset($_SERVER['SERVER_PORT']))
+		elseif (!empty($_SERVER['SERVER_PORT']))
 			$port=$_SERVER['SERVER_PORT'];
 		// Default configuration
 		$this->hive+=[
@@ -2496,7 +2496,7 @@ final class Base extends Prefab implements ArrayAccess {
 			'QUIET'=>FALSE,
 			'RAW'=>FALSE,
 			'REALM'=>$scheme.'://'.$_SERVER['SERVER_NAME'].
-				($port && !in_array($port,[80,443])?(':'.$port):'').
+				(!in_array($port,[80,443])?(':'.$port):'').
 				$_SERVER['REQUEST_URI'],
 			'RESPONSE'=>'',
 			'ROOT'=>$_SERVER['DOCUMENT_ROOT'],
