@@ -378,6 +378,9 @@ class Mapper extends \DB\Cursor {
 			// for simple count just add a new adhoc counter
 			$fields='COUNT(*) AS '.$this->db->quotekey('_rows');
 		}
+		// no need to order for a count query as that could include virtual
+		// field references that are not present here
+		unset($options['order']);
 		list($sql,$args)=$this->stringify($fields,$filter,$options);
 		if ($subquery_mode)
 			$sql='SELECT COUNT(*) AS '.$this->db->quotekey('_rows').' '.
