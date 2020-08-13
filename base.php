@@ -1366,29 +1366,34 @@ final class Base extends Prefab implements ArrayAccess {
 		if ((!$handler ||
 			$this->call($handler,[$this,$this->hive['PARAMS']],
 				'beforeroute,afterroute')===FALSE) &&
-			!$prior && !$this->hive['CLI'] && !$this->hive['QUIET'])
-			echo $this->hive['AJAX']?
-				json_encode(
-					array_diff_key(
-						$this->hive['ERROR'],
-						$this->hive['DEBUG']?
-							[]:
-							['trace'=>1]
-					)
-				):
-				('<!DOCTYPE html>'.$eol.
-				'<html>'.$eol.
-				'<head>'.
-					'<title>'.$code.' '.$header.'</title>'.
-					($highlight?
-						('<style>'.$this->read($css).'</style>'):'').
-				'</head>'.$eol.
-				'<body>'.$eol.
-					'<h1>'.$header.'</h1>'.$eol.
-					'<p>'.$this->encode($text?:$req).'</p>'.$eol.
-					($this->hive['DEBUG']?('<pre>'.$trace.'</pre>'.$eol):'').
-				'</body>'.$eol.
-				'</html>');
+			!$prior && !$this->hive['QUIET']) {
+			$error=array_diff_key(
+				$this->hive['ERROR'],
+				$this->hive['DEBUG']?
+					[]:
+					['trace'=>1]
+			);
+			if ($this->hive['CLI'])
+				echo PHP_EOL.'==================================='.PHP_EOL.
+					'ERROR '.$error['code'].' - '.$error['status'].PHP_EOL.
+					$error['text'].PHP_EOL.PHP_EOL.$error['trace'];
+			else
+				echo $this->hive['AJAX']?
+					json_encode($error):
+					('<!DOCTYPE html>'.$eol.
+					'<html>'.$eol.
+					'<head>'.
+						'<title>'.$code.' '.$header.'</title>'.
+						($highlight?
+							('<style>'.$this->read($css).'</style>'):'').
+					'</head>'.$eol.
+					'<body>'.$eol.
+						'<h1>'.$header.'</h1>'.$eol.
+						'<p>'.$this->encode($text?:$req).'</p>'.$eol.
+						($this->hive['DEBUG']?('<pre>'.$trace.'</pre>'.$eol):'').
+					'</body>'.$eol.
+					'</html>');
+		}
 		if ($this->hive['HALT'])
 			die(1);
 	}
