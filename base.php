@@ -1293,10 +1293,10 @@ final class Base extends Prefab implements ArrayAccess {
 			function($frame) use($debug) {
 				return isset($frame['file']) &&
 					($debug>1 ||
-					($frame['file']!=__FILE__ || $debug) &&
+					(($frame['file']!=__FILE__ || $debug) &&
 					(empty($frame['function']) ||
 					!preg_match('/^(?:(?:trigger|user)_error|'.
-						'__call|call_user_func)/',$frame['function'])));
+						'__call|call_user_func)/',$frame['function']))));
 			}
 		);
 		if (!$format)
@@ -2202,7 +2202,7 @@ final class Base extends Prefab implements ArrayAccess {
 			isset($path[1]) && is_callable($path[1]))
 			list($path,$func)=$path;
 		foreach ($this->split($this->hive['PLUGINS'].';'.$path) as $auto)
-			if ($func && is_file($file=$func($auto.$class).'.php') ||
+			if (($func && is_file($file=$func($auto.$class).'.php')) ||
 				is_file($file=$auto.$class.'.php') ||
 				is_file($file=$auto.strtolower($class).'.php') ||
 				is_file($file=strtolower($auto.$class).'.php'))
@@ -2350,7 +2350,7 @@ final class Base extends Prefab implements ArrayAccess {
 		if (!isset($_SERVER['SERVER_NAME']) || $_SERVER['SERVER_NAME']==='')
 			$_SERVER['SERVER_NAME']=gethostname();
 		$headers=[];
-		if ($cli=PHP_SAPI=='cli') {
+		if ($cli=(PHP_SAPI=='cli')) {
 			// Emulate HTTP request
 			$_SERVER['REQUEST_METHOD']='GET';
 			if (!isset($_SERVER['argv'][1])) {
