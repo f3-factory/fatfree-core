@@ -1349,8 +1349,8 @@ final class Base extends Prefab implements ArrayAccess {
 						error_log($nexus);
 				break;
 			}
-		if ($highlight=!$this->hive['CLI'] && !$this->hive['AJAX'] &&
-			$this->hive['HIGHLIGHT'] && is_file($css=__DIR__.'/'.self::CSS))
+		if ($highlight=(!$this->hive['CLI'] && !$this->hive['AJAX'] &&
+			$this->hive['HIGHLIGHT'] && is_file($css=__DIR__.'/'.self::CSS)))
 			$trace=$this->highlight($trace);
 		$this->hive['ERROR']=[
 			'status'=>$header,
