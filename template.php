@@ -326,7 +326,7 @@ class Template extends Preview {
 				$tmp.=substr($text,$ptr,$w);
 				$ptr+=$w;
 				if ($w<50)
-					$w++;
+					++$w;
 			}
 		if (strlen($tmp))
 			// Append trailing text

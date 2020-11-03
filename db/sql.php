@@ -173,7 +173,7 @@ class SQL {
 		$fw=\Base::instance();
 		$cache=\Cache::instance();
 		$result=FALSE;
-		for ($i=0;$i<$count;$i++) {
+		for ($i=0;$i<$count;++$i) {
 			$cmd=$cmds[$i];
 			$arg=$args[$i];
 			// ensure 1-based arguments
