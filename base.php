@@ -186,7 +186,7 @@ final class Base extends Prefab implements ArrayAccess {
 						array_key_exists($match[3],$args)) {
 						if (!is_array($args[$match[3]]))
 							return $args[$match[3]];
-						$i++;
+						++$i;
 						return $args[$match[3]][$i-1];
 					}
 					return $match[0];
@@ -1620,7 +1620,7 @@ final class Base extends Prefab implements ArrayAccess {
 		$i=0;
 		while (is_int($pos=strpos($wild,'\*'))) {
 			$wild=substr_replace($wild,'(?P<_'.$i.'>[^\?]*)',$pos,2);
-			$i++;
+			++$i;
 		}
 		preg_match('/^'.
 			preg_replace(
@@ -1772,7 +1772,7 @@ final class Base extends Prefab implements ArrayAccess {
 						$ctr=0;
 						foreach (str_split($body,1024) as $part) {
 							// Throttle output
-							$ctr++;
+							++$ctr;
 							if ($ctr/$kbps>($elapsed=microtime(TRUE)-$now) &&
 								!connection_aborted())
 								usleep(1e6*($ctr/$kbps-$elapsed));
@@ -2354,7 +2354,7 @@ final class Base extends Prefab implements ArrayAccess {
 			// Emulate HTTP request
 			$_SERVER['REQUEST_METHOD']='GET';
 			if (!isset($_SERVER['argv'][1])) {
-				$_SERVER['argc']++;
+				++$_SERVER['argc'];
 				$_SERVER['argv'][1]='/';
 			}
 			$req=$query='';
@@ -2745,7 +2745,7 @@ class Cache extends Prefab {
 			case 'xcache':
 				if ($suffix && !ini_get('xcache.admin.enable_auth')) {
 					$cnt=xcache_count(XC_TYPE_VAR);
-					for ($i=0;$i<$cnt;$i++) {
+					for ($i=0;$i<$cnt;++$i) {
 						$list=xcache_list(XC_TYPE_VAR,$i);
 						foreach ($list['cache_list'] as $item)
 							if (preg_match($regex,$item['name']))
@@ -2903,7 +2903,7 @@ class View extends Prefab {
 		unset($fw,$hive,$implicit,$mime);
 		extract($this->temp);
 		$this->temp=NULL;
-		$this->level++;
+		++$this->level;
 		ob_start();
 		require($this->file);
 		$this->level--;
