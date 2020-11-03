@@ -2906,7 +2906,7 @@ class View extends Prefab {
 		++$this->level;
 		ob_start();
 		require($this->file);
-		$this->level--;
+		--$this->level;
 		return ob_get_clean();
 	}
 

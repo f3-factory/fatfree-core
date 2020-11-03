@@ -283,7 +283,7 @@ class Template extends Preview {
 				if ($match[2]) {
 					// Find matching start tag
 					$stack=[];
-					for($i=count($tree)-1;$i>=0;$i--) {
+					for($i=count($tree)-1;$i>=0;--$i) {
 						$item=$tree[$i];
 						if (is_array($item) &&
 							array_key_exists($match[3],$item) &&
