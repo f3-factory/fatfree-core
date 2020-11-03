@@ -385,7 +385,7 @@ class Web extends Prefab {
 			$options['follow_location'] && $open_basedir &&
 			preg_grep('/HTTP\/[\d.]{1,3} 3\d{2}/',$headers) &&
 			preg_match('/^Location: (.+)$/m',implode(PHP_EOL,$headers),$loc)) {
-			$options['max_redirects']--;
+			--$options['max_redirects'];
 			if($loc[1][0] == '/') {
 				$parts=parse_url($url);
 				$loc[1]=$parts['scheme'].'://'.$parts['host'].
@@ -533,7 +533,7 @@ class Web extends Prefab {
 				preg_grep('/HTTP\/[\d.]{1,3} 3\d{2}/',$headers) &&
 				preg_match('/Location: (.+?)'.preg_quote($eol).'/',
 				$html[0],$loc)) {
-				$options['max_redirects']--;
+				--$options['max_redirects'];
 				return $this->request($loc[1],$options);
 			}
 		}
@@ -743,7 +743,7 @@ class Web extends Prefab {
 									// Presume it's a regex pattern
 									$regex=TRUE;
 									// Backtrack and validate
-									for ($ofs=$ptr;$ofs;$ofs--) {
+									for ($ofs=$ptr;$ofs;--$ofs) {
 										// Pattern should be preceded by
 										// open parenthesis, colon,
 										// object property or operator
