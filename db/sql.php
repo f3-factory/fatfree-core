@@ -408,21 +408,22 @@ class SQL {
 						foreach ($conv as $regex=>$type)
 							if (preg_match('/'.$regex.'/i',$row[$val[2]]))
 								break;
-						$rows[$row[$val[1]]]=[
-							'type'=>$row[$val[2]],
-							'pdo_type'=>$type,
-							'default'=>is_string($row[$val[3]])?
-								preg_replace('/^\s*([\'"])(.*)\1\s*/','\2',
-								$row[$val[3]]):$row[$val[3]],
-							'nullable'=>$row[$val[4]]==$val[5],
-							'pkey'=>$row[$val[6]]==$val[7],
-							'auto_inc'=>isset($val[8]) && isset($row[$val[8]])
-								? ($this->engine=='sqlite'?
-									(bool) preg_match(sprintf($val[9],$row[$val[1]]),
-										$row[$val[8]]):
-									($row[$val[8]]==$val[9])
-								) : NULL,
-						];
+						if (!isset($rows[$row[$val[1]]])) // handle duplicate rows in PgSQL
+							$rows[$row[$val[1]]]=[
+								'type'=>$row[$val[2]],
+								'pdo_type'=>$type,
+								'default'=>is_string($row[$val[3]])?
+									preg_replace('/^\s*([\'"])(.*)\1\s*/','\2',
+									$row[$val[3]]):$row[$val[3]],
+								'nullable'=>$row[$val[4]]==$val[5],
+								'pkey'=>$row[$val[6]]==$val[7],
+								'auto_inc'=>isset($val[8]) && isset($row[$val[8]])
+									? ($this->engine=='sqlite'?
+										(bool) preg_match(sprintf($val[9],$row[$val[1]]),
+											$row[$val[8]]):
+										($row[$val[8]]==$val[9])
+									) : NULL,
+							];
 					}
 				if ($fw->CACHE && $ttl)
 					// Save to cache backend
