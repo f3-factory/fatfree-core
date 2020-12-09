@@ -66,7 +66,9 @@ class SQL {
 	*	@return bool
 	**/
 	function rollback() {
-		$out=$this->pdo->rollback();
+		$out=FALSE;
+		if ($this->pdo->inTransaction())
+			$out=$this->pdo->rollback();
 		$this->trans=FALSE;
 		return $out;
 	}
@@ -76,7 +78,9 @@ class SQL {
 	*	@return bool
 	**/
 	function commit() {
-		$out=$this->pdo->commit();
+		$out=FALSE;
+		if ($this->pdo->inTransaction())
+			$out=$this->pdo->commit();
 		$this->trans=FALSE;
 		return $out;
 	}
