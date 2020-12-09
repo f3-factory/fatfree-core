@@ -257,7 +257,7 @@ class SQL {
 				$query->closecursor();
 				unset($query);
 			}
-			elseif (($error=$this->errorinfo()) && $error[0]!=\PDO::ERR_NONE) {
+			elseif (($error=$this->pdo->errorInfo()) && $error[0]!=\PDO::ERR_NONE) {
 				// PDO-level error occurred
 				if ($this->trans)
 					$this->rollback();
