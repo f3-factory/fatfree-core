@@ -539,7 +539,7 @@ class SQL {
 		$fw=\Base::instance();
 		$this->uuid=$fw->hash($this->dsn=$dsn);
 		if (preg_match('/^.+?(?:dbname|database)=(.+?)(?=;|$)/is',$dsn,$parts))
-			$this->dbname=$parts[1];
+			$this->dbname=str_replace('\\ ',' ',$parts[1]);
 		if (!$options)
 			$options=[];
 		if (isset($parts[0]) && strstr($parts[0],':',TRUE)=='mysql')
