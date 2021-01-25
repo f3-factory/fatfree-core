@@ -45,7 +45,7 @@ final class Base extends Prefab implements ArrayAccess {
 	//@{ Framework details
 	const
 		PACKAGE='Fat-Free Framework',
-		VERSION='3.7.3-Release';
+		VERSION='3.7.4-Dev';
 	//@}
 
 	//@{ HTTP status codes (RFC 2616)
@@ -1376,7 +1376,7 @@ final class Base extends Prefab implements ArrayAccess {
 			if ($this->hive['CLI'])
 				echo PHP_EOL.'==================================='.PHP_EOL.
 					'ERROR '.$error['code'].' - '.$error['status'].PHP_EOL.
-					$error['text'].PHP_EOL.PHP_EOL.$error['trace'];
+					$error['text'].PHP_EOL.PHP_EOL.(isset($error['trace']) ?: '');
 			else
 				echo $this->hive['AJAX']?
 					json_encode($error):
