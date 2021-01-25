@@ -1376,7 +1376,7 @@ final class Base extends Prefab implements ArrayAccess {
 			if ($this->hive['CLI'])
 				echo PHP_EOL.'==================================='.PHP_EOL.
 					'ERROR '.$error['code'].' - '.$error['status'].PHP_EOL.
-					$error['text'].PHP_EOL.PHP_EOL.(isset($error['trace']) ?: '');
+					$error['text'].PHP_EOL.PHP_EOL.(isset($error['trace']) ? $error['trace'] : '');
 			else
 				echo $this->hive['AJAX']?
 					json_encode($error):
