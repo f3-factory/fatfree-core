@@ -557,7 +557,7 @@ final class Base implements \ArrayAccess {
 	**/
 	function visible($obj,$key) {
 		if (property_exists($obj,$key)) {
-			$ref=new ReflectionProperty(get_class($obj),$key);
+			$ref=new \ReflectionProperty(get_class($obj),$key);
 			$out=$ref->ispublic();
 			unset($ref);
 			return $out;
@@ -819,7 +819,7 @@ final class Base implements \ArrayAccess {
 	*	@param $prefix string
 	**/
 	function constants($class,$prefix='') {
-		$ref=new ReflectionClass($class);
+		$ref=new \ReflectionClass($class);
 		return $this->extract($ref->getconstants(),$prefix);
 	}
 
@@ -877,7 +877,7 @@ final class Base implements \ArrayAccess {
 		}
 		switch (gettype($arg)) {
 			case 'object':
-				$ref=new ReflectionClass($arg);
+				$ref=new \ReflectionClass($arg);
 				if ($ref->iscloneable()) {
 					$arg=clone($arg);
 					$cast=is_a($arg,'IteratorAggregate')?
@@ -1906,7 +1906,7 @@ final class Base implements \ArrayAccess {
 							E_USER_ERROR);
 				}
 				else {
-					$ref=new ReflectionClass($parts[1]);
+					$ref=new \ReflectionClass($parts[1]);
 					$parts[1]=method_exists($parts[1],'__construct') && $args?
 						$ref->newinstanceargs($args):
 						$ref->newinstance();
@@ -2779,7 +2779,7 @@ class Cache {
 			if (preg_match('/^redis=(.+)/',$dsn,$parts) &&
 				extension_loaded('redis')) {
 				list($host,$port,$db,$password)=explode(':',$parts[1])+[1=>6379,2=>NULL,3=>NULL];
-				$this->ref=new Redis;
+				$this->ref=new \Redis;
 				if(!$this->ref->connect($host,$port,2))
 					$this->ref=NULL;
 				if(!empty($password))
@@ -2801,7 +2801,7 @@ class Cache {
 				foreach ($fw->split($parts[1]) as $server) {
 					list($host,$port)=explode(':',$server)+[1=>11211];
 					if (empty($this->ref))
-						$this->ref=new Memcached();
+						$this->ref=new \Memcached();
 					$this->ref->addServer($host,$port);
 				}
 			if (empty($this->ref) && !preg_match('/^folder\h*=/',$dsn))
