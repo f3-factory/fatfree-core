@@ -20,23 +20,46 @@
 
 */
 
-//! Legacy mode enabler
-class F3 {
+namespace F3\Web\Google;
 
-	static
-		//! Framework instance
-		$fw;
+//! Google Static Maps API v2 plug-in
+class StaticMap {
+
+	const
+		//! API URL
+		URL_Static='http://maps.googleapis.com/maps/api/staticmap';
+
+	protected
+		//! Query arguments
+		$query=array();
 
 	/**
-	*	Forward function calls to framework
-	*	@return mixed
-	*	@param $func callback
+	*	Specify API key-value pair via magic call
+	*	@return object
+	*	@param $func string
 	*	@param $args array
 	**/
-	static function __callstatic($func,array $args) {
-		if (!self::$fw)
-			self::$fw=\F3\Base::instance();
-		return call_user_func_array([self::$fw,$func],$args);
+	function __call($func,array $args) {
+		$this->query[]=array($func,$args[0]);
+		return $this;
+	}
+
+	/**
+	*	Generate map
+	*	@return string
+	**/
+	function dump() {
+		$fw=\F3\Base::instance();
+		$web=\F3\Web::instance();
+		$out='';
+		return ($req=$web->request(
+			self::URL_Static.'?'.array_reduce(
+				$this->query,
+				function($out,$item) {
+					return ($out.=($out?'&':'').
+						urlencode($item[0]).'='.urlencode($item[1]));
+				}
+			))) && $req['body']?$req['body']:FALSE;
 	}
 
 }
