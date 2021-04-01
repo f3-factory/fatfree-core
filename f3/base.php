@@ -16,7 +16,7 @@
 	General Public License for more details.
 
 	You should have received a copy of the GNU General Public License along
-	with Fat-Free Framework.  If not, see <http://www.gnu.org/licenses/>.
+	with Fat-Free Framework. If not, see <http://www.gnu.org/licenses/>.
 
 */
 
@@ -26,16 +26,13 @@ namespace F3;
 trait Prefab {
 
 	/**
-	*	Return class instance
-	*	@return static
-	**/
-	static function instance() {
-		if (!Registry::exists($class=get_called_class())) {
-			$ref=new \ReflectionClass($class);
-			$args=func_get_args();
-			Registry::set($class,
-				$args?$ref->newinstanceargs($args):new $class);
-		}
+	 * Return class instance
+	 * @param mixed ...$args
+	 * @return static
+	 */
+	static function instance(...$args) {
+		if (!Registry::exists($class=static::class))
+			Registry::set($class,new $class(...$args));
 		return Registry::get($class);
 	}
 
