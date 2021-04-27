@@ -256,7 +256,7 @@ class SMTP extends Magic {
 		foreach ($headers as $key=>&$val) {
 			if (in_array($key,['From','To','Cc','Bcc'])) {
 				$email='';
-				preg_match_all('/(?:".+?" )?(?:<.+?>|[^ ,]+)/',
+				preg_match_all('/(?:".+?" |=\?.+?\?= )?(?:<.+?>|[^ ,]+)/',
 					$val,$matches,PREG_SET_ORDER);
 				foreach ($matches as $raw)
 					$email.=($email?', ':'').
