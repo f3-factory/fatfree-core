@@ -2801,7 +2801,7 @@ class Cache extends Prefab {
 						$this->ref=new Memcached();
 					$this->ref->addServer($host,$port);
 				}
-			if (empty($this->ref) && !preg_match('/^folder\h*=/',$dsn))
+			if (empty($this->ref) && $dsn===TRUE)
 				$dsn=($grep=preg_grep('/^(apc|wincache|xcache)/',
 					array_map('strtolower',get_loaded_extensions())))?
 						// Auto-detect
