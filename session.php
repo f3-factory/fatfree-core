@@ -68,7 +68,7 @@ class Session {
 		if ($data['ip']!=$this->_ip || $data['agent']!=$this->_agent) {
 			$fw=Base::instance();
 			if (!isset($this->onsuspect) ||
-				$fw->call($this->onsuspect,[$this,$id])===FALSE) {
+				$fw->call($this->onsuspect,[$this,$id,$data])===FALSE) {
 				//NB: `session_destroy` can't be called at that stage (`session_start` not completed)
 				$this->destroy($id);
 				$this->close();
