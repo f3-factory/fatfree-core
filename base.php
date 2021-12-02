@@ -159,7 +159,7 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	private function cut($key) {
 		return preg_split('/\[\h*[\'"]?(.+?)[\'"]?\h*\]|(->)|\./',
-			$key,NULL,PREG_SPLIT_NO_EMPTY|PREG_SPLIT_DELIM_CAPTURE);
+			$key,-1,PREG_SPLIT_NO_EMPTY|PREG_SPLIT_DELIM_CAPTURE);
 	}
 
 	/**
@@ -389,18 +389,18 @@ final class Base extends Prefab implements ArrayAccess {
 				if (version_compare(PHP_VERSION, '7.3.0') >= 0) {
 					unset($jar['expire']);
 					if (isset($_COOKIE[$parts[1]]))
-						setcookie($parts[1],NULL,['expires'=>0]+$jar);
+						setcookie($parts[1],'',['expires'=>0]+$jar);
 					if ($ttl)
 						$jar['expires']=$time+$ttl;
-					setcookie($parts[1],$val,$jar);
+					setcookie($parts[1],$val?:'',$jar);
 				} else {
 					unset($jar['samesite']);
 					if (isset($_COOKIE[$parts[1]]))
 						call_user_func_array('setcookie',
-							array_merge([$parts[1],NULL],['expire'=>0]+$jar));
+							array_merge([$parts[1],''],['expire'=>0]+$jar));
 					if ($ttl)
 						$jar['expire']=$time+$ttl;
-					call_user_func_array('setcookie',[$parts[1],$val]+$jar);
+					call_user_func_array('setcookie',[$parts[1],$val?:'']+$jar);
 				}
 				$_COOKIE[$parts[1]]=$val;
 				return $val;
@@ -501,11 +501,11 @@ final class Base extends Prefab implements ArrayAccess {
 				if (version_compare(PHP_VERSION, '7.3.0') >= 0) {
 					$jar['expires']=$jar['expire'];
 					unset($jar['expire']);
-					setcookie($parts[1],NULL,$jar);
+					setcookie($parts[1],'',$jar);
 				} else {
 					unset($jar['samesite']);
 					call_user_func_array('setcookie',
-						array_merge([$parts[1],NULL],$jar));
+						array_merge([$parts[1],''],$jar));
 				}
 				unset($_COOKIE[$parts[1]]);
 			}
@@ -713,7 +713,7 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function split($str,$noempty=TRUE) {
 		return array_map('trim',
-			preg_split('/[,;|]/',$str,0,$noempty?PREG_SPLIT_NO_EMPTY:0));
+			preg_split('/[,;|]/',$str?:'',0,$noempty?PREG_SPLIT_NO_EMPTY:0));
 	}
 
 	/**
@@ -1225,7 +1225,7 @@ final class Base extends Prefab implements ArrayAccess {
 				$time=microtime(TRUE);
 				header_remove('Pragma');
 				header('Cache-Control: max-age='.$secs);
-				header('Expires: '.gmdate('r',$time+$secs));
+				header('Expires: '.gmdate('r',round($time+$secs)));
 				header('Last-Modified: '.gmdate('r'));
 			}
 			else {
