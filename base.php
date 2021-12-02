@@ -159,7 +159,7 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	private function cut($key) {
 		return preg_split('/\[\h*[\'"]?(.+?)[\'"]?\h*\]|(->)|\./',
-			$key,NULL,PREG_SPLIT_NO_EMPTY|PREG_SPLIT_DELIM_CAPTURE);
+			$key,-1,PREG_SPLIT_NO_EMPTY|PREG_SPLIT_DELIM_CAPTURE);
 	}
 
 	/**
@@ -1225,7 +1225,7 @@ final class Base extends Prefab implements ArrayAccess {
 				$time=microtime(TRUE);
 				header_remove('Pragma');
 				header('Cache-Control: max-age='.$secs);
-				header('Expires: '.gmdate('r',$time+$secs));
+				header('Expires: '.gmdate('r',round($time+$secs)));
 				header('Last-Modified: '.gmdate('r'));
 			}
 			else {
@@ -2234,7 +2234,8 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@return mixed
 	*	@param $key string
 	**/
-	function offsetexists($key) {
+    #[\ReturnTypeWillChange]
+    function offsetexists($key) {
 		return $this->exists($key);
 	}
 
@@ -2243,7 +2244,8 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@return mixed
 	*	@param $key string
 	*	@param $val mixed
-	**/
+    **/
+    #[\ReturnTypeWillChange]
 	function offsetset($key,$val) {
 		return $this->set($key,$val);
 	}
@@ -2252,7 +2254,8 @@ final class Base extends Prefab implements ArrayAccess {
 	*	Convenience method for retrieving hive value
 	*	@return mixed
 	*	@param $key string
-	**/
+    **/
+    #[\ReturnTypeWillChange]
 	function &offsetget($key) {
 		$val=&$this->ref($key);
 		return $val;
@@ -2261,7 +2264,8 @@ final class Base extends Prefab implements ArrayAccess {
 	/**
 	*	Convenience method for removing hive key
 	*	@param $key string
-	**/
+    **/
+    #[\ReturnTypeWillChange]
 	function offsetunset($key) {
 		$this->clear($key);
 	}
@@ -2533,9 +2537,11 @@ final class Base extends Prefab implements ArrayAccess {
 		if (PHP_SAPI=='cli-server' &&
 			preg_match('/^'.preg_quote($base,'/').'$/',$this->hive['URI']))
 			$this->reroute('/');
-		if (ini_get('auto_globals_jit'))
+		if (ini_get('auto_globals_jit')) {
 			// Override setting
-			$GLOBALS+=['_ENV'=>$_ENV,'_REQUEST'=>$_REQUEST];
+            $GLOBALS['_ENV']=$_ENV;
+            $GLOBALS['_REQUEST']=$_REQUEST;
+        }
 		// Sync PHP globals with corresponding hive keys
 		$this->init=$this->hive;
 		foreach (explode('|',self::GLOBALS) as $global) {
