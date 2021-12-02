@@ -2234,6 +2234,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@return mixed
 	*	@param $key string
 	**/
+	#[\ReturnTypeWillChange]
 	function offsetexists($key) {
 		return $this->exists($key);
 	}
@@ -2244,6 +2245,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $key string
 	*	@param $val mixed
 	**/
+	#[\ReturnTypeWillChange]
 	function offsetset($key,$val) {
 		return $this->set($key,$val);
 	}
@@ -2253,6 +2255,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@return mixed
 	*	@param $key string
 	**/
+	#[\ReturnTypeWillChange]
 	function &offsetget($key) {
 		$val=&$this->ref($key);
 		return $val;
@@ -2262,6 +2265,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	Convenience method for removing hive key
 	*	@param $key string
 	**/
+	#[\ReturnTypeWillChange]
 	function offsetunset($key) {
 		$this->clear($key);
 	}
