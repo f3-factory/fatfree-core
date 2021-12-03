@@ -2234,8 +2234,8 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@return mixed
 	*	@param $key string
 	**/
-    #[\ReturnTypeWillChange]
-    function offsetexists($key) {
+        #[\ReturnTypeWillChange]
+        function offsetexists($key) {
 		return $this->exists($key);
 	}
 
@@ -2244,8 +2244,8 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@return mixed
 	*	@param $key string
 	*	@param $val mixed
-    **/
-    #[\ReturnTypeWillChange]
+        **/
+        #[\ReturnTypeWillChange]
 	function offsetset($key,$val) {
 		return $this->set($key,$val);
 	}
@@ -2254,8 +2254,8 @@ final class Base extends Prefab implements ArrayAccess {
 	*	Convenience method for retrieving hive value
 	*	@return mixed
 	*	@param $key string
-    **/
-    #[\ReturnTypeWillChange]
+        **/
+        #[\ReturnTypeWillChange]
 	function &offsetget($key) {
 		$val=&$this->ref($key);
 		return $val;
@@ -2264,8 +2264,8 @@ final class Base extends Prefab implements ArrayAccess {
 	/**
 	*	Convenience method for removing hive key
 	*	@param $key string
-    **/
-    #[\ReturnTypeWillChange]
+        **/
+        #[\ReturnTypeWillChange]
 	function offsetunset($key) {
 		$this->clear($key);
 	}
@@ -2539,8 +2539,8 @@ final class Base extends Prefab implements ArrayAccess {
 			$this->reroute('/');
 		if (ini_get('auto_globals_jit')) {
 			// Override setting
-            $GLOBALS['_ENV']=$_ENV;
-            $GLOBALS['_REQUEST']=$_REQUEST;
+                        $GLOBALS['_ENV']=$_ENV;
+                        $GLOBALS['_REQUEST']=$_REQUEST;
         }
 		// Sync PHP globals with corresponding hive keys
 		$this->init=$this->hive;
