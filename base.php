@@ -713,7 +713,7 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function split($str,$noempty=TRUE) {
 		return array_map('trim',
-			preg_split('/[,;|]/',$str,0,$noempty?PREG_SPLIT_NO_EMPTY:0));
+			preg_split('/[,;|]/',$str??'',0,$noempty?PREG_SPLIT_NO_EMPTY:0));
 	}
 
 	/**
