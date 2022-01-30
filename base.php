@@ -221,11 +221,11 @@ final class Base extends Prefab implements ArrayAccess {
 	 * @return mixed
 	 */
 	function cast($val) {
-		if (preg_match('/^(?:0x[0-9a-f]+|0[0-7]+|0b[01]+)$/i',$val))
+		if ($val && preg_match('/^(?:0x[0-9a-f]+|0[0-7]+|0b[01]+)$/i',$val))
 			return intval($val,0);
 		if (is_numeric($val))
 			return $val+0;
-		$val=trim($val);
+		$val=trim($val?:'');
 		if (preg_match('/^\w+$/i',$val) && defined($val))
 			return constant($val);
 		return $val;
@@ -829,7 +829,7 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function hash($str) {
 		return str_pad(base_convert(
-			substr(sha1($str),-16),16,36),11,'0',STR_PAD_LEFT);
+			substr(sha1($str?:''),-16),16,36),11,'0',STR_PAD_LEFT);
 	}
 
 	/**
@@ -968,6 +968,7 @@ final class Base extends Prefab implements ArrayAccess {
 								isset($prop)?$prop:null
 							]
 						);
+					$php81=version_compare(PHP_VERSION, '8.1.0')>=0;
 					switch ($type) {
 						case 'plural':
 							preg_match_all('/(?<tag>\w+)'.
@@ -1051,19 +1052,42 @@ final class Base extends Prefab implements ArrayAccess {
 									($frac?strlen($frac)-2:0),
 								$decimal_point,$thousands_sep);
 						case 'date':
-							if (empty($mod) || $mod=='short')
-								$prop='%x';
-							elseif ($mod=='full')
-								$prop='%A, %d %B %Y';
-							elseif ($mod!='custom')
-								$prop='%d %B %Y';
-							return strftime($prop,$args[$pos]);
+							if ($php81) {
+								$lang = $this->split($this->LANGUAGE);
+								// requires intl extension
+								$formatter = new IntlDateFormatter($lang[0],
+									(empty($mod) || $mod=='short')
+										? IntlDateFormatter::SHORT :
+										($mod=='full' ? IntlDateFormatter::LONG : IntlDateFormatter::MEDIUM),
+									IntlDateFormatter::NONE);
+								return $formatter->format($args[$pos]);
+							} else {
+								if (empty($mod) || $mod=='short')
+									$prop='%x';
+								elseif ($mod=='full')
+									$prop='%A, %d %B %Y';
+								elseif ($mod!='custom')
+									$prop='%d %B %Y';
+								return strftime($prop,$args[$pos]);
+							}
 						case 'time':
-							if (empty($mod) || $mod=='short')
-								$prop='%X';
-							elseif ($mod!='custom')
-								$prop='%r';
-							return strftime($prop,$args[$pos]);
+							if ($php81) {
+								$lang = $this->split($this->LANGUAGE);
+								// requires intl extension
+								$formatter = new IntlDateFormatter($lang[0],
+									IntlDateFormatter::NONE,
+									(empty($mod) || $mod=='short')
+										? IntlDateFormatter::SHORT :
+										($mod=='full' ? IntlDateFormatter::LONG : IntlDateFormatter::MEDIUM),
+									IntlTimeZone::createTimeZone($this->hive['TZ']));
+								return $formatter->format($args[$pos]);
+							} else {
+								if (empty($mod) || $mod=='short')
+									$prop='%X';
+								elseif ($mod!='custom')
+									$prop='%r';
+								return strftime($prop,$args[$pos]);
+							}
 						default:
 							return $expr[0];
 					}
@@ -1424,7 +1448,7 @@ final class Base extends Prefab implements ArrayAccess {
 		if (empty($parts[4]))
 			user_error(sprintf(self::E_Pattern,$pattern),E_USER_ERROR);
 		$url=parse_url($parts[4]);
-		parse_str(@$url['query'],$GLOBALS['_GET']);
+		parse_str(isset($url['query'])?$url['query']:'',$GLOBALS['_GET']);
 		if (preg_match('/GET|HEAD/',$verb))
 			$GLOBALS['_GET']=array_merge($GLOBALS['_GET'],$args);
 		$GLOBALS['_POST']=$verb=='POST'?$args:[];
@@ -1775,7 +1799,7 @@ final class Base extends Prefab implements ArrayAccess {
 							++$ctr;
 							if ($ctr/$kbps>($elapsed=microtime(TRUE)-$now) &&
 								!connection_aborted())
-								usleep(1e6*($ctr/$kbps-$elapsed));
+								usleep(round(1e6*($ctr/$kbps-$elapsed)));
 							echo $part;
 						}
 					}
@@ -2382,7 +2406,7 @@ final class Base extends Prefab implements ArrayAccess {
 					$req.='?'.$query;
 			}
 			$_SERVER['REQUEST_URI']=$req;
-			parse_str($query,$GLOBALS['_GET']);
+			parse_str($query?:'',$GLOBALS['_GET']);
 		}
 		elseif (function_exists('getallheaders')) {
 			foreach (getallheaders() as $key=>$val) {
@@ -2705,7 +2729,7 @@ class Cache extends Prefab {
 		if (!$this->dsn)
 			return TRUE;
 		$regex='/'.preg_quote($this->prefix.'.','/').'.*'.
-			preg_quote($suffix,'/').'/';
+			preg_quote($suffix?:'','/').'/';
 		$parts=explode('=',$this->dsn,2);
 		switch ($parts[0]) {
 			case 'apc':

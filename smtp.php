@@ -283,7 +283,7 @@ class SMTP extends Magic {
 			unset($headers['Content-Type']);
 			$enc=$headers['Content-Transfer-Encoding'];
 			unset($headers['Content-Transfer-Encoding']);
-			$hash=uniqid(NULL,TRUE);
+			$hash=uniqid('',TRUE);
 			// Send mail headers
 			$out='Content-Type: multipart/mixed; boundary="'.$hash.'"'.$eol;
 			foreach ($headers as $key=>$val)
