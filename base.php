@@ -972,7 +972,7 @@ final class Base extends Prefab implements ArrayAccess {
 					switch ($type) {
 						case 'plural':
 							preg_match_all('/(?<tag>\w+)'.
-								'(?:\s*\{\s*(?<data>.+?)\s*\})/',
+								'(?:\s*\{\s*(?<data>.*?)\s*\})/',
 								$mod,$matches,PREG_SET_ORDER);
 							$ord=['zero','one','two'];
 							foreach ($matches as $match) {
