@@ -1113,7 +1113,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $code string
 	**/
 	function language($code) {
-		$code=preg_replace('/\h+|;q=[0-9.]+/','',$code);
+		$code=preg_replace('/\h+|;q=[0-9.]+/','',$code?:'');
 		$code.=($code?',':'').$this->fallback;
 		$this->languages=[];
 		foreach (array_reverse(explode(',',$code)) as $lang)
@@ -1366,7 +1366,7 @@ final class Base extends Prefab implements ArrayAccess {
 			$loggable=$this->split($loggable);
 		foreach ($loggable as $status)
 			if ($status=='*' ||
-				preg_match('/^'.preg_replace('/\D/','\d',$status).'$/',$code)) {
+				preg_match('/^'.preg_replace('/\D/','\d',$status).'$/',(string) $code)) {
 				error_log($text);
 				foreach (explode("\n",$trace) as $nexus)
 					if ($nexus)
