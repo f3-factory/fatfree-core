@@ -352,7 +352,7 @@ class SMTP extends Magic {
 			'Content-Type'=>'text/plain; '.
 				'charset='.Base::instance()->ENCODING
 		];
-		$this->host=strtolower((($this->scheme=strtolower($scheme))=='ssl'?
+		$this->host=strtolower((($this->scheme=strtolower($scheme?:''))=='ssl'?
 			'ssl':'tcp').'://'.$host);
 		$this->port=$port;
 		$this->user=$user;
