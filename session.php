@@ -2,7 +2,7 @@
 
 /*
 
-	Copyright (c) 2009-2017 F3::Factory/Bong Cosca, All rights reserved.
+	Copyright (c) 2009-2019 F3::Factory/Bong Cosca, All rights reserved.
 
 	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
 
@@ -21,7 +21,7 @@
 */
 
 //! Cache-based session handler
-class Session {
+class Session extends Magic {
 
 	protected
 		//! Session ID
@@ -35,7 +35,9 @@ class Session {
 		//! Suspect callback
 		$onsuspect,
 		//! Cache instance
-		$_cache;
+		$_cache,
+		//! Session meta data
+		$_data=[];
 
 	/**
 	*	Open session
@@ -53,6 +55,7 @@ class Session {
 	**/
 	function close() {
 		$this->sid=NULL;
+		$this->_data=[];
 		return TRUE;
 	}
 
@@ -65,6 +68,7 @@ class Session {
 		$this->sid=$id;
 		if (!$data=$this->_cache->get($id.'.@'))
 			return '';
+		$this->_data = $data;
 		if ($data['ip']!=$this->_ip || $data['agent']!=$this->_agent) {
 			$fw=Base::instance();
 			if (!isset($this->onsuspect) ||
@@ -182,11 +186,40 @@ class Session {
 		register_shutdown_function('session_commit');
 		$fw=\Base::instance();
 		$headers=$fw->HEADERS;
-		$this->_csrf=$fw->SEED.'.'.$fw->hash(mt_rand());
+		$this->_csrf=$fw->hash($fw->SEED.
+			extension_loaded('openssl')?
+				implode(unpack('L',openssl_random_pseudo_bytes(4))):
+				mt_rand()
+			);
 		if ($key)
 			$fw->$key=$this->_csrf;
 		$this->_agent=isset($headers['User-Agent'])?$headers['User-Agent']:'';
 		$this->_ip=$fw->IP;
 	}
 
+	/**
+	 * check latest meta data existence
+	 * @param string $key
+	 * @return bool
+	 */
+	function exists($key) {
+		return isset($this->_data[$key]);
+	}
+
+	/**
+	 * get meta data from latest session
+	 * @param string $key
+	 * @return mixed
+	 */
+	function &get($key) {
+		return $this->_data[$key];
+	}
+
+	function set($key,$val) {
+		trigger_error('Unable to set data on previous session');
+	}
+
+	function clear($key) {
+		trigger_error('Unable to clear data on previous session');
+	}
 }

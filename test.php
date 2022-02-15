@@ -2,7 +2,7 @@
 
 /*
 
-	Copyright (c) 2009-2017 F3::Factory/Bong Cosca, All rights reserved.
+	Copyright (c) 2009-2019 F3::Factory/Bong Cosca, All rights reserved.
 
 	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
 
@@ -34,7 +34,9 @@ class Test {
 		//! Test results
 		$data=[],
 		//! Success indicator
-		$passed=TRUE;
+		$passed=TRUE,
+		//! Reporting level
+		$level;
 
 	/**
 	*	Return test results

@@ -2,7 +2,7 @@
 
 /*
 
-	Copyright (c) 2009-2017 F3::Factory/Bong Cosca, All rights reserved.
+	Copyright (c) 2009-2019 F3::Factory/Bong Cosca, All rights reserved.
 
 	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
 
@@ -68,8 +68,9 @@ class Mongo {
 			$cursor=$this->db->selectcollection('system.profile')->find();
 			foreach (iterator_to_array($cursor) as $frame)
 				if (!preg_match('/\.system\..+$/',$frame['ns']))
-					$this->log.=date('r',$frame['ts']->sec).' ('.
-						sprintf('%.1f',$frame['millis']).'ms) '.
+					$this->log.=date('r',$this->legacy() ?
+						$frame['ts']->sec : (round((string)$frame['ts'])/1000)).
+						' ('.sprintf('%.1f',$frame['millis']).'ms) '.
 						$frame['ns'].' ['.$frame['op'].'] '.
 						(empty($frame['query'])?
 							'':json_encode($frame['query'])).

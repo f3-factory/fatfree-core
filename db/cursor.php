@@ -2,7 +2,7 @@
 
 /*
 
-	Copyright (c) 2009-2017 F3::Factory/Bong Cosca, All rights reserved.
+	Copyright (c) 2009-2019 F3::Factory/Bong Cosca, All rights reserved.
 
 	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
 
@@ -107,6 +107,7 @@ abstract class Cursor extends \Magic implements \IteratorAggregate {
 	*	Causes a fatal error in PHP 5.3.5 if uncommented
 	*	return ArrayIterator
 	**/
+	#[\ReturnTypeWillChange]
 	abstract function getiterator();
 
 
@@ -148,7 +149,7 @@ abstract class Cursor extends \Magic implements \IteratorAggregate {
 	function paginate(
 		$pos=0,$size=10,$filter=NULL,array $options=NULL,$ttl=0,$bounce=TRUE) {
 		$total=$this->count($filter,$options,$ttl);
-		$count=ceil($total/$size);
+		$count=(int)ceil($total/$size);
 		if ($bounce)
 			$pos=max(0,min($pos,$count-1));
 		return [

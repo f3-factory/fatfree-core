@@ -2,7 +2,7 @@
 
 /*
 
-	Copyright (c) 2009-2017 F3::Factory/Bong Cosca, All rights reserved.
+	Copyright (c) 2009-2019 F3::Factory/Bong Cosca, All rights reserved.
 
 	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
 
@@ -141,7 +141,7 @@ class Markdown extends Prefab {
 						'/(?<=^|\n)(?:'.
 						'(;[^\n]*)|(?:<\?php.+?\?>?)|'.
 						'(?:\[(.+?)\])|'.
-						'(.+?)\h*=\h*'.
+						'(.+?)(\h*=\h*)'.
 						'((?:\\\\\h*\r?\n|.+?)*)'.
 						')((?:\r?\n)+|$)/',
 						$str,$matches,PREG_SET_ORDER
@@ -156,14 +156,14 @@ class Markdown extends Prefab {
 								'</span>';
 						elseif ($match[3])
 							$out.='<span class="ini_key">'.$match[3].
-								'</span>='.
-								($match[4]?
+								'</span>'.$match[4].
+								($match[5]?
 									('<span class="ini_value">'.
-										$match[4].'</span>'):'');
+										$match[5].'</span>'):'');
 						else
 							$out.=$match[0];
-						if (isset($match[5]))
-							$out.=$match[5];
+						if (isset($match[6]))
+							$out.=$match[6];
 					}
 					$str='<code>'.$out.'</code>';
 					break;
@@ -224,7 +224,7 @@ class Markdown extends Prefab {
 		$type='ul';
 		// Main loop
 		while ($ptr<$len) {
-			if (preg_match('/^\h*[*-](?:\h?[*-]){2,}(?:\n+|$)/',
+			if (preg_match('/^\h*[*\-](?:\h?[*\-]){2,}(?:\n+|$)/',
 				substr($str,$ptr),$match)) {
 				$ptr+=strlen($match[0]);
 				// Embedded horizontal rule
@@ -232,7 +232,7 @@ class Markdown extends Prefab {
 					('<'.$type.'>'."\n".$dst.'</'.$type.'>'."\n\n"):'').
 					'<hr />'."\n\n".$this->build(substr($str,$ptr));
 			}
-			elseif (preg_match('/(?<=^|\n)([*+-]|\d+\.)\h'.
+			elseif (preg_match('/(?<=^|\n)([*+\-]|\d+\.)\h'.
 				'(.+?(?:\n+|$))((?:(?: {4}|\t)+.+?(?:\n+|$))*)/s',
 				substr($str,$ptr),$match)) {
 				$match[3]=preg_replace('/(?<=^|\n)(?: {4}|\t)/','',$match[3]);
@@ -306,6 +306,7 @@ class Markdown extends Prefab {
 				},
 				$str
 			);
+			$str=preg_replace('/\s{2}\r?\n/','<br />',$str);
 			return '<p>'.$this->scan($str).'</p>'."\n\n";
 		}
 		return '';
@@ -320,16 +321,13 @@ class Markdown extends Prefab {
 		$tmp='';
 		while ($str!=$tmp)
 			$str=preg_replace_callback(
-				'/(?<=\s|^)(?<!\\\\)([*_]{1,3})(.*?)(?!\\\\)\1(?=[\s[:punct:]]|$)/',
+				'/(?<=\s|^)(?<!\\\\)([*_])([*_]?)([*_]?)(.*?)(?!\\\\)\3\2\1(?=[\s[:punct:]]|$)/',
 				function($expr) {
-					switch (strlen($expr[1])) {
-						case 1:
-							return '<em>'.$expr[2].'</em>';
-						case 2:
-							return '<strong>'.$expr[2].'</strong>';
-						case 3:
-							return '<strong><em>'.$expr[2].'</em></strong>';
-					}
+					if ($expr[3])
+						return '<strong><em>'.$expr[4].'</em></strong>';
+					if ($expr[2])
+						return '<strong>'.$expr[4].'</strong>';
+					return '<em>'.$expr[4].'</em>';
 				},
 				preg_replace(
 					'/(?<!\\\\)~~(.*?)(?!\\\\)~~(?=[\s[:punct:]]|$)/',
@@ -468,10 +466,10 @@ class Markdown extends Prefab {
 				'pre'=>'/^(?:(?: {4}|\t).+?(?:\n+|$))+/',
 				'fence'=>'/^`{3}\h*(\w+)?.*?[^\n]*\n+(.+?)`{3}[^\n]*'.
 					'(?:\n+|$)/s',
-				'hr'=>'/^\h*[*_-](?:\h?[\*_-]){2,}\h*(?:\n+|$)/',
+				'hr'=>'/^\h*[*_\-](?:\h?[\*_\-]){2,}\h*(?:\n+|$)/',
 				'atx'=>'/^\h*(#{1,6})\h?(.+?)\h*(?:#.*)?(?:\n+|$)/',
-				'setext'=>'/^\h*(.+?)\h*\n([=-])+\h*(?:\n+|$)/',
-				'li'=>'/^(?:(?:[*+-]|\d+\.)\h.+?(?:\n+|$)'.
+				'setext'=>'/^\h*(.+?)\h*\n([=\-])+\h*(?:\n+|$)/',
+				'li'=>'/^(?:(?:[*+\-]|\d+\.)\h.+?(?:\n+|$)'.
 					'(?:(?: {4}|\t)+.+?(?:\n+|$))*)+/s',
 				'raw'=>'/^((?:<!--.+?-->|'.
 					'<(address|article|aside|audio|blockquote|canvas|dd|'.

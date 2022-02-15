@@ -2,7 +2,7 @@
 
 /*
 
-	Copyright (c) 2009-2017 F3::Factory/Bong Cosca, All rights reserved.
+	Copyright (c) 2009-2019 F3::Factory/Bong Cosca, All rights reserved.
 
 	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
 
@@ -37,6 +37,32 @@ class Matrix extends Prefab {
 			},
 			$var
 		);
+	}
+
+	/**
+	 * select a subset of fields from an input array
+	 * @param string|array $fields splittable string or array
+	 * @param string|array $data hive key or array
+	 * @return array
+	 */
+	function select($fields, $data) {
+		return array_intersect_key(is_array($data) ? $data : \Base::instance()->get($data),
+			array_flip(is_array($fields) ? $fields : \Base::instance()->split($fields)));
+	}
+
+	/**
+	 * walk with a callback function through a subset of fields from an input array
+	 * the callback receives the value, index-key and the full input array as parameters
+	 * set value parameter as reference and you're able to modify the data as well
+	 * @param string|array $fields splittable string or array of fields
+	 * @param string|array $data hive key or input array
+	 * @param callable $callback (mixed &$value, string $key, array $data)
+	 * @return array modified subset data
+	 */
+	function walk($fields, $data, $callback) {
+		$subset=$this->select($fields, $data);
+		array_walk($subset, $callback, $data);
+		return $subset;
 	}
 
 	/**
@@ -92,17 +118,19 @@ class Matrix extends Prefab {
 	*	Return month calendar of specified date, with optional setting for
 	*	first day of week (0 for Sunday)
 	*	@return array
-	*	@param $date string
+	*	@param $date string|int
 	*	@param $first int
 	**/
 	function calendar($date='now',$first=0) {
 		$out=FALSE;
 		if (extension_loaded('calendar')) {
-			$parts=getdate(strtotime($date));
+			if (is_string($date))
+				$date=strtotime($date);
+			$parts=getdate($date);
 			$days=cal_days_in_month(CAL_GREGORIAN,$parts['mon'],$parts['year']);
 			$ref=date('w',strtotime(date('Y-m',$parts[0]).'-01'))+(7-$first)%7;
 			$out=[];
-			for ($i=0;$i<$days;$i++)
+			for ($i=0;$i<$days;++$i)
 				$out[floor(($ref+$i)/7)][($ref+$i)%7]=$i+1;
 		}
 		return $out;

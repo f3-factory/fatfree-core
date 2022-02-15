@@ -2,7 +2,7 @@
 
 /*
 
-	Copyright (c) 2009-2017 F3::Factory/Bong Cosca, All rights reserved.
+	Copyright (c) 2009-2019 F3::Factory/Bong Cosca, All rights reserved.
 
 	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
 
@@ -27,7 +27,8 @@ class SMTP extends Magic {
 	const
 		E_Header='%s: header is required',
 		E_Blank='Message must not be blank',
-		E_Attach='Attachment %s not found';
+		E_Attach='Attachment %s not found',
+		E_DIALOG='SMTP dialog error: %s';
 	//@}
 
 	protected
@@ -59,7 +60,7 @@ class SMTP extends Magic {
 	**/
 	protected function fixheader($key) {
 		return str_replace(' ','-',
-			ucwords(preg_replace('/[_-]/',' ',strtolower($key))));
+			ucwords(preg_replace('/[_\-]/',' ',strtolower($key))));
 	}
 
 	/**
@@ -157,6 +158,8 @@ class SMTP extends Magic {
 				$this->log.=$cmd."\n";
 			$this->log.=str_replace("\r",'',$reply);
 		}
+		if (preg_match('/^(4|5)\d{2}\s.*$/', $reply))
+			user_error(sprintf(self::E_DIALOG,$reply),E_USER_ERROR);
 		return $reply;
 	}
 
@@ -204,14 +207,19 @@ class SMTP extends Magic {
 			stream_set_blocking($socket,TRUE);
 		}
 		// Get server's initial response
-		$this->dialog(NULL,TRUE,$mock);
+		$this->dialog(NULL,$log,$mock);
 		// Announce presence
 		$reply=$this->dialog('EHLO '.$fw->HOST,$log,$mock);
 		if (strtolower($this->scheme)=='tls') {
 			$this->dialog('STARTTLS',$log,$mock);
-			if (!$mock)
-				stream_socket_enable_crypto(
-					$socket,TRUE,STREAM_CRYPTO_METHOD_TLS_CLIENT);
+			if (!$mock) {
+				$method=STREAM_CRYPTO_METHOD_TLS_CLIENT;
+				if (defined('STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT')) {
+					$method|=STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT;
+					$method|=STREAM_CRYPTO_METHOD_TLSv1_1_CLIENT;
+				}
+				stream_socket_enable_crypto($socket,TRUE,$method);
+			}
 			$reply=$this->dialog('EHLO '.$fw->HOST,$log,$mock);
 		}
 		$message=wordwrap($message,998);
@@ -248,7 +256,7 @@ class SMTP extends Magic {
 		foreach ($headers as $key=>&$val) {
 			if (in_array($key,['From','To','Cc','Bcc'])) {
 				$email='';
-				preg_match_all('/(?:".+?" )?(?:<.+?>|[^ ,]+)/',
+				preg_match_all('/(?:".+?" |=\?.+?\?= )?(?:<.+?>|[^ ,]+)/',
 					$val,$matches,PREG_SET_ORDER);
 				foreach ($matches as $raw)
 					$email.=($email?', ':'').
@@ -259,8 +267,10 @@ class SMTP extends Magic {
 			}
 			unset($val);
 		}
+		$from=isset($headers['Sender'])?$headers['Sender']:strstr($headers['From'],'<');
+		unset($headers['Sender']);
 		// Start message dialog
-		$this->dialog('MAIL FROM: '.strstr($headers['From'],'<'),$log,$mock);
+		$this->dialog('MAIL FROM: '.$from,$log,$mock);
 		foreach ($fw->split($headers['To'].
 			(isset($headers['Cc'])?(';'.$headers['Cc']):'').
 			(isset($headers['Bcc'])?(';'.$headers['Bcc']):'')) as $dst) {
@@ -273,7 +283,7 @@ class SMTP extends Magic {
 			unset($headers['Content-Type']);
 			$enc=$headers['Content-Transfer-Encoding'];
 			unset($headers['Content-Transfer-Encoding']);
-			$hash=uniqid(NULL,TRUE);
+			$hash=uniqid('',TRUE);
 			// Send mail headers
 			$out='Content-Type: multipart/mixed; boundary="'.$hash.'"'.$eol;
 			foreach ($headers as $key=>$val)
@@ -342,7 +352,7 @@ class SMTP extends Magic {
 			'Content-Type'=>'text/plain; '.
 				'charset='.Base::instance()->ENCODING
 		];
-		$this->host=strtolower((($this->scheme=strtolower($scheme))=='ssl'?
+		$this->host=strtolower((($this->scheme=strtolower($scheme?:''))=='ssl'?
 			'ssl':'tcp').'://'.$host);
 		$this->port=$port;
 		$this->user=$user;

@@ -2,7 +2,7 @@
 
 /*
 
-	Copyright (c) 2009-2017 F3::Factory/Bong Cosca, All rights reserved.
+	Copyright (c) 2009-2019 F3::Factory/Bong Cosca, All rights reserved.
 
 	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
 
@@ -27,34 +27,38 @@ class OAuth2 extends \Magic {
 
 	protected
 		//! Scopes and claims
-		$args=[];
+		$args=[],
+		//! Encoding
+		$enc_type = PHP_QUERY_RFC1738;
 
 	/**
 	*	Return OAuth2 authentication URI
 	*	@return string
 	*	@param $endpoint string
+	*	@param $query bool
 	**/
-	function uri($endpoint) {
-		return $endpoint.'?'.http_build_query($this->args);
+	function uri($endpoint,$query=TRUE) {
+		return $endpoint.($query?('?'.
+				http_build_query($this->args,null,'&',$this->enc_type)):'');
 	}
 
 	/**
 	*	Send request to API/token endpoint
-	*	@return string|FALSE
+	*	@return string|array|FALSE
 	*	@param $uri string
 	*	@param $method string
-	*	@param $token array
+	*	@param $token string
 	**/
 	function request($uri,$method,$token=NULL) {
 		$web=\Web::instance();
 		$options=[
 			'method'=>$method,
-			'content'=>http_build_query($this->args),
+			'content'=>http_build_query($this->args,null,'&',$this->enc_type),
 			'header'=>['Accept: application/json']
 		];
 		if ($token)
 			array_push($options['header'],'Authorization: Bearer '.$token);
-		elseif ($method=='POST')
+		elseif ($method=='POST' && isset($this->args['client_id']))
 			array_push($options['header'],'Authorization: Basic '.
 				base64_encode(
 					$this->args['client_id'].':'.
@@ -64,10 +68,20 @@ class OAuth2 extends \Magic {
 		$response=$web->request($uri,$options);
 		if ($response['error'])
 			user_error($response['error'],E_USER_ERROR);
-		return $response['body'] &&
-			preg_grep('/HTTP\/1\.\d 200/',$response['headers'])?
-			json_decode($response['body'],TRUE):
-			FALSE;
+		if (isset($response['body'])) {
+			if (preg_grep('/^Content-Type:.*application\/json/i',
+				$response['headers'])) {
+				$token=json_decode($response['body'],TRUE);
+				if (isset($token['error_description']))
+					user_error($token['error_description'],E_USER_ERROR);
+				if (isset($token['error']))
+					user_error($token['error'],E_USER_ERROR);
+				return $token;
+			}
+			else
+				return $response['body'];
+		}
+		return FALSE;
 	}
 
 	/**
@@ -78,14 +92,27 @@ class OAuth2 extends \Magic {
 	function jwt($token) {
 		return json_decode(
 			base64_decode(
-				str_replace(
-					['-','_'],
-					['+','/'],
-					explode('.',$token)[1]
-				)
+				str_replace(['-','_'],['+','/'],explode('.',$token)[1])
 			),
 			TRUE
 		);
+	}
+
+	/**
+	 * change default url encoding type, i.E. PHP_QUERY_RFC3986
+	 * @param $type
+	 */
+	function setEncoding($type) {
+		$this->enc_type = $type;
+	}
+
+	/**
+	*	URL-safe base64 encoding
+	*	@return array
+	*	@param $data string
+	**/
+	function b64url($data) {
+		return trim(strtr(base64_encode($data),'+/','-_'),'=');
 	}
 
 	/**

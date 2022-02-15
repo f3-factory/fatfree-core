@@ -2,7 +2,7 @@
 
 /*
 
-	Copyright (c) 2009-2017 F3::Factory/Bong Cosca, All rights reserved.
+	Copyright (c) 2009-2019 F3::Factory/Bong Cosca, All rights reserved.
 
 	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
 
@@ -33,11 +33,87 @@ class Web extends Prefab {
 		$wrapper;
 
 	/**
-	*	Detect MIME type using file extension
+	*	Detect MIME type using file extension or file inspection
 	*	@return string
 	*	@param $file string
+	*	@param $inspect bool
 	**/
-	function mime($file) {
+	function mime($file, $inspect=FALSE) {
+		if ($inspect) {
+			if (is_file($file) && is_readable($file)) {
+				// physical files
+				if (extension_loaded('fileinfo'))
+					$mime=mime_content_type($file);
+				elseif (preg_match('/Darwin/i',PHP_OS))
+					$mime=trim(exec('file -bI '.escapeshellarg($file)));
+				elseif (!preg_match('/^win/i',PHP_OS))
+					$mime=trim(exec('file -bi '.escapeshellarg($file)));
+				if (isset($mime) && !empty($mime)){
+					// cut charset information if any
+					$exp=explode(';',$mime,2);
+					$mime=$exp[0];
+				}
+			}
+			else {
+				// remote and stream files
+				if (ini_get('allow_url_fopen') && ($fhandle=fopen($file,'rb'))) {
+					// only get head bytes instead of whole file
+					$bytes=fread($fhandle,20);
+					fclose($fhandle);
+				}
+				elseif (($response=$this->request($file,['method' => 'HEAD']))
+					&& preg_grep('/HTTP\/[\d.]{1,3} 200/',$response['headers'])
+					&& ($type = preg_grep('/^Content-Type:/i',$response['headers']))) {
+					// get mime type directly from response header
+					return preg_replace('/^Content-Type:\s*/i','',array_pop($type));
+				}
+				else // load whole file
+					$bytes=file_get_contents($file);
+				if (extension_loaded('fileinfo')) {
+					// get mime from fileinfo
+					$finfo=finfo_open(FILEINFO_MIME_TYPE);
+					$mime=finfo_buffer($finfo,$bytes);
+				}
+				elseif ($bytes) {
+					// magic number header fallback
+					$map=[
+						'\x64\x6E\x73\x2E'=>'audio/basic',
+						'\x52\x49\x46\x46.{4}\x41\x56\x49\x20\x4C\x49\x53\x54'=>'video/avi',
+						'\x42\x4d'=>'image/bmp',
+						'\x42\x5A\x68'=>'application/x-bzip2',
+						'\x07\x64\x74\x32\x64\x64\x74\x64'=>'application/xml-dtd',
+						'\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1'=>'application/msword',
+						'\x50\x4B\x03\x04\x14\x00\x06\x00'=>'application/msword',
+						'\x0D\x44\x4F\x43'=>'application/msword',
+						'GIF\d+a'=>'image/gif',
+						'\x1F\x8B'=>'application/x-gzip',
+						'\xff\xd8\xff'=>'image/jpeg',
+						'\x49\x46\x00'=>'image/jpeg',
+						'\xFF\xFB'=>'audio/mpeg',
+						'\x49\x44\x33'=>'audio/mpeg',
+						'\x00\x00\x01\xBA'=>'video/mpeg',
+						'\x4F\x67\x67\x53\x00\x02\x00\x00\x00\x00\x00\x00\x00\x00'=>'audio/vorbis',
+						'\x25\x50\x44\x46'=>'application/pdf',
+						'\x89PNG\x0d\x0a'=>'image/png',
+						'.{4}\x6D\x6F\x6F\x76\x'=>'video/quicktime',
+						'\x53\x49\x54\x21\x00'=>'application/x-stuffit',
+						'\x43\x57\x53'=>'application/x-shockwave-flash',
+						'\x1F\x8B\x08'=>'application/x-tar',
+						'\x49\x20\x49'=>'image/tiff',
+						'\x52\x49\x46\x46.{4}\x57\x41\x56\x45\x66\x6D\x74\x20'=>'audio/wav',
+						'\xFD\xFF\xFF\xFF\x20\x00\x00\x00'=>'application/vnd.ms-excel',
+						'\x50\x4B\x03\x04'=>'application/x-zip-compressed',
+						'[ -~]+$'=>'text/plain',
+					];
+					foreach ($map as $key=>$val)
+						if (preg_match('/^'.$key.'/',substr($bytes,0,128)))
+							return $val;
+				}
+			}
+			if (isset($mime) && !empty($mime))
+				return $mime;
+			// Fallback to file extension-based check if no mime was found yet
+		}
 		if (preg_match('/\w+$/',$file,$ext)) {
 			$map=[
 				'au'=>'audio/basic',
@@ -154,9 +230,9 @@ class Web extends Prefab {
 				!$info['timed_out'] && !connection_aborted()) {
 				if ($kbps) {
 					// Throttle output
-					$ctr++;
+					++$ctr;
 					if ($ctr/$kbps>$elapsed=microtime(TRUE)-$start)
-						usleep(1e6*($ctr/$kbps-$elapsed));
+						usleep(round(1e6*($ctr/$kbps-$elapsed)));
 				}
 				// Send 1KiB and reset timer
 				echo fread($handle,1024);
@@ -269,7 +345,7 @@ class Web extends Prefab {
 	**/
 	protected function _curl($url,$options) {
 		$curl=curl_init($url);
-		if (!ini_get('open_basedir'))
+		if (!$open_basedir=ini_get('open_basedir'))
 			curl_setopt($curl,CURLOPT_FOLLOWLOCATION,
 				$options['follow_location']);
 		curl_setopt($curl,CURLOPT_MAXREDIRS,
@@ -306,10 +382,10 @@ class Web extends Prefab {
 		curl_close($curl);
 		$body=ob_get_clean();
 		if (!$err &&
-			$options['follow_location'] &&
-			preg_grep('/HTTP\/1\.\d 3\d{2}/',$headers) &&
+			$options['follow_location'] && $open_basedir &&
+			preg_grep('/HTTP\/[\d.]{1,3} 3\d{2}/',$headers) &&
 			preg_match('/^Location: (.+)$/m',implode(PHP_EOL,$headers),$loc)) {
-			$options['max_redirects']--;
+			--$options['max_redirects'];
 			if($loc[1][0] == '/') {
 				$parts=parse_url($url);
 				$loc[1]=$parts['scheme'].'://'.$parts['host'].
@@ -350,7 +426,7 @@ class Web extends Prefab {
 		if (is_string($body)) {
 			$match=NULL;
 			foreach ($headers as $header)
-				if (preg_match('/Content-Encoding: (.+)/',$header,$match))
+				if (preg_match('/Content-Encoding: (.+)/i',$header,$match))
 					break;
 			if ($match)
 				switch ($match[1]) {
@@ -442,7 +518,7 @@ class Web extends Prefab {
 			$headers=array_merge($headers,$current=explode($eol,$html[0]));
 			$match=NULL;
 			foreach ($current as $header)
-				if (preg_match('/Content-Encoding: (.+)/',$header,$match))
+				if (preg_match('/Content-Encoding: (.+)/i',$header,$match))
 					break;
 			if ($match)
 				switch ($match[1]) {
@@ -454,10 +530,10 @@ class Web extends Prefab {
 						break;
 				}
 			if ($options['follow_location'] &&
-				preg_grep('/HTTP\/1\.\d 3\d{2}/',$headers) &&
+				preg_grep('/HTTP\/[\d.]{1,3} 3\d{2}/',$headers) &&
 				preg_match('/Location: (.+?)'.preg_quote($eol).'/',
 				$html[0],$loc)) {
-				$options['max_redirects']--;
+				--$options['max_redirects'];
 				return $this->request($loc[1],$options);
 			}
 		}
@@ -550,7 +626,7 @@ class Web extends Prefab {
 		);
 		if (isset($options['content']) && is_string($options['content'])) {
 			if ($options['method']=='POST' &&
-				!preg_grep('/^Content-Type:/',$options['header']))
+				!preg_grep('/^Content-Type:/i',$options['header']))
 				$this->subst($options['header'],
 					'Content-Type: application/x-www-form-urlencoded');
 			$this->subst($options['header'],
@@ -582,13 +658,13 @@ class Web extends Prefab {
 		}
 		$result=$this->{'_'.$this->wrapper}($url,$options);
 		if ($result && isset($cache)) {
-			if (preg_match('/HTTP\/1\.\d 304/',
+			if (preg_match('/HTTP\/[\d.]{1,3} 304/',
 				implode($eol,$result['headers']))) {
 				$result=$cache->get($hash);
 				$result['cached']=TRUE;
 			}
 			elseif (preg_match('/Cache-Control:(?:.*)max-age=(\d+)(?:,?.*'.
-				preg_quote($eol).')/',implode($eol,$result['headers']),$exp))
+				preg_quote($eol).')/i',implode($eol,$result['headers']),$exp))
 				$cache->set($hash,$result,$exp[1]);
 		}
 		$req=[$options['method'].' '.$url];
@@ -617,11 +693,12 @@ class Web extends Prefab {
 		$dst='';
 		if (!isset($path))
 			$path=$fw->UI.';./';
-		foreach ($fw->split($path,FALSE) as $dir)
-			foreach ($files as $file)
+		foreach (array_unique($fw->split($path,FALSE)) as $dir)
+			foreach ($files as $i=>$file)
 				if (is_file($save=$fw->fixslashes($dir.$file)) &&
 					is_bool(strpos($save,'../')) &&
 					preg_match('/\.(css|js)$/i',$file)) {
+					unset($files[$i]);
 					if ($fw->CACHE &&
 						($cached=$cache->exists(
 							$hash=$fw->hash($save).'.'.$ext[0],$data)) &&
@@ -639,6 +716,12 @@ class Web extends Prefab {
 									($path?($path.'/'):'').$parts[2],
 									$mime,$header
 								);
+								$ptr+=strlen($parts[0]);
+								continue;
+							}
+							if ($ext[0]=='css'&&preg_match('/^url\(([^\'"].*?[^\'"])\)/i',
+									substr($src,$ptr),$parts)) {
+								$data.=$parts[0];
 								$ptr+=strlen($parts[0]);
 								continue;
 							}
@@ -660,7 +743,7 @@ class Web extends Prefab {
 									// Presume it's a regex pattern
 									$regex=TRUE;
 									// Backtrack and validate
-									for ($ofs=$ptr;$ofs;$ofs--) {
+									for ($ofs=$ptr;$ofs;--$ofs) {
 										// Pattern should be preceded by
 										// open parenthesis, colon,
 										// object property or operator
@@ -668,13 +751,13 @@ class Web extends Prefab {
 											'/(return|[(:=!+\-*&|])$/',
 											substr($src,0,$ofs))) {
 											$data.='/';
-											$ptr++;
+											++$ptr;
 											while ($ptr<$len) {
 												$data.=$src[$ptr];
-												$ptr++;
+												++$ptr;
 												if ($src[$ptr-1]=='\\') {
 													$data.=$src[$ptr];
-													$ptr++;
+													++$ptr;
 												}
 												elseif ($src[$ptr-1]=='/')
 													break;
@@ -690,22 +773,22 @@ class Web extends Prefab {
 									if (!$regex) {
 										// Division operator
 										$data.=$src[$ptr];
-										$ptr++;
+										++$ptr;
 									}
 								}
 								continue;
 							}
-							if (in_array($src[$ptr],['\'','"'])) {
+							if (in_array($src[$ptr],['\'','"','`'])) {
 								$match=$src[$ptr];
 								$data.=$match;
-								$ptr++;
+								++$ptr;
 								// String literal
 								while ($ptr<$len) {
 									$data.=$src[$ptr];
-									$ptr++;
+									++$ptr;
 									if ($src[$ptr-1]=='\\') {
 										$data.=$src[$ptr];
-										$ptr++;
+										++$ptr;
 									}
 									elseif ($src[$ptr-1]==$match)
 										break;
@@ -721,11 +804,11 @@ class Web extends Prefab {
 									($ext[0]=='css' && $ptr+2<strlen($src) &&
 									preg_match('/:\w/',substr($src,$ptr+1,2))))
 									$data.=' ';
-								$ptr++;
+								++$ptr;
 								continue;
 							}
 							$data.=$src[$ptr];
-							$ptr++;
+							++$ptr;
 						}
 						if ($ext[0]=='css')
 							$data=str_replace(';}','}',$data);
@@ -759,7 +842,7 @@ class Web extends Prefab {
 		if (isset($xml->channel)) {
 			$out['source']=(string)$xml->channel->title;
 			$max=min($max,count($xml->channel->item));
-			for ($i=0;$i<$max;$i++) {
+			for ($i=0;$i<$max;++$i) {
 				$item=$xml->channel->item[$i];
 				$list=[''=>NULL]+$item->getnamespaces(TRUE);
 				$fields=[];
@@ -855,6 +938,7 @@ class Web extends Prefab {
 			'ǜ'=>'u','ǔ'=>'u','ǖ'=>'u','ũ'=>'u','ü'=>'ue','в'=>'v',
 			'ŵ'=>'w','ы'=>'y','ÿ'=>'y','ý'=>'y','ŷ'=>'y','ź'=>'z',
 			'ž'=>'z','з'=>'z','ż'=>'z','ж'=>'zh','ь'=>'','ъ'=>'',
+			'њ'=>'nj','љ'=>'lj','ђ'=>'dj','џ'=>'dz','ћ'=>'c','ј'=>'j',
 			'\''=>'',
 		];
 	}
@@ -900,10 +984,10 @@ class Web extends Prefab {
 			'repudiandae rerum saepe sapiente sequi similique sint soluta '.
 			'suscipit tempora tenetur totam ut ullam unde vel veniam vero '.
 			'vitae voluptas');
-		for ($i=0,$add=$count-(int)$std;$i<$add;$i++) {
+		for ($i=0,$add=$count-(int)$std;$i<$add;++$i) {
 			shuffle($rnd);
 			$words=array_slice($rnd,0,mt_rand(3,$max));
-			$out.=' '.ucfirst(implode(' ',$words)).'.';
+			$out.=(!$std&&$i==0?'':' ').ucfirst(implode(' ',$words)).'.';
 		}
 		return $out;
 	}
@@ -915,13 +999,14 @@ if (!function_exists('gzdecode')) {
 	/**
 	*	Decode gzip-compressed string
 	*	@param $str string
+	*	@return string
 	**/
 	function gzdecode($str) {
 		$fw=Base::instance();
 		if (!is_dir($tmp=$fw->TEMP))
 			mkdir($tmp,Base::MODE,TRUE);
 		file_put_contents($file=$tmp.'/'.$fw->SEED.'.'.
-			$fw->hash(uniqid(NULL,TRUE)).'.gz',$str,LOCK_EX);
+			$fw->hash(uniqid('',TRUE)).'.gz',$str,LOCK_EX);
 		ob_start();
 		readgzfile($file);
 		$out=ob_get_clean();

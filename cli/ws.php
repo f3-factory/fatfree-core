@@ -2,7 +2,7 @@
 
 /*
 
-	Copyright (c) 2009-2017 F3::Factory/Bong Cosca, All rights reserved.
+	Copyright (c) 2009-2019 F3::Factory/Bong Cosca, All rights reserved.
 
 	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
 
@@ -52,6 +52,7 @@ class WS {
 		$ctx,
 		$wait,
 		$sockets,
+		$protocol,
 		$agents=[],
 		$events=[];
 
@@ -61,17 +62,15 @@ class WS {
 	*	@param $socket resource
 	**/
 	function alloc($socket) {
-		if (is_bool($str=$this->read($socket))) {
-			$this->close($socket);
+		if (is_bool($buf=$this->read($socket)))
 			return;
-		}
 		// Get WebSocket headers
 		$hdrs=[];
-		$CRLF="\r\n";
+		$EOL="\r\n";
 		$verb=NULL;
 		$uri=NULL;
-		foreach (explode($CRLF,trim($str)) as $line)
-			if (preg_match('/^(\w+)\s(.+)\sHTTP\/1\.\d$/',
+		foreach (explode($EOL,trim($buf)) as $line)
+			if (preg_match('/^(\w+)\s(.+)\sHTTP\/[\d.]{1,3}$/',
 				trim($line),$match)) {
 				$verb=$match[1];
 				$uri=$match[2];
@@ -98,35 +97,29 @@ class WS {
 			if ($verb && $uri)
 				$this->write(
 					$socket,
-					$str='HTTP/1.1 400 Bad Request'.$CRLF.
-						'Connection: close'.$CRLF.$CRLF
+					'HTTP/1.1 400 Bad Request'.$EOL.
+					'Connection: close'.$EOL.$EOL
 				);
 			$this->close($socket);
 			return;
 		}
 		// Handshake
-		$bytes=$this->write(
-			$socket,
-			$str='HTTP/1.1 101 Switching Protocols'.$CRLF.
-				'Upgrade: websocket'.$CRLF.
-				'Connection: Upgrade'.$CRLF.
-				'Sec-WebSocket-Accept: '.
-					base64_encode(
-						sha1(
-							$hdrs['Sec-Websocket-Key'].
-							self::Magic,
-							TRUE
-						)
-					).$CRLF.$CRLF
-		);
-		if ($bytes) {
+		$buf='HTTP/1.1 101 Switching Protocols'.$EOL.
+			'Upgrade: websocket'.$EOL.
+			'Connection: Upgrade'.$EOL;
+		if (isset($hdrs['Sec-Websocket-Protocol']))
+			$buf.='Sec-WebSocket-Protocol: '.
+				$hdrs['Sec-Websocket-Protocol'].$EOL;
+		$buf.='Sec-WebSocket-Accept: '.
+			base64_encode(
+				sha1($hdrs['Sec-Websocket-Key'].WS::Magic,TRUE)
+			).$EOL.$EOL;
+		if ($this->write($socket,$buf)) {
 			// Connect agent to server
-			$this->sockets[]=$socket;
+			$this->sockets[(int)$socket]=$socket;
 			$this->agents[(int)$socket]=
 				new Agent($this,$socket,$verb,$uri,$hdrs);
 		}
-		else
-			$this->close($socket);
 	}
 
 	/**
@@ -135,34 +128,28 @@ class WS {
 	*	@param $socket resource
 	**/
 	function close($socket) {
+		if (isset($this->agents[(int)$socket]))
+			unset($this->sockets[(int)$socket],$this->agents[(int)$socket]);
 		stream_socket_shutdown($socket,STREAM_SHUT_WR);
 		@fclose($socket);
-	}
-
-	/**
-	*	Free stream socket
-	*	@return bool
-	*	@param $socket resource
-	**/
-	function free($socket) {
-		unset($this->sockets[array_search($socket,$this->sockets)]);
-		unset($this->agents[(int)$socket]);
-		$this->close($socket);
 	}
 
 	/**
 	*	Read from stream socket
 	*	@return string|FALSE
 	*	@param $socket resource
+	*	@param $len int
 	**/
-	function read($socket) {
-		if (is_string($str=@fread($socket,self::Packet)) &&
-			strlen($str) &&
-			strlen($str)<self::Packet)
-			return $str;
+	function read($socket,$len=0) {
+		if (!$len)
+			$len=WS::Packet;
+		if (is_string($buf=@fread($socket,$len)) &&
+			strlen($buf) && strlen($buf)<$len)
+			return $buf;
 		if (isset($this->events['error']) &&
 			is_callable($func=$this->events['error']))
 			$func($this);
+		$this->close($socket);
 		return FALSE;
 	}
 
@@ -170,16 +157,17 @@ class WS {
 	*	Write to stream socket
 	*	@return int|FALSE
 	*	@param $socket resource
-	*	@param $str string
+	*	@param $buf string
 	**/
-	function write($socket,$str) {
-		for ($i=0,$bytes=0;$i<strlen($str);$i+=$bytes) {
-			if (($bytes=@fwrite($socket,substr($str,$i))) &&
+	function write($socket,$buf) {
+		for ($i=0,$bytes=0;$i<strlen($buf);$i+=$bytes) {
+			if (($bytes=@fwrite($socket,substr($buf,$i))) &&
 				@fflush($socket))
 				continue;
 			if (isset($this->events['error']) &&
 				is_callable($func=$this->events['error']))
 				$func($this);
+			$this->close($socket);
 			return FALSE;
 		}
 		return $bytes;
@@ -193,6 +181,10 @@ class WS {
 	function agents($uri=NULL) {
 		return array_filter(
 			$this->agents,
+			/**
+			 * @var $val Agent
+			 * @return bool
+			 */
 			function($val) use($uri) {
 				return $uri?($val->uri()==$uri):TRUE;
 			}
@@ -220,19 +212,15 @@ class WS {
 
 	/**
 	*	Terminate server
-	*	@return NULL
-	*	@param $signal int
 	**/
-	function kill($signal) {
+	function kill() {
 		die;
 	}
 
 	/**
 	*	Execute the server process
-	*	@return object
 	**/
 	function run() {
-		$fw=\Base::instance();
 		// Assign signal handlers
 		declare(ticks=1);
 		pcntl_signal(SIGINT,[$this,'kill']);
@@ -248,7 +236,7 @@ class WS {
 		register_shutdown_function(function() use($listen) {
 			foreach ($this->sockets as $socket)
 				if ($socket!=$listen)
-					$this->free($socket);
+					$this->close($socket);
 			$this->close($listen);
 			if (isset($this->events['stop']) &&
 				is_callable($func=$this->events['stop']))
@@ -259,7 +247,7 @@ class WS {
 		if (isset($this->events['start']) &&
 			is_callable($func=$this->events['start']))
 			$func($this);
-		$this->sockets=[$listen];
+		$this->sockets=[(int)$listen=>$listen];
 		$empty=[];
 		$wait=$this->wait;
 		while (TRUE) {
@@ -289,26 +277,8 @@ class WS {
 					}
 					else {
 						$id=(int)$socket;
-						if (isset($this->agents[$id]) &&
-							$raw=$this->agents[$id]->fetch()) {
-							list($op,$data)=$raw;
-							// Dispatch
-							switch ($op & self::OpCode) {
-							case self::Ping:
-								$this->agents[$id]->send(self::Pong);
-								break;
-							case self::Close:
-								$this->free($socket);
-								break;
-							case self::Text:
-								$data=trim($data);
-							case self::Binary:
-								if (isset($this->events['receive']) &&
-									is_callable($func=$this->events['receive']))
-									$func($this->agents[$id],$op,$data);
-								break;
-							}
-						}
+						if (isset($this->agents[$id]))
+							$this->agents[$id]->fetch();
 					}
 				}
 				$wait-=microtime(TRUE)-$mark;
@@ -319,10 +289,9 @@ class WS {
 			}
 			if (!$count) {
 				$mark=microtime(TRUE);
-				foreach ($this->sockets as $socket) {
+				foreach ($this->sockets as $id=>$socket) {
 					if (!is_resource($socket))
 						continue;
-					$id=(int)$socket;
 					if ($socket!=$listen &&
 						isset($this->agents[$id]) &&
 						isset($this->events['idle']) &&
@@ -336,8 +305,6 @@ class WS {
 	}
 
 	/**
-	*	Instantiate object
-	*	@return object
 	*	@param $addr string
 	*	@param $ctx resource
 	*	@param $wait int
@@ -361,13 +328,11 @@ class Agent {
 		$flag,
 		$verb,
 		$uri,
-		$headers,
-		$events,
-		$buffer;
+		$headers;
 
 	/**
 	*	Return server instance
-	*	@return object
+	*	@return WS
 	**/
 	function server() {
 		return $this->server;
@@ -379,6 +344,14 @@ class Agent {
 	**/
 	function id() {
 		return $this->id;
+	}
+
+	/**
+	*	Return socket
+	*	@return resource
+	**/
+	function socket() {
+		return $this->socket;
 	}
 
 	/**
@@ -399,7 +372,7 @@ class Agent {
 
 	/**
 	*	Return socket headers
-	*	@return string
+	*	@return array
 	**/
 	function headers() {
 		return $this->headers;
@@ -408,92 +381,91 @@ class Agent {
 	/**
 	*	Frame and transmit payload
 	*	@return string|FALSE
-	*	@param $socket resource
 	*	@param $op int
-	*	@param $payload string
+	*	@param $data string
 	**/
 	function send($op,$data='') {
+		$server=$this->server;
 		$mask=WS::Finale | $op & WS::OpCode;
 		$len=strlen($data);
-		$str='';
+		$buf='';
 		if ($len>0xffff)
-			$str=pack('CCNN',$mask,0x7f,$len);
+			$buf=pack('CCNN',$mask,0x7f,$len);
+		elseif ($len>0x7d)
+			$buf=pack('CCn',$mask,0x7e,$len);
 		else
-		if ($len>0x7d)
-			$str=pack('CCn',$mask,0x7e,$len);
-		else
-			$str=pack('CC',$mask,$len);
-		$str.=$data;
-		$server=$this->server();
-		if (is_bool($server->write($this->socket,$str))) {
-			$this->free();
+			$buf=pack('CC',$mask,$len);
+		$buf.=$data;
+		if (is_bool($server->write($this->socket,$buf)))
 			return FALSE;
-		}
 		if (!in_array($op,[WS::Pong,WS::Close]) &&
-			isset($this->events['send']) &&
-			is_callable($func=$this->events['send']))
+			isset($this->server->events['send']) &&
+			is_callable($func=$this->server->events['send']))
 			$func($this,$op,$data);
 		return $data;
 	}
 
 	/**
 	*	Retrieve and unmask payload
-	*	@return array|FALSE
+	*	@return bool|NULL
 	**/
 	function fetch() {
 		// Unmask payload
-		$server=$this->server();
-		if (is_bool($buf=$server->read($this->socket))) {
-			$this->free();
+		$server=$this->server;
+		if (is_bool($buf=$server->read($this->socket)))
 			return FALSE;
+		while($buf) {
+			$op=ord($buf[0]) & WS::OpCode;
+			$len=ord($buf[1]) & WS::Length;
+			$pos=2;
+			if ($len==0x7e) {
+				$len=ord($buf[2])*256+ord($buf[3]);
+				$pos+=2;
+			}
+			else
+			if ($len==0x7f) {
+				for ($i=0,$len=0;$i<8;++$i)
+					$len=$len*256+ord($buf[$i+2]);
+				$pos+=8;
+			}
+			for ($i=0,$mask=[];$i<4;++$i)
+				$mask[$i]=ord($buf[$pos+$i]);
+			$pos+=4;
+			if (strlen($buf)<$len+$pos)
+				return FALSE;
+			for ($i=0,$data='';$i<$len;++$i)
+				$data.=chr(ord($buf[$pos+$i])^$mask[$i%4]);
+			// Dispatch
+			switch ($op & WS::OpCode) {
+			case WS::Ping:
+				$this->send(WS::Pong);
+				break;
+			case WS::Close:
+				$server->close($this->socket);
+				break;
+			case WS::Text:
+				$data=trim($data);
+			case WS::Binary:
+				if (isset($this->server->events['receive']) &&
+					is_callable($func=$this->server->events['receive']))
+					$func($this,$op,$data);
+				break;
+			}
+			$buf = substr($buf, $len+$pos);
 		}
-		$buf=($this->buffer.=$buf);
-		$op=ord($buf[0]) & WS::OpCode;
-		$len=ord($buf[1]) & WS::Length;
-		$pos=2;
-		if ($len==0x7e) {
-			$len=ord($buf[2])*256+ord($buf[3]);
-			$pos+=2;
-		}
-		else
-		if ($len==0x7f) {
-			for ($i=0,$len=0;$i<8;$i++)
-				$len=$len*256+ord($buf[$i+2]);
-			$pos+=8;
-		}
-		for ($i=0,$mask=[];$i<4;$i++)
-			$mask[$i]=ord($buf[$pos+$i]);
-		$pos+=4;
-		if (strlen($buf)<$len+$pos)
-			return FALSE;
-		for ($i=0,$data='';$i<$len;$i++)
-			$data.=chr(ord($buf[$pos+$i])^$mask[$i%4]);
-		$this->buffer='';
-		return [$op,$data];
-	}
-
-	/**
-	*	Free stream socket
-	*	@return NULL
-	**/
-	function free() {
-		$this->server->free($this->socket);
 	}
 
 	/**
 	*	Destroy object
-	*	@return NULL
 	**/
 	function __destruct() {
-		if (isset($this->events['disconnect']) &&
-			is_callable($func=$this->events['disconnect']))
+		if (isset($this->server->events['disconnect']) &&
+			is_callable($func=$this->server->events['disconnect']))
 			$func($this);
 	}
 
 	/**
-	*	Instantiate object
-	*	@return object
-	*	@param $server object
+	*	@param $server WS
 	*	@param $socket resource
 	*	@param $verb string
 	*	@param $uri string
@@ -506,10 +478,9 @@ class Agent {
 		$this->verb=$verb;
 		$this->uri=$uri;
 		$this->headers=$hdrs;
-		$this->events=$server->events();
-		$this->buffer='';
-		if (isset($this->events['connect']) &&
-			is_callable($func=$this->events['connect']))
+
+		if (isset($server->events['connect']) &&
+			is_callable($func=$server->events['connect']))
 			$func($this);
 	}
 
