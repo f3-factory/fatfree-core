@@ -412,7 +412,7 @@ class SQL {
 						foreach ($conv as $regex=>$type)
 							if (preg_match('/'.$regex.'/i',$row[$val[2]]))
 								break;
-						if (!isset($rows[$row[$val[1]]])) // handle duplicate rows in PgSQL
+						if ($this->engine === 'dblib' || !isset($rows[$row[$val[1]]])) // handle duplicate rows in PgSQL
 							$rows[$row[$val[1]]]=[
 								'type'=>$row[$val[2]],
 								'pdo_type'=>$type,
