@@ -49,7 +49,7 @@ class SQL {
 		//! Number of rows affected by query
 		$rows=0,
 		//! SQL log
-		$log;
+		$log=FALSE;
 
 	/**
 	*	Begin SQL transaction
@@ -546,7 +546,8 @@ class SQL {
 			$options+=[\PDO::MYSQL_ATTR_INIT_COMMAND=>'SET NAMES '.
 				strtolower(str_replace('-','',$fw->ENCODING)).';'];
 		$this->pdo=new \PDO($dsn,$user,$pw,$options);
-		$this->engine=$this->pdo->getattribute(\PDO::ATTR_DRIVER_NAME);
+        $this->pdo->setattribute(\PDO::ATTR_TIMEOUT, 3600); //10 min timeout
+        $this->engine=$this->pdo->getattribute(\PDO::ATTR_DRIVER_NAME);
 	}
 
 }

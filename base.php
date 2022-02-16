@@ -2358,7 +2358,7 @@ final class Base extends Prefab implements ArrayAccess {
 		@ini_set('magic_quotes_gpc',0);
 		@ini_set('register_globals',0);
 		// Intercept errors/exceptions; PHP5.3-compatible
-		$check=error_reporting((E_ALL|E_STRICT)&~(E_NOTICE|E_USER_NOTICE));
+		$check=error_reporting((E_ALL|E_STRICT)&~(E_NOTICE|E_USER_NOTICE) ^ E_DEPRECATED);
 		set_exception_handler(
 			function($obj) {
 				/** @var Exception $obj */
