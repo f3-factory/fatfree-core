@@ -22,24 +22,479 @@
 
 namespace F3;
 
-//! Factory class for single-instance objects
+use Exception;
+
+/**
+ * Mixin for single-instance classes
+ * @package F3
+ */
 trait Prefab {
 
 	/**
 	 * Return class instance
-	 * @param mixed ...$args
-	 * @return static
 	 */
-	static function instance(...$args) {
+	static function instance(...$args): static
+	{
 		if (!Registry::exists($class=static::class))
 			Registry::set($class,new $class(...$args));
 		return Registry::get($class);
 	}
 
+	// Prohibit cloning
+	private function __clone() {}
+
+}
+
+class Hive implements \ArrayAccess {
+
+	const E_Hive='Invalid hive key %s';
+
+	/** @var Hive|null wrapped Hive */
+	protected ?Hive $_hive = NULL;
+
+	/** @var array non-typed hive properties */
+	protected array $_hive_data = [];
+
+	/** @var array state storage */
+	protected array $_hive_states = [];
+
+	const OWN_KEYS = ['_hive','_hive_data','_hive_states'];
+
+	function __construct(
+		/** @var Hive Key-value store */
+		 ?Hive $hive=NULL,
+		 ?array $data=NULL
+	) {
+		// if Hive object is given, use it as wrapped hive instead
+		if ($hive)
+			$this->_hive = $hive->_hive;
+		// proxy for uninitialized Hive
+		if (!$this->_hive) {
+			$this->_hive = clone $this;
+			unset($this->_hive->_hive_data,$this->_hive->_hive_states);
+		}
+		// enable proxy pattern
+		array_map(function($key) {
+			unset($this->{$key});
+			},array_diff(array_keys(get_object_vars($this->_hive)),
+				self::OWN_KEYS)
+		);
+		// copy fluent hive data
+		foreach ($data?:[] as $key => $value) {
+			$this->_hive->{$key} = $value;
+		}
+		$this->state('init');
+	}
+
+	/**
+	 * Return the parts of specified hive key
+	 */
+	protected function cut(string $key): array {
+		return preg_split('/\[\h*[\'"]?(.+?)[\'"]?\h*\]|(->)|\./',
+			$key,NULL,PREG_SPLIT_NO_EMPTY|PREG_SPLIT_DELIM_CAPTURE);
+	}
+
+	/**
+	 * Get hive key reference/contents; Add non-existent hive keys,
+	 * array elements, and object properties by default. Use $var to specify
+	 * a different hive, array or object to work with.
+	 */
+	public function &ref(array|string $key, bool $add=TRUE, mixed &$var=NULL): mixed
+	{
+		$null=NULL;
+		$parts=is_array($key) ? $key : $this->cut($key);
+		// use base hive as default value store when none was given
+		if (is_null($var) && !$this->_hive) {
+			$hive = $this;
+		} else
+			$hive = $this->_hive;
+		if (is_null($var)) {
+			if (property_exists($hive,$parts[0])
+				&& !in_array($key,Hive::OWN_KEYS)) {
+				if ($add)
+					$var=&$hive->{$parts[0]};
+				else
+					$var=$hive->{$parts[0]};
+				array_shift($parts);
+			} elseif ($add)
+				$var=&$this->_hive_data;
+			else
+				$var=$this->_hive_data;
+		}
+		$obj=FALSE;
+		foreach ($parts as $part)
+			if ($part=='->')
+				$obj=TRUE;
+			elseif ($obj) {
+				$obj=FALSE;
+				if (!is_object($var))
+					$var=new \stdClass;
+				if ($add || property_exists($var,$part))
+					$var=&$var->$part;
+				else {
+					$var=&$null;
+					break;
+				}
+			}
+			else {
+				if (!is_array($var))
+					$var=[];
+				if ($add || array_key_exists($part,$var))
+					$var=&$var[$part];
+				else {
+					$var=&$null;
+					break;
+				}
+			}
+		return $var;
+	}
+
+	/**
+	 *	Convenience method for removing hive key
+	 *	@param $key string
+	 **/
+	function clear(string $key) {
+		$parts = $this->cut($key);
+		if (!$this->_hive) {
+			// proxy call handler
+			$val = preg_replace('/^(\$hive)/','$this',
+				$this->compile('@hive'.(count($parts)>1?'.':'->').$key,FALSE));
+			eval('unset('.$val.');');
+		}
+		// fluent data
+		elseif (array_key_exists($parts[0],$this->_hive_data)) {
+			$val=preg_replace('/^(\$hive)/','$this->_hive_data',
+				$this->compile('@hive.'.$key, FALSE));
+			eval('unset('.$val.');');
+		}
+		// typed properties
+		elseif (isset($this->_hive_states['init']) && property_exists($this->_hive_states['init'][0],$parts[0])) {
+			/** @var static $initState */
+			$initState = $this->_hive_states['init'][0];
+			if ($initState->exists($key, $val)) {
+				// Reset default value (cannot remove property and reuse it afterwards)
+				$this->set($key, $val);
+			} elseif (isset($parts[1])) {
+				// forward call to proxy
+				$this->_hive->clear($key);
+			}
+		}
+	}
+
+	/**
+	 *	Convert JS-style token to PHP expression
+	 *	@return string
+	 *	@param $str string
+	 *	@param $evaluate bool compile expressions as well or only convert variable access
+	 **/
+	function compile($str, $evaluate=FALSE) {
+		return (!$evaluate)
+			? preg_replace_callback(
+				'/^@(\w+)((?:\..+|\[(?:(?:[^\[\]]*|(?R))*)\])*)/',
+				function($expr) {
+					$str='$'.$expr[1];
+					if (isset($expr[2]))
+						$str.=preg_replace_callback(
+							'/\.([^.\[\]]+)|\[((?:[^\[\]\'"]*|(?R))*)\]/',
+							function($sub) {
+								$val=isset($sub[2]) ? $sub[2] : $sub[1];
+								if (ctype_digit($val))
+									$val=(int)$val;
+								$out='['.$this->export($val).']';
+								return $out;
+							},
+							$expr[2]
+						);
+					return $str;
+				},
+				$str
+			)
+			: preg_replace_callback(
+				'/(?<!\w)@(\w+(?:(?:\->|::)\w+)?)'.
+				'((?:\.\w+|\[(?:(?:[^\[\]]*|(?R))*)\]|(?:\->|::)\w+|\()*)/',
+				function($expr) {
+					$str='$'.$expr[1];
+					if (isset($expr[2]))
+						$str.=preg_replace_callback(
+							'/\.(\w+)(\()?|\[((?:[^\[\]]*|(?R))*)\]/',
+							function($sub) {
+								if (empty($sub[2])) {
+									if (ctype_digit($sub[1]))
+										$sub[1]=(int)$sub[1];
+									$out='['.
+										(isset($sub[3])?
+											$this->compile($sub[3], TRUE):
+											$this->export($sub[1])).
+										']';
+								}
+								else
+									$out=function_exists($sub[1])?
+										$sub[0]:
+										('['.$this->export($sub[1]).']'.$sub[2]);
+								return $out;
+							},
+							$expr[2]
+						);
+					return $str;
+				},
+				$str
+			);
+	}
+
+	/**
+	 *	Return string representation of expression
+	 *	@return string
+	 *	@param $expr mixed
+	 **/
+	function export($expr) {
+		return var_export($expr,TRUE);
+	}
+
+	/**
+	 *	Bind value to hive key
+	 *	@return mixed
+	 *	@param $key string
+	 *	@param $val mixed
+	 *	@param $ttl int
+	 **/
+	function set($key,$val) {
+		$ref=&$this->ref($key);
+		$ref=$val;
+		return $ref;
+	}
+
+	/**
+	 *	Retrieve contents of hive key
+	 *	@return mixed
+	 *	@param $key string
+	 *	@param $args string|array
+	 **/
+	function get($key,$args=NULL) {
+		if (is_string($val=$this->ref($key,FALSE)) && !is_null($args))
+			return call_user_func_array(
+				[$this,'format'],
+				array_merge([$val],is_array($args)?$args:[$args])
+			);
+		if (is_null($val)) {
+			// Attempt to retrieve from cache
+//			if (Cache::instance()->exists($this->hash($key).'.var',$data))
+//				return $data;
+		}
+		return $val;
+	}
+
+	/**
+	 *	Return TRUE if hive key is set
+	 *	(or return timestamp and TTL if cached)
+	 *	@return bool
+	 *	@param $key string
+	 *	@param $val mixed
+	 **/
+	function exists($key,&$val=NULL) {
+		$val=$this->ref($key,FALSE);
+		return isset($val);
+//		return isset($val)?
+//			TRUE:
+//			(Cache::instance()->exists($this->hash($key).'.var',$val)?:FALSE);
+	}
+
+	/**
+	 *	Return TRUE if hive key is empty and not cached
+	 *	@param $key string
+	 *	@param $val mixed
+	 *	@return bool
+	 **/
+	function devoid($key,&$val=NULL) {
+		$val=$this->ref($key,FALSE);
+		return empty($val);
+//		return empty($val) &&
+//			(!Cache::instance()->exists($this->hash($key).'.var',$val) ||
+//				!$val);
+	}
+
+	function state(string $state) {
+		$this->_hive_states[$state] = [clone $this->_hive, $this->_hive_data];
+	}
+
+	function restore(string $state) {
+		$this->_hive = clone $this->_hive_states[$state][0];
+		$this->_hive_data = $this->_hive_states[$state][1];
+	}
+
+	/**
+	 *	Convenience method for checking hive key
+	 *	@return mixed
+	 *	@param $key string
+	 **/
+	function offsetExists($key) {
+		$val=$this->ref($key,FALSE);
+		return isset($val);
+	}
+
+	/**
+	 *	Convenience method for assigning hive value
+	 *	@return mixed
+	 *	@param $key string
+	 *	@param $val mixed
+	 **/
+	function offsetSet($key,$val) {
+		return $this->set($key,$val);
+	}
+
+	/**
+	 *	Convenience method for retrieving hive value
+	 *	@return mixed
+	 *	@param $key string
+	 **/
+	function &offsetGet($key) {
+		$val=&$this->ref($key);
+		return $val;
+	}
+
+	/**
+	 *	Convenience method for removing hive key
+	 *	@param $key string
+	 **/
+	function offsetUnset($key) {
+		$this->clear($key);
+	}
+
+	/**
+	 *	Alias for offsetexists()
+	 *	@return mixed
+	 *	@param $key string
+	 **/
+	function __isset($key) {
+		$val=$this->ref($key,FALSE);
+		return $this->offsetExists($key);
+	}
+
+	/**
+	 *	Alias for offsetset()
+	 *	@return mixed
+	 *	@param $key string
+	 *	@param $val mixed
+	 **/
+	function __set($key,$val) {
+		return $this->set($key,$val);
+	}
+
+	/**
+	 *	Alias for offsetget()
+	 *	@return mixed
+	 *	@param $key string
+	 **/
+	function &__get($key) {
+		$val=&$this->ref($key);
+		return $val;
+	}
+
+	/**
+	 *	Alias for offsetunset()
+	 *	@param $key string
+	 **/
+	function __unset($key) {
+		$this->clear($key);
+	}
+
+}
+
+class BaseHive extends Hive {
+
+	public string $AGENT = '';
+	public bool $AJAX = FALSE;
+	public ?string $ALIAS = NULL;
+	public array $ALIASES = [];
+	public string|array $AUTOLOAD = 'lib/';
+	public string $BASE = '';
+	public int $BITMASK = ENT_COMPAT|ENT_SUBSTITUTE;
+	public ?string $BODY = NULL;
+	public string|bool $CACHE = FALSE;
+	public bool $CASELESS = FALSE;
+	public bool $CLI = FALSE;
+	public array $CORS = [
+		'headers'=>'',
+		'origin'=>FALSE,
+		'credentials'=>FALSE,
+		'expose'=>FALSE,
+		'ttl'=>0
+	];
+	public int $DEBUG = 0;
+	public array $DIACRITICS = [];
+	public string $DNSBL = '';
+	public array $EMOJI = [];
+	public string $ENCODING = 'UTF-8';
+	public ?array $ERROR = NULL;
+	public bool $ESCAPE = TRUE;
+	public ?\Throwable $EXCEPTION = NULL;
+	public string|array|null $EXEMPT = NULL;
+	public string $FALLBACK = 'en';
+	public array $FORMATS = [];
+	//	public string $FRAGMENT = '';
+	public bool $HALT = TRUE;
+	public array $HEADERS = [];
+	public bool $HIGHLIGHT = FALSE;
+	public string $HOST = '';
+	public string $IP = '';
+	public array $JAR = [
+		'expire'=>0,
+		'lifetime'=>0,
+		'path'=>'/',
+		'domain'=>'',
+		'secure'=>TRUE,
+		'httponly'=>TRUE,
+		'samesite'=>'Lax',
+	];
+	public string $LANGUAGE = '';
+	public string $LOCALES = './';
+	public int $LOCK = LOCK_EX;
+	public string $LOGGABLE = '*';
+	public string $LOGS = './';
+	public bool $MB = FALSE;
+	public mixed $ONERROR = NULL;
+	public mixed $ONREROUTE = NULL;
+	public string $PACKAGE = '';
+	public array $PARAMS = [];
+	public string $PATH = '';
+	public ?string $PATTERN = NULL;
+	public string $PLUGINS = './';
+	public int $PORT = 80;
+	public ?string $PREFIX = NULL;
+	public string $PREMAP = '';
+	public string $QUERY = '';
+	public bool $QUIET = FALSE;
+	public bool $RAW = FALSE;
+	public string $REALM = '';
+	public string $RESPONSE = '';
+	public string $ROOT = '';
+	public array $ROUTES = [];
+	public string $SCHEME = 'http';
+	public string $SEED = '';
+	public string $SERIALIZER = 'php';
+	public string $TEMP = 'tmp/';
+	public int $TIME = 0;
+	public string $TZ = '';
+	public string $UI = './';
+	public mixed $UNLOAD = NULL;
+	public string $UPLOADS = './';
+	public string $URI = '';
+	public string $VERB = '';
+	public string $VERSION = '';
+	public string $XFRAME = 'SAMEORIGIN';
+
+	public ?array $GLOBALS = [];
+	public ?array $GET = [];
+	public ?array $POST = [];
+	public ?array $COOKIE = [];
+	public ?array $REQUEST = [];
+	public ?array $SESSION = [];
+	public ?array $FILES = [];
+	public ?array $SERVER = [];
+	public ?array $ENV = [];
 }
 
 //! Base structure
-final class Base implements \ArrayAccess {
+final class Base extends BaseHive {
 
 	use Prefab;
 
@@ -132,45 +587,34 @@ final class Base implements \ArrayAccess {
 		E_Hive='Invalid hive key %s';
 	//@}
 
-	private
-		//! Globals
-		$hive,
-		//! Initial settings
-		$init,
-		//! Language lookup sequence
-		$languages,
-		//! Mutex locks
-		$locks=[],
-		//! Default fallback language
-		$fallback='en';
+	//! Language lookup sequence
+	private array $languages;
+
+	//! Mutex locks
+	private array $locks=[];
 
 	/**
 	*	Sync PHP global with corresponding hive key
-	*	@return array
-	*	@param $key string
 	**/
-	function sync($key) {
-		return $this->hive[$key]=&$GLOBALS['_'.$key];
+	function sync(string $key): ?array {
+		return $GLOBALS['_'.$key] = &$this->_hive->{$key};
 	}
 
 	/**
-	*	Return the parts of specified hive key
-	*	@return array
-	*	@param $key string
-	**/
-	private function cut($key) {
-		return preg_split('/\[\h*[\'"]?(.+?)[\'"]?\h*\]|(->)|\./',
-			$key,NULL,PREG_SPLIT_NO_EMPTY|PREG_SPLIT_DELIM_CAPTURE);
+	 * drop sync of PHP global with corresponding hive key
+	 * @param string $key
+	 * @return array
+	 */
+	function desync(string $key): ?array {
+		unset($this->_hive->{$key});
+		return $this->_hive->{$key}=$GLOBALS['_'.$key] ?? [];
 	}
 
 	/**
 	*	Replace tokenized URL with available token values
-	*	@return string
-	*	@param $url array|string
-	*	@param $args array
 	**/
-	function build($url,$args=[]) {
-		$args+=$this->hive['PARAMS'];
+	function build(string|array $url,array $args=[]): string|array {
+		$args+=$this->PARAMS;
 		if (is_array($url))
 			foreach ($url as &$var) {
 				$var=$this->build($var,$args);
@@ -233,159 +677,30 @@ final class Base implements \ArrayAccess {
 	}
 
 	/**
-	*	Convert JS-style token to PHP expression
-	*	@return string
-	*	@param $str string
-	*	@param $evaluate bool compile expressions as well or only convert variable access
-	**/
-	function compile($str, $evaluate=TRUE) {
-		return (!$evaluate)
-			? preg_replace_callback(
-				'/^@(\w+)((?:\..+|\[(?:(?:[^\[\]]*|(?R))*)\])*)/',
-				function($expr) {
-					$str='$'.$expr[1];
-					if (isset($expr[2]))
-						$str.=preg_replace_callback(
-							'/\.([^.\[\]]+)|\[((?:[^\[\]\'"]*|(?R))*)\]/',
-							function($sub) {
-								$val=isset($sub[2]) ? $sub[2] : $sub[1];
-								if (ctype_digit($val))
-									$val=(int)$val;
-								$out='['.$this->export($val).']';
-								return $out;
-							},
-							$expr[2]
-						);
-					return $str;
-				},
-				$str
-			)
-			: preg_replace_callback(
-			'/(?<!\w)@(\w+(?:(?:\->|::)\w+)?)'.
-			'((?:\.\w+|\[(?:(?:[^\[\]]*|(?R))*)\]|(?:\->|::)\w+|\()*)/',
-			function($expr) {
-				$str='$'.$expr[1];
-				if (isset($expr[2]))
-					$str.=preg_replace_callback(
-						'/\.(\w+)(\()?|\[((?:[^\[\]]*|(?R))*)\]/',
-						function($sub) {
-							if (empty($sub[2])) {
-								if (ctype_digit($sub[1]))
-									$sub[1]=(int)$sub[1];
-								$out='['.
-									(isset($sub[3])?
-										$this->compile($sub[3]):
-										$this->export($sub[1])).
-								']';
-							}
-							else
-								$out=function_exists($sub[1])?
-									$sub[0]:
-									('['.$this->export($sub[1]).']'.$sub[2]);
-							return $out;
-						},
-						$expr[2]
-					);
-				return $str;
-			},
-			$str
-		);
-	}
-
-	/**
-	*	Get hive key reference/contents; Add non-existent hive keys,
-	*	array elements, and object properties by default
-	*	@return mixed
-	*	@param $key string
-	*	@param $add bool
-	*	@param $var mixed
-	**/
-	function &ref($key,$add=TRUE,&$var=NULL) {
-		$null=NULL;
+	 * handle core-specific hive features
+	 */
+	public function &ref(array|string $key, bool $add=TRUE, mixed &$var=NULL): mixed
+	{
 		$parts=$this->cut($key);
 		if ($parts[0]=='SESSION') {
-			if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
+			if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE) {
 				session_start();
-			$this->sync('SESSION');
-		}
-		elseif (!preg_match('/^\w+$/',$parts[0]))
+				$this->sync('SESSION');
+			}
+		} elseif (!preg_match('/^\w+$/',$parts[0]))
 			user_error(sprintf(self::E_Hive,$this->stringify($key)),
 				E_USER_ERROR);
-		if (is_null($var)) {
-			if ($add)
-				$var=&$this->hive;
-			else
-				$var=$this->hive;
-		}
-		$obj=FALSE;
-		foreach ($parts as $part)
-			if ($part=='->')
-				$obj=TRUE;
-			elseif ($obj) {
-				$obj=FALSE;
-				if (!is_object($var))
-					$var=new \stdClass;
-				if ($add || property_exists($var,$part))
-					$var=&$var->$part;
-				else {
-					$var=&$null;
-					break;
-				}
-			}
-			else {
-				if (!is_array($var))
-					$var=[];
-				if ($add || array_key_exists($part,$var))
-					$var=&$var[$part];
-				else {
-					$var=&$null;
-					break;
-				}
-			}
-		return $var;
+		$val = &parent::ref($parts,$add,$var);
+		return $val;
 	}
 
-	/**
-	*	Return TRUE if hive key is set
-	*	(or return timestamp and TTL if cached)
-	*	@return bool
-	*	@param $key string
-	*	@param $val mixed
-	**/
-	function exists($key,&$val=NULL) {
-		$val=$this->ref($key,FALSE);
-		return isset($val)?
-			TRUE:
-			(Cache::instance()->exists($this->hash($key).'.var',$val)?:FALSE);
-	}
-
-	/**
-	*	Return TRUE if hive key is empty and not cached
-	*	@param $key string
-	*	@param $val mixed
-	*	@return bool
-	**/
-	function devoid($key,&$val=NULL) {
-		$val=$this->ref($key,FALSE);
-		return empty($val) &&
-			(!Cache::instance()->exists($this->hash($key).'.var',$val) ||
-				!$val);
-	}
-
-	/**
-	*	Bind value to hive key
-	*	@return mixed
-	*	@param $key string
-	*	@param $val mixed
-	*	@param $ttl int
-	**/
 	function set($key,$val,$ttl=0) {
-		$time=(int)$this->hive['TIME'];
+		$time=$this->TIME;
 		if (preg_match('/^(GET|POST|COOKIE)\b(.+)/',$key,$expr)) {
 			$this->set('REQUEST'.$expr[2],$val);
 			if ($expr[1]=='COOKIE') {
 				$parts=$this->cut($key);
-				$jar=$this->unserialize($this->serialize($this->hive['JAR']));
+				$jar=$this->unserialize($this->serialize($this->JAR));
 				unset($jar['lifetime']);
 				if (version_compare(PHP_VERSION, '7.3.0') >= 0) {
 					unset($jar['expire']);
@@ -408,43 +723,41 @@ final class Base implements \ArrayAccess {
 			}
 		}
 		else switch ($key) {
-		case 'CACHE':
-			$val=Cache::instance()->load($val);
-			break;
-		case 'ENCODING':
-			ini_set('default_charset',$val);
-			if (extension_loaded('mbstring'))
-				mb_internal_encoding($val);
-			break;
-		case 'FALLBACK':
-			$this->fallback=$val;
-			$lang=$this->language($this->hive['LANGUAGE']);
-		case 'LANGUAGE':
-			if (!isset($lang))
-				$val=$this->language($val);
-			$lex=$this->lexicon($this->hive['LOCALES'],$ttl);
-		case 'LOCALES':
-			if (isset($lex) || $lex=$this->lexicon($val,$ttl))
-				foreach ($lex as $dt=>$dd) {
-					$ref=&$this->ref($this->hive['PREFIX'].$dt);
-					$ref=$dd;
-					unset($ref);
-				}
-			break;
-		case 'TZ':
-			date_default_timezone_set($val);
-			break;
+			case 'CACHE':
+				$val=Cache::instance()->load($val);
+				break;
+			case 'ENCODING':
+				ini_set('default_charset',$val);
+				if (extension_loaded('mbstring'))
+					mb_internal_encoding($val);
+				break;
+			case 'FALLBACK':
+				$lang=$this->language($this->LANGUAGE);
+			case 'LANGUAGE':
+				if (!isset($lang))
+					$val=$this->language($val);
+				$lex=$this->lexicon($this->LOCALES,$ttl);
+			case 'LOCALES':
+				if (isset($lex) || $lex=$this->lexicon($val,$ttl))
+					foreach ($lex as $dt=>$dd) {
+						$ref=&$this->ref($this->PREFIX.$dt);
+						$ref=$dd;
+						unset($ref);
+					}
+				break;
+			case 'TZ':
+				date_default_timezone_set($val);
+				break;
 		}
-		$ref=&$this->ref($key);
-		$ref=$val;
+		$ref = parent::set($key,$val);
 		if (preg_match('/^JAR\b/',$key)) {
 			if ($key=='JAR.lifetime')
 				$this->set('JAR.expire',$val==0?0:
 					(is_int($val)?$time+$val:strtotime($val)));
 			else {
 				if ($key=='JAR.expire')
-					$this->hive['JAR']['lifetime']=max(0,$val-$time);
-				$jar=$this->unserialize($this->serialize($this->hive['JAR']));
+					$this->JAR['lifetime']=max(0,$val-$time);
+				$jar=$this->unserialize($this->serialize($this->JAR));
 				unset($jar['expire']);
 				if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
 					if (version_compare(PHP_VERSION, '7.3.0') >= 0)
@@ -462,30 +775,10 @@ final class Base implements \ArrayAccess {
 	}
 
 	/**
-	*	Retrieve contents of hive key
-	*	@return mixed
-	*	@param $key string
-	*	@param $args string|array
-	**/
-	function get($key,$args=NULL) {
-		if (is_string($val=$this->ref($key,FALSE)) && !is_null($args))
-			return call_user_func_array(
-				[$this,'format'],
-				array_merge([$val],is_array($args)?$args:[$args])
-			);
-		if (is_null($val)) {
-			// Attempt to retrieve from cache
-			if (Cache::instance()->exists($this->hash($key).'.var',$data))
-				return $data;
-		}
-		return $val;
-	}
-
-	/**
 	*	Unset hive key
 	*	@param $key string
 	**/
-	function clear($key) {
+	function clear(string $key) {
 		// Normalize array literal
 		$cache=Cache::instance();
 		$parts=$this->cut($key);
@@ -493,46 +786,34 @@ final class Base implements \ArrayAccess {
 			// Clear cache contents
 			$cache->reset();
 		elseif (preg_match('/^(GET|POST|COOKIE)\b(.+)/',$key,$expr)) {
-			$this->clear('REQUEST'.$expr[2]);
 			if ($expr[1]=='COOKIE') {
 				$parts=$this->cut($key);
-				$jar=$this->hive['JAR'];
+				$jar=$this->JAR;
 				unset($jar['lifetime']);
 				$jar['expire']=0;
-				if (version_compare(PHP_VERSION, '7.3.0') >= 0) {
-					$jar['expires']=$jar['expire'];
-					unset($jar['expire']);
-					setcookie($parts[1],NULL,$jar);
-				} else {
-					unset($jar['samesite']);
-					call_user_func_array('setcookie',
-						array_merge([$parts[1],NULL],$jar));
-				}
+				$jar['expires']=$jar['expire'];
+				unset($jar['expire']);
+				setcookie($parts[1],NULL,$jar);
 				unset($_COOKIE[$parts[1]]);
-			}
+			} else
+				parent::clear('REQUEST'.$expr[2]);
+			parent::clear($key);
 		}
 		elseif ($parts[0]=='SESSION') {
 			if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
 				session_start();
 			if (empty($parts[1])) {
 				// End session
+				parent::clear('SESSION');
 				session_unset();
 				session_destroy();
 				$this->clear('COOKIE.'.session_name());
-			}
-			$this->sync('SESSION');
-		}
-		if (!isset($parts[1]) && array_key_exists($parts[0],$this->init))
-			// Reset global to default value
-			$this->hive[$parts[0]]=$this->init[$parts[0]];
-		else {
-			$val=preg_replace('/^(\$hive)/','$this->hive',
-				$this->compile('@hive.'.$key, FALSE));
-			eval('unset('.$val.');');
-			if ($parts[0]=='SESSION') {
+			} else {
+				parent::clear($key);
 				session_commit();
-				session_start();
 			}
+		} else {
+			parent::clear($key);
 			if ($cache->exists($hash=$this->hash($key).'.var'))
 				// Remove from cache
 				$cache->clear($hash);
@@ -581,7 +862,7 @@ final class Base implements \ArrayAccess {
 	*	@return array
 	**/
 	function hive() {
-		return $this->hive;
+		return (array) $this->_hive + $this->_hive_data;
 	}
 
 	/**
@@ -673,7 +954,7 @@ final class Base implements \ArrayAccess {
 		$ref=&$this->ref($key);
 		if (!$ref)
 			$ref=[];
-		$out=array_merge($ref,is_string($src)?$this->hive[$src]:$src);
+		$out=array_merge($ref,is_string($src)?$this->_hive[$src]:$src);
 		if ($keep)
 			$ref=$out;
 		return $out;
@@ -691,7 +972,7 @@ final class Base implements \ArrayAccess {
 		if (!$ref)
 			$ref=[];
 		$out=array_replace_recursive(
-			is_string($src)?$this->hive[$src]:$src,$ref);
+			is_string($src)?$this->_hive[$src]:$src,$ref);
 		if ($keep)
 			$ref=$out;
 		return $out;
@@ -707,11 +988,11 @@ final class Base implements \ArrayAccess {
 	}
 
 	/**
-	*	Split comma-, semi-colon, or pipe-separated string
-	*	@return array
-	*	@param $str string
-	*	@param $noempty bool
-	**/
+	 *	Split comma-, semi-colon, or pipe-separated string
+	 *	@return array
+	 *	@param $str string
+	 *	@param $noempty bool
+	 **/
 	function split($str,$noempty=TRUE) {
 		return array_map('trim',
 			preg_split('/[,;|]/',$str,0,$noempty?PREG_SPLIT_NO_EMPTY:0));
@@ -752,6 +1033,24 @@ final class Base implements \ArrayAccess {
 			default:
 				return $this->export($arg);
 		}
+	}
+
+	function state(string $state) {
+		foreach (explode('|',Base::GLOBALS) as $global) {
+			$this->desync($global);
+		}
+		parent::state($state);
+		foreach (explode('|',Base::GLOBALS) as $global) {
+			$this->sync($global);
+		}
+	}
+
+	function restore(string $state, bool $sync=TRUE) {
+		parent::restore($state);
+		if ($sync)
+			foreach (explode('|',Base::GLOBALS) as $global) {
+				$this->sync($global);
+			}
 	}
 
 	/**
@@ -849,8 +1148,8 @@ final class Base implements \ArrayAccess {
 	*	@param $str string
 	**/
 	function encode($str) {
-		return @htmlspecialchars($str,$this->hive['BITMASK'],
-			$this->hive['ENCODING'])?:$this->scrub($str);
+		return @htmlspecialchars($str,$this->BITMASK,
+			$this->ENCODING)?:$this->scrub($str);
 	}
 
 	/**
@@ -859,7 +1158,7 @@ final class Base implements \ArrayAccess {
 	*	@param $str string
 	**/
 	function decode($str) {
-		return htmlspecialchars_decode($str,$this->hive['BITMASK']);
+		return htmlspecialchars_decode($str,$this->BITMASK);
 	}
 
 	/**
@@ -960,9 +1259,9 @@ final class Base implements \ArrayAccess {
 				if (!array_key_exists($pos,$args))
 					return $expr[0];
 				if (isset($type)) {
-					if (isset($this->hive['FORMATS'][$type]))
+					if (isset($this->FORMATS[$type]))
 						return $this->call(
-							$this->hive['FORMATS'][$type],
+							$this->FORMATS[$type],
 							[
 								$args[$pos],
 								isset($mod)?$mod:null,
@@ -1091,7 +1390,7 @@ final class Base implements \ArrayAccess {
 	**/
 	function language($code) {
 		$code=preg_replace('/\h+|;q=[0-9.]+/','',$code);
-		$code.=($code?',':'').$this->fallback;
+		$code.=($code?',':'').$this->FALLBACK;
 		$this->languages=[];
 		foreach (array_reverse(explode(',',$code)) as $lang)
 			if (preg_match('/^(\w{2})(?:-(\w{2}))?\b/i',$lang,$parts)) {
@@ -1120,7 +1419,7 @@ final class Base implements \ArrayAccess {
 			$locales[]=$locale;
 		}
 		setlocale(LC_ALL,$locales);
-		return $this->hive['LANGUAGE']=implode(',',$this->languages);
+		return $this->LANGUAGE=implode(',',$this->languages);
 	}
 
 	/**
@@ -1130,7 +1429,7 @@ final class Base implements \ArrayAccess {
 	*	@param $ttl int
 	**/
 	function lexicon($path,$ttl=0) {
-		$languages=$this->languages?:explode(',',$this->fallback);
+		$languages=$this->languages?:explode(',',$this->FALLBACK);
 		$cache=Cache::instance();
 		if ($ttl && $cache->exists(
 			$hash=$this->hash(implode(',',$languages).$path).'.dic',$lex))
@@ -1170,12 +1469,12 @@ final class Base implements \ArrayAccess {
 	}
 
 	/**
-	*	Return string representation of PHP value
-	*	@return string
-	*	@param $arg mixed
-	**/
+	 *	Return string representation of PHP value
+	 *	@return string
+	 *	@param $arg mixed
+	 **/
 	function serialize($arg) {
-		switch (strtolower($this->hive['SERIALIZER'])) {
+		switch (strtolower($this->SERIALIZER)) {
 			case 'igbinary':
 				return igbinary_serialize($arg);
 			default:
@@ -1184,12 +1483,12 @@ final class Base implements \ArrayAccess {
 	}
 
 	/**
-	*	Return PHP value derived from string
-	*	@return string
-	*	@param $arg mixed
-	**/
+	 *	Return PHP value derived from string
+	 *	@return string
+	 *	@param $arg mixed
+	 **/
 	function unserialize($arg) {
-		switch (strtolower($this->hive['SERIALIZER'])) {
+		switch (strtolower($this->SERIALIZER)) {
 			case 'igbinary':
 				return igbinary_unserialize($arg);
 			default:
@@ -1204,7 +1503,7 @@ final class Base implements \ArrayAccess {
 	**/
 	function status($code) {
 		$reason=@constant('self::HTTP_'.$code);
-		if (!$this->hive['CLI'] && !headers_sent())
+		if (!$this->CLI && !headers_sent())
 			header($_SERVER['SERVER_PROTOCOL'].' '.$code.' '.$reason);
 		return $reason;
 	}
@@ -1214,15 +1513,15 @@ final class Base implements \ArrayAccess {
 	*	@param $secs int
 	**/
 	function expire($secs=0) {
-		if (!$this->hive['CLI'] && !headers_sent()) {
+		if (!$this->CLI && !headers_sent()) {
 			$secs=(int)$secs;
-			if ($this->hive['PACKAGE'])
-				header('X-Powered-By: '.$this->hive['PACKAGE']);
-			if ($this->hive['XFRAME'])
-				header('X-Frame-Options: '.$this->hive['XFRAME']);
+			if ($this->PACKAGE)
+				header('X-Powered-By: '.$this->PACKAGE);
+			if ($this->XFRAME)
+				header('X-Frame-Options: '.$this->XFRAME);
 			header('X-XSS-Protection: 1; mode=block');
 			header('X-Content-Type-Options: nosniff');
-			if ($this->hive['VERB']=='GET' && $secs) {
+			if ($this->VERB=='GET' && $secs) {
 				$time=microtime(TRUE);
 				header_remove('Pragma');
 				header('Cache-Control: max-age='.$secs);
@@ -1241,8 +1540,9 @@ final class Base implements \ArrayAccess {
 	*	Return HTTP user agent
 	*	@return string
 	**/
-	function agent() {
-		$headers=$this->hive['HEADERS'];
+	function agent(array $headers=null) {
+		if (!$headers)
+			$headers=$this->HEADERS;
 		return isset($headers['X-Operamini-Phone-UA'])?
 			$headers['X-Operamini-Phone-UA']:
 			(isset($headers['X-Skyfire-Phone'])?
@@ -1255,8 +1555,9 @@ final class Base implements \ArrayAccess {
 	*	Return TRUE if XMLHttpRequest detected
 	*	@return bool
 	**/
-	function ajax() {
-		$headers=$this->hive['HEADERS'];
+	function ajax(array $headers=null) {
+		if (!$headers)
+			$headers=$this->HEADERS;
 		return isset($headers['X-Requested-With']) &&
 			$headers['X-Requested-With']=='XMLHttpRequest';
 	}
@@ -1266,7 +1567,7 @@ final class Base implements \ArrayAccess {
 	*	@return string
 	**/
 	function ip() {
-		$headers=$this->hive['HEADERS'];
+		$headers=$this->HEADERS;
 		return isset($headers['Client-IP'])?
 			$headers['Client-IP']:
 			(isset($headers['X-Forwarded-For'])?
@@ -1288,7 +1589,7 @@ final class Base implements \ArrayAccess {
 			if (isset($frame['file']) && $frame['file']==__FILE__)
 				array_shift($trace);
 		}
-		$debug=$this->hive['DEBUG'];
+		$debug=$this->DEBUG;
 		$trace=array_filter(
 			$trace,
 			function($frame) use($debug) {
@@ -1330,15 +1631,15 @@ final class Base implements \ArrayAccess {
 	*	@param $level int
 	**/
 	function error($code,$text='',array $trace=NULL,$level=0) {
-		$prior=$this->hive['ERROR'];
+		$prior=$this->ERROR;
 		$header=$this->status($code);
-		$req=$this->hive['VERB'].' '.$this->hive['PATH'];
-		if ($this->hive['QUERY'])
-			$req.='?'.$this->hive['QUERY'];
+		$req=$this->VERB.' '.$this->PATH;
+		if ($this->QUERY)
+			$req.='?'.$this->QUERY;
 		if (!$text)
 			$text='HTTP '.$code.' ('.$req.')';
 		$trace=$this->trace($trace);
-		$loggable=$this->hive['LOGGABLE'];
+		$loggable=$this->LOGGABLE;
 		if (!is_array($loggable))
 			$loggable=$this->split($loggable);
 		foreach ($loggable as $status)
@@ -1350,10 +1651,10 @@ final class Base implements \ArrayAccess {
 						error_log($nexus);
 				break;
 			}
-		if ($highlight=(!$this->hive['CLI'] && !$this->hive['AJAX'] &&
-			$this->hive['HIGHLIGHT'] && is_file($css=__DIR__.'/'.self::CSS)))
+		if ($highlight=(!$this->CLI && !$this->AJAX &&
+			$this->HIGHLIGHT && is_file($css=__DIR__.'/'.self::CSS)))
 			$trace=$this->highlight($trace);
-		$this->hive['ERROR']=[
+		$this->ERROR=[
 			'status'=>$header,
 			'code'=>$code,
 			'text'=>$text,
@@ -1361,25 +1662,25 @@ final class Base implements \ArrayAccess {
 			'level'=>$level
 		];
 		$this->expire(-1);
-		$handler=$this->hive['ONERROR'];
-		$this->hive['ONERROR']=NULL;
+		$handler=$this->ONERROR;
+		$this->ONERROR=NULL;
 		$eol="\n";
 		if ((!$handler ||
-			$this->call($handler,[$this,$this->hive['PARAMS']],
+			$this->call($handler,[$this,$this->PARAMS],
 				'beforeroute,afterroute')===FALSE) &&
-			!$prior && !$this->hive['QUIET']) {
+			!$prior && !$this->QUIET) {
 			$error=array_diff_key(
-				$this->hive['ERROR'],
-				$this->hive['DEBUG']?
+				$this->ERROR,
+				$this->DEBUG?
 					[]:
 					['trace'=>1]
 			);
-			if ($this->hive['CLI'])
+			if ($this->CLI)
 				echo PHP_EOL.'==================================='.PHP_EOL.
 					'ERROR '.$error['code'].' - '.$error['status'].PHP_EOL.
 					$error['text'].PHP_EOL.PHP_EOL.(isset($error['trace']) ? $error['trace'] : '');
 			else
-				echo $this->hive['AJAX']?
+				echo $this->AJAX?
 					json_encode($error):
 					('<!DOCTYPE html>'.$eol.
 					'<html>'.$eol.
@@ -1391,11 +1692,11 @@ final class Base implements \ArrayAccess {
 					'<body>'.$eol.
 						'<h1>'.$header.'</h1>'.$eol.
 						'<p>'.$this->encode($text?:$req).'</p>'.$eol.
-						($this->hive['DEBUG']?('<pre>'.$trace.'</pre>'.$eol):'').
+						($this->DEBUG?('<pre>'.$trace.'</pre>'.$eol):'').
 					'</body>'.$eol.
 					'</html>');
 		}
-		if ($this->hive['HALT'])
+		if ($this->HALT)
 			die(1);
 	}
 
@@ -1416,9 +1717,9 @@ final class Base implements \ArrayAccess {
 			'(?:\h+\[('.implode('|',$types).')\])?/',$pattern,$parts);
 		$verb=strtoupper($parts[1]);
 		if ($parts[2]) {
-			if (empty($this->hive['ALIASES'][$parts[2]]))
+			if (empty($this->ALIASES[$parts[2]]))
 				user_error(sprintf(self::E_Named,$parts[2]),E_USER_ERROR);
-			$parts[4]=$this->hive['ALIASES'][$parts[2]];
+			$parts[4]=$this->ALIASES[$parts[2]];
 			$parts[4]=$this->build($parts[4],
 				isset($parts[3])?$this->parse($parts[3]):[]);
 		}
@@ -1432,17 +1733,17 @@ final class Base implements \ArrayAccess {
 		$GLOBALS['_REQUEST']=array_merge($GLOBALS['_GET'],$GLOBALS['_POST']);
 		foreach ($headers?:[] as $key=>$val)
 			$_SERVER['HTTP_'.strtr(strtoupper($key),'-','_')]=$val;
-		$this->hive['VERB']=$verb;
-		$this->hive['PATH']=$url['path'];
-		$this->hive['URI']=$this->hive['BASE'].$url['path'];
+		$this->VERB=$verb;
+		$this->PATH=$url['path'];
+		$this->URI=$this->BASE.$url['path'];
 		if ($GLOBALS['_GET'])
-			$this->hive['URI'].='?'.http_build_query($GLOBALS['_GET']);
-		$this->hive['BODY']='';
+			$this->URI.='?'.http_build_query($GLOBALS['_GET']);
+		$this->BODY='';
 		if (!preg_match('/GET|HEAD/',$verb))
-			$this->hive['BODY']=$body?:http_build_query($args);
-		$this->hive['AJAX']=isset($parts[5]) &&
+			$this->BODY=$body?:http_build_query($args);
+		$this->AJAX=isset($parts[5]) &&
 			preg_match('/ajax/i',$parts[5]);
-		$this->hive['CLI']=isset($parts[5]) &&
+		$this->CLI=isset($parts[5]) &&
 			preg_match('/cli/i',$parts[5]);
 		return $this->run();
 	}
@@ -1458,9 +1759,9 @@ final class Base implements \ArrayAccess {
 	function alias($name,$params=[],$query=NULL,$fragment=NULL) {
 		if (!is_array($params))
 			$params=$this->parse($params);
-		if (empty($this->hive['ALIASES'][$name]))
+		if (empty($this->ALIASES[$name]))
 			user_error(sprintf(self::E_Named,$name),E_USER_ERROR);
-		$url=$this->build($this->hive['ALIASES'][$name],$params);
+		$url=$this->build($this->ALIASES[$name],$params);
 		if (is_array($query))
 			$query=http_build_query($query);
 		return $url.($query?('?'.$query):'').($fragment?'#'.$fragment:'');
@@ -1487,20 +1788,20 @@ final class Base implements \ArrayAccess {
 		if (isset($parts[2]) && $parts[2]) {
 			if (!preg_match('/^\w+$/',$parts[2]))
 				user_error(sprintf(self::E_Alias,$parts[2]),E_USER_ERROR);
-			$this->hive['ALIASES'][$alias=$parts[2]]=$parts[3];
+			$this->ALIASES[$alias=$parts[2]]=$parts[3];
 		}
 		elseif (!empty($parts[4])) {
-			if (empty($this->hive['ALIASES'][$parts[4]]))
+			if (empty($this->ALIASES[$parts[4]]))
 				user_error(sprintf(self::E_Named,$parts[4]),E_USER_ERROR);
-			$parts[3]=$this->hive['ALIASES'][$alias=$parts[4]];
+			$parts[3]=$this->ALIASES[$alias=$parts[4]];
 		}
 		if (empty($parts[3]))
 			user_error(sprintf(self::E_Pattern,$pattern),E_USER_ERROR);
 		$type=empty($parts[5])?0:constant('self::REQ_'.strtoupper($parts[5]));
 		foreach ($this->split($parts[1]) as $verb) {
 			if (!preg_match('/'.self::VERBS.'/',$verb))
-				$this->error(501,$verb.' '.$this->hive['URI']);
-			$this->hive['ROUTES'][$parts[3]][$type][strtoupper($verb)]=
+				$this->error(501,$verb.' '.$this->URI);
+			$this->ROUTES[$parts[3]][$type][strtoupper($verb)]=
 				[$handler,$ttl,$kbps,$alias];
 		}
 	}
@@ -1514,28 +1815,28 @@ final class Base implements \ArrayAccess {
 	**/
 	function reroute($url=NULL,$permanent=FALSE,$die=TRUE) {
 		if (!$url)
-			$url=$this->hive['REALM'];
+			$url=$this->REALM;
 		if (is_array($url))
 			$url=call_user_func_array([$this,'alias'],$url);
 		elseif (preg_match('/^(?:@([^\/()?#]+)(?:\((.+?)\))*(\?[^#]+)*(#.+)*)/',
-			$url,$parts) && isset($this->hive['ALIASES'][$parts[1]]))
-			$url=$this->build($this->hive['ALIASES'][$parts[1]],
+			$url,$parts) && isset($this->ALIASES[$parts[1]]))
+			$url=$this->build($this->ALIASES[$parts[1]],
 					isset($parts[2])?$this->parse($parts[2]):[]).
 				(isset($parts[3])?$parts[3]:'').(isset($parts[4])?$parts[4]:'');
 		else
 			$url=$this->build($url);
-		if (($handler=$this->hive['ONREROUTE']) &&
+		if (($handler=$this->ONREROUTE) &&
 			$this->call($handler,[$url,$permanent,$die])!==FALSE)
 			return;
 		if ($url[0]!='/' && !preg_match('/^\w+:\/\//i',$url))
 			$url='/'.$url;
 		if ($url[0]=='/' && (empty($url[1]) || $url[1]!='/')) {
-			$port=$this->hive['PORT'];
+			$port=$this->PORT;
 			$port=in_array($port,[80,443])?'':(':'.$port);
-			$url=$this->hive['SCHEME'].'://'.
-				$this->hive['HOST'].$port.$this->hive['BASE'].$url;
+			$url=$this->SCHEME.'://'.
+				$this->HOST.$port.$this->BASE.$url;
 		}
-		if ($this->hive['CLI'])
+		if ($this->CLI)
 			$this->mock('GET '.$url.' [cli]');
 		else {
 			header('Location: '.$url);
@@ -1561,8 +1862,8 @@ final class Base implements \ArrayAccess {
 		}
 		foreach (explode('|',self::VERBS) as $method)
 			$this->route($method.' '.$url,is_string($class)?
-				$class.'->'.$this->hive['PREMAP'].strtolower($method):
-				[$class,$this->hive['PREMAP'].strtolower($method)],
+				$class.'->'.$this->PREMAP.strtolower($method):
+				[$class,$this->PREMAP.strtolower($method)],
 				$ttl,$kbps);
 	}
 
@@ -1590,16 +1891,16 @@ final class Base implements \ArrayAccess {
 	*	@param $ip string
 	**/
 	function blacklisted($ip) {
-		if ($this->hive['DNSBL'] &&
+		if ($this->DNSBL &&
 			!in_array($ip,
-				is_array($this->hive['EXEMPT'])?
-					$this->hive['EXEMPT']:
-					$this->split($this->hive['EXEMPT']))) {
+				is_array($this->EXEMPT)?
+					$this->EXEMPT:
+					$this->split($this->EXEMPT))) {
 			// Reverse IPv4 dotted quad
 			$rev=implode('.',array_reverse(explode('.',$ip)));
-			foreach (is_array($this->hive['DNSBL'])?
-				$this->hive['DNSBL']:
-				$this->split($this->hive['DNSBL']) as $server)
+			foreach (is_array($this->DNSBL)?
+				$this->DNSBL:
+				$this->split($this->DNSBL) as $server)
 				// DNSBL lookup
 				if (checkdnsrr($rev.'.'.$server,'A'))
 					return TRUE;
@@ -1615,8 +1916,8 @@ final class Base implements \ArrayAccess {
 	**/
 	function mask($pattern,$url=NULL) {
 		if (!$url)
-			$url=$this->rel($this->hive['URI']);
-		$case=$this->hive['CASELESS']?'i':'';
+			$url=$this->rel($this->URI);
+		$case=$this->CASELESS?'i':'';
 		$wild=preg_quote($pattern,'/');
 		$i=0;
 		while (is_int($pos=strpos($wild,'\*'))) {
@@ -1650,58 +1951,58 @@ final class Base implements \ArrayAccess {
 	*	@return mixed
 	**/
 	function run() {
-		if ($this->blacklisted($this->hive['IP']))
+		if ($this->blacklisted($this->IP))
 			// Spammer detected
 			$this->error(403);
-		if (!$this->hive['ROUTES'])
+		if (!$this->ROUTES)
 			// No routes defined
 			user_error(self::E_Routes,E_USER_ERROR);
 		// Match specific routes first
 		$paths=[];
-		foreach ($keys=array_keys($this->hive['ROUTES']) as $key) {
+		foreach ($keys=array_keys($this->ROUTES) as $key) {
 			$path=preg_replace('/@\w+/','*@',$key);
 			if (substr($path,-1)!='*')
 				$path.='+';
 			$paths[]=$path;
 		}
-		$vals=array_values($this->hive['ROUTES']);
+		$vals=array_values($this->ROUTES);
 		array_multisort($paths,SORT_DESC,$keys,$vals);
-		$this->hive['ROUTES']=array_combine($keys,$vals);
+		$this->ROUTES=array_combine($keys,$vals);
 		// Convert to BASE-relative URL
-		$req=urldecode($this->hive['PATH']);
+		$req=urldecode($this->PATH);
 		$preflight=FALSE;
-		if ($cors=(isset($this->hive['HEADERS']['Origin']) &&
-			$this->hive['CORS']['origin'])) {
-			$cors=$this->hive['CORS'];
+		if ($cors=(isset($this->HEADERS['Origin']) &&
+			$this->CORS['origin'])) {
+			$cors=$this->CORS;
 			header('Access-Control-Allow-Origin: '.$cors['origin']);
 			header('Access-Control-Allow-Credentials: '.
 				$this->export($cors['credentials']));
 			$preflight=
-				isset($this->hive['HEADERS']['Access-Control-Request-Method']);
+				isset($this->HEADERS['Access-Control-Request-Method']);
 		}
 		$allowed=[];
-		foreach ($this->hive['ROUTES'] as $pattern=>$routes) {
+		foreach ($this->ROUTES as $pattern=>$routes) {
 			if (!$args=$this->mask($pattern,$req))
 				continue;
 			ksort($args);
 			$route=NULL;
-			$ptr=$this->hive['CLI']?self::REQ_CLI:$this->hive['AJAX']+1;
-			if (isset($routes[$ptr][$this->hive['VERB']]) ||
+			$ptr=$this->CLI?self::REQ_CLI:$this->AJAX+1;
+			if (isset($routes[$ptr][$this->VERB]) ||
 				isset($routes[$ptr=0]))
 				$route=$routes[$ptr];
 			if (!$route)
 				continue;
-			if (isset($route[$this->hive['VERB']]) && !$preflight) {
-				if ($this->hive['VERB']=='GET' &&
-					preg_match('/.+\/$/',$this->hive['PATH']))
-					$this->reroute(substr($this->hive['PATH'],0,-1).
-						($this->hive['QUERY']?('?'.$this->hive['QUERY']):''));
-				list($handler,$ttl,$kbps,$alias)=$route[$this->hive['VERB']];
+			if (isset($route[$this->VERB]) && !$preflight) {
+				if ($this->VERB=='GET' &&
+					preg_match('/.+\/$/',$this->PATH))
+					$this->reroute(substr($this->PATH,0,-1).
+						($this->QUERY?('?'.$this->QUERY):''));
+				list($handler,$ttl,$kbps,$alias)=$route[$this->VERB];
 				// Capture values of route pattern tokens
-				$this->hive['PARAMS']=$args;
+				$this->PARAMS=$args;
 				// Save matching route
-				$this->hive['ALIAS']=$alias;
-				$this->hive['PATTERN']=$pattern;
+				$this->ALIAS=$alias;
+				$this->PATTERN=$pattern;
 				if ($cors && $cors['expose'])
 					header('Access-Control-Expose-Headers: '.
 						(is_array($cors['expose'])?
@@ -1725,13 +2026,13 @@ final class Base implements \ArrayAccess {
 				$result=NULL;
 				$body='';
 				$now=microtime(TRUE);
-				if (preg_match('/GET|HEAD/',$this->hive['VERB']) && $ttl) {
+				if (preg_match('/GET|HEAD/',$this->VERB) && $ttl) {
 					// Only GET and HEAD requests are cacheable
-					$headers=$this->hive['HEADERS'];
+					$headers=$this->HEADERS;
 					$cache=Cache::instance();
 					$cached=$cache->exists(
-						$hash=$this->hash($this->hive['VERB'].' '.
-							$this->hive['URI']).'.url',$data);
+						$hash=$this->hash($this->VERB.' '.
+							$this->URI).'.url',$data);
 					if ($cached) {
 						if (isset($headers['If-Modified-Since']) &&
 							strtotime($headers['If-Modified-Since'])+
@@ -1741,7 +2042,7 @@ final class Base implements \ArrayAccess {
 						}
 						// Retrieve from cache backend
 						list($headers,$body,$result)=$data;
-						if (!$this->hive['CLI'])
+						if (!$this->CLI)
 							array_walk($headers,'header');
 						$this->expire($cached[0]+$ttl-$now);
 					}
@@ -1752,8 +2053,8 @@ final class Base implements \ArrayAccess {
 				else
 					$this->expire(0);
 				if (!strlen($body)) {
-					if (!$this->hive['RAW'] && !$this->hive['BODY'])
-						$this->hive['BODY']=file_get_contents('php://input');
+					if (!$this->RAW && !$this->BODY)
+						$this->BODY=file_get_contents('php://input');
 					ob_start();
 					// Call route handler
 					$result=$this->call($handler,[$this,$args,$handler],
@@ -1767,8 +2068,8 @@ final class Base implements \ArrayAccess {
 								PREG_GREP_INVERT),$body,$result],$ttl);
 					}
 				}
-				$this->hive['RESPONSE']=$body;
-				if (!$this->hive['QUIET']) {
+				$this->RESPONSE=$body;
+				if (!$this->QUIET) {
 					if ($kbps) {
 						$ctr=0;
 						foreach (str_split($body,1024) as $part) {
@@ -1783,7 +2084,7 @@ final class Base implements \ArrayAccess {
 					else
 						echo $body;
 				}
-				if ($result || $this->hive['VERB']!='OPTIONS')
+				if ($result || $this->VERB!='OPTIONS')
 					return $result;
 			}
 			$allowed=array_merge($allowed,array_keys($route));
@@ -1791,7 +2092,7 @@ final class Base implements \ArrayAccess {
 		if (!$allowed)
 			// URL doesn't match any route
 			$this->error(404);
-		elseif (!$this->hive['CLI']) {
+		elseif (!$this->CLI) {
 			if (!preg_grep('/Allow:/',$headers_send=headers_list()))
 				// Unhandled HTTP method
 				header('Allow: '.implode(',',array_unique($allowed)));
@@ -1808,7 +2109,7 @@ final class Base implements \ArrayAccess {
 				if ($cors['ttl']>0)
 					header('Access-Control-Max-Age: '.$cors['ttl']);
 			}
-			if ($this->hive['VERB']!='OPTIONS')
+			if ($this->VERB!='OPTIONS')
 				$this->error(405);
 		}
 		return FALSE;
@@ -1833,7 +2134,7 @@ final class Base implements \ArrayAccess {
 		// Not for the weak of heart
 		while (
 			// No error occurred
-			!$this->hive['ERROR'] &&
+			!$this->ERROR &&
 			// Got time left?
 			time()-$time+1<$limit &&
 			// Still alive?
@@ -1843,7 +2144,7 @@ final class Base implements \ArrayAccess {
 			(session_status()==PHP_SESSION_ACTIVE || session_start()) &&
 			// CAUTION: Callback will kill host if it never becomes truthy!
 			!$out=$this->call($func,$args)) {
-			if (!$this->hive['CLI'])
+			if (!$this->CLI)
 				session_commit();
 			// Hush down
 			sleep(1);
@@ -1889,8 +2190,8 @@ final class Base implements \ArrayAccess {
 			if ($parts[2]=='->') {
 				if (is_subclass_of($parts[1],'Prefab'))
 					$parts[1]=call_user_func($parts[1].'::instance');
-				elseif (isset($this->hive['CONTAINER'])) {
-					$container=$this->hive['CONTAINER'];
+				elseif (isset($this->CONTAINER)) {
+					$container=$this->CONTAINER;
 					if (is_object($container) && is_callable([$container,'has'])
 						&& $container->has($parts[1])) // PSR11
 						$parts[1]=call_user_func([$container,'get'],$parts[1]);
@@ -2105,11 +2406,11 @@ final class Base implements \ArrayAccess {
 	*	@param $args mixed
 	**/
 	function mutex($id,$func,$args=NULL) {
-		if (!is_dir($tmp=$this->hive['TEMP']))
+		if (!is_dir($tmp=$this->TEMP))
 			mkdir($tmp,self::MODE,TRUE);
 		// Use filesystem lock
 		if (is_file($lock=$tmp.
-			$this->hive['SEED'].'.'.$this->hash($id).'.lock') &&
+			$this->SEED.'.'.$this->hash($id).'.lock') &&
 			filemtime($lock)+ini_get('max_execution_time')<microtime(TRUE))
 			// Stale lock
 			@unlink($lock);
@@ -2142,7 +2443,7 @@ final class Base implements \ArrayAccess {
 	*	@param $append bool
 	**/
 	function write($file,$data,$append=FALSE) {
-		return file_put_contents($file,$data,$this->hive['LOCK']|($append?FILE_APPEND:0));
+		return file_put_contents($file,$data,$this->LOCK|($append?FILE_APPEND:0));
 	}
 
 	/**
@@ -2187,7 +2488,7 @@ final class Base implements \ArrayAccess {
 	**/
 	function rel($url) {
 		return preg_replace('/^(?:https?:\/\/)?'.
-			preg_quote($this->hive['BASE'],'/').'(\/.*|$)/','\1',$url);
+			preg_quote($this->BASE,'/').'(\/.*|$)/','\1',$url);
 	}
 
 	/**
@@ -2199,10 +2500,10 @@ final class Base implements \ArrayAccess {
 		$class=$this->fixslashes(ltrim($class,'\\'));
 		/** @var callable $func */
 		$func=NULL;
-		if (is_array($path=$this->hive['AUTOLOAD']) &&
+		if (is_array($path=$this->AUTOLOAD) &&
 			isset($path[1]) && is_callable($path[1]))
 			list($path,$func)=$path;
-		foreach ($this->split($this->hive['PLUGINS'].';'.$path) as $auto)
+		foreach ($this->split($this->PLUGINS.';'.$path) as $auto)
 			if (($func && is_file($file=$func($auto.$class).'.php')) ||
 				is_file($file=$auto.$class.'.php') ||
 				is_file($file=$auto.strtolower($class).'.php') ||
@@ -2221,87 +2522,13 @@ final class Base implements \ArrayAccess {
 			session_commit();
 		foreach ($this->locks as $lock)
 			@unlink($lock);
-		$handler=$this->hive['UNLOAD'];
+		$handler=$this->UNLOAD;
 		if ((!$handler || $this->call($handler,$this)===FALSE) &&
 			$error && in_array($error['type'],
 			[E_ERROR,E_PARSE,E_CORE_ERROR,E_COMPILE_ERROR]))
 			// Fatal error detected
 			$this->error(500,
 				sprintf(self::E_Fatal,$error['message']),[$error]);
-	}
-
-	/**
-	*	Convenience method for checking hive key
-	*	@return mixed
-	*	@param $key string
-	**/
-	function offsetexists($key) {
-		return $this->exists($key);
-	}
-
-	/**
-	*	Convenience method for assigning hive value
-	*	@return mixed
-	*	@param $key string
-	*	@param $val mixed
-	**/
-	function offsetset($key,$val) {
-		return $this->set($key,$val);
-	}
-
-	/**
-	*	Convenience method for retrieving hive value
-	*	@return mixed
-	*	@param $key string
-	**/
-	function &offsetget($key) {
-		$val=&$this->ref($key);
-		return $val;
-	}
-
-	/**
-	*	Convenience method for removing hive key
-	*	@param $key string
-	**/
-	function offsetunset($key) {
-		$this->clear($key);
-	}
-
-	/**
-	*	Alias for offsetexists()
-	*	@return mixed
-	*	@param $key string
-	**/
-	function __isset($key) {
-		return $this->offsetexists($key);
-	}
-
-	/**
-	*	Alias for offsetset()
-	*	@return mixed
-	*	@param $key string
-	*	@param $val mixed
-	**/
-	function __set($key,$val) {
-		return $this->offsetset($key,$val);
-	}
-
-	/**
-	*	Alias for offsetget()
-	*	@return mixed
-	*	@param $key string
-	**/
-	function &__get($key) {
-		$val=&$this->offsetget($key);
-		return $val;
-	}
-
-	/**
-	*	Alias for offsetunset()
-	*	@param $key string
-	**/
-	function __unset($key) {
-		$this->offsetunset($key);
 	}
 
 	/**
@@ -2316,10 +2543,6 @@ final class Base implements \ArrayAccess {
 		user_error(sprintf(self::E_Method,$key),E_USER_ERROR);
 	}
 
-	//! Prohibit cloning
-	private function __clone() {
-	}
-
 	//! Bootstrap
 	function __construct() {
 		// Managed directives
@@ -2327,15 +2550,12 @@ final class Base implements \ArrayAccess {
 		if (extension_loaded('mbstring'))
 			mb_internal_encoding($charset);
 		ini_set('display_errors',0);
-		// Deprecated directives
-		@ini_set('magic_quotes_gpc',0);
-		@ini_set('register_globals',0);
 		// Intercept errors/exceptions; PHP5.3-compatible
 		$check=error_reporting((E_ALL|E_STRICT)&~(E_NOTICE|E_USER_NOTICE));
 		set_exception_handler(
 			function($obj) {
 				/** @var Exception $obj */
-				$this->hive['EXCEPTION']=$obj;
+				$this->EXCEPTION=$obj;
 				$this->error(500,
 					$obj->getmessage().' '.
 					'['.$obj->getFile().':'.$obj->getLine().']',
@@ -2408,8 +2628,6 @@ final class Base implements \ArrayAccess {
 		$scheme=isset($_SERVER['HTTPS']) && $_SERVER['HTTPS']=='on' ||
 			isset($headers['X-Forwarded-Proto']) &&
 			$headers['X-Forwarded-Proto']=='https'?'https':'http';
-		// Create hive early on to expose header methods
-		$this->hive=['HEADERS'=>&$headers];
 		if (function_exists('apache_setenv')) {
 			// Work around Apache pre-2.4 VirtualDocumentRoot bug
 			$_SERVER['DOCUMENT_ROOT']=str_replace($_SERVER['SCRIPT_NAME'],'',
@@ -2444,83 +2662,41 @@ final class Base implements \ArrayAccess {
 		elseif (!empty($_SERVER['SERVER_PORT']))
 			$port=$_SERVER['SERVER_PORT'];
 		// Default configuration
-		$this->hive+=[
-			'AGENT'=>$this->agent(),
-			'AJAX'=>$this->ajax(),
-			'ALIAS'=>NULL,
-			'ALIASES'=>[],
-			'AUTOLOAD'=>'./',
+		$init = [
+			'AGENT'=>$this->agent($headers),
+			'AJAX'=>$this->ajax($headers),
 			'BASE'=>$base,
-			'BITMASK'=>ENT_COMPAT,
-			'BODY'=>NULL,
-			'CACHE'=>FALSE,
-			'CASELESS'=>TRUE,
 			'CLI'=>$cli,
-			'CORS'=>[
-				'headers'=>'',
-				'origin'=>FALSE,
-				'credentials'=>FALSE,
-				'expose'=>FALSE,
-				'ttl'=>0
-			],
-			'DEBUG'=>0,
-			'DIACRITICS'=>[],
-			'DNSBL'=>'',
-			'EMOJI'=>[],
 			'ENCODING'=>$charset,
-			'ERROR'=>NULL,
-			'ESCAPE'=>TRUE,
-			'EXCEPTION'=>NULL,
-			'EXEMPT'=>NULL,
-			'FALLBACK'=>$this->fallback,
-			'FORMATS'=>[],
-			'FRAGMENT'=>isset($uri['fragment'])?$uri['fragment']:'',
-			'HALT'=>TRUE,
-			'HIGHLIGHT'=>FALSE,
+			'HEADERS' => $headers,
 			'HOST'=>$_SERVER['SERVER_NAME'],
 			'IP'=>$this->ip(),
 			'JAR'=>$jar,
 			'LANGUAGE'=>isset($headers['Accept-Language'])?
 				$this->language($headers['Accept-Language']):
-				$this->fallback,
-			'LOCALES'=>'./',
-			'LOCK'=>LOCK_EX,
-			'LOGGABLE'=>'*',
-			'LOGS'=>'./',
+				$this->FALLBACK,
 			'MB'=>extension_loaded('mbstring'),
-			'ONERROR'=>NULL,
-			'ONREROUTE'=>NULL,
 			'PACKAGE'=>self::PACKAGE,
-			'PARAMS'=>[],
 			'PATH'=>$path,
-			'PATTERN'=>NULL,
 			'PLUGINS'=>$this->fixslashes(__DIR__).'/',
 			'PORT'=>$port,
-			'PREFIX'=>NULL,
-			'PREMAP'=>'',
 			'QUERY'=>isset($uri['query'])?$uri['query']:'',
-			'QUIET'=>FALSE,
-			'RAW'=>FALSE,
 			'REALM'=>$scheme.'://'.$_SERVER['SERVER_NAME'].
 				(!in_array($port,[80,443])?(':'.$port):'').
 				$_SERVER['REQUEST_URI'],
-			'RESPONSE'=>'',
 			'ROOT'=>$_SERVER['DOCUMENT_ROOT'],
-			'ROUTES'=>[],
 			'SCHEME'=>$scheme,
 			'SEED'=>$this->hash($_SERVER['SERVER_NAME'].$base),
 			'SERIALIZER'=>extension_loaded($ext='igbinary')?$ext:'php',
-			'TEMP'=>'tmp/',
 			'TIME'=>&$_SERVER['REQUEST_TIME_FLOAT'],
 			'TZ'=>@date_default_timezone_get(),
-			'UI'=>'./',
-			'UNLOAD'=>NULL,
-			'UPLOADS'=>'./',
 			'URI'=>&$_SERVER['REQUEST_URI'],
 			'VERB'=>&$_SERVER['REQUEST_METHOD'],
 			'VERSION'=>self::VERSION,
-			'XFRAME'=>'SAMEORIGIN'
 		];
+		// Create hive
+		parent::__construct(new BaseHive(), $init);
+//		parent::__construct(null, $init);
 		if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE) {
 			unset($jar['expire']);
 			session_cache_limiter('');
@@ -2532,24 +2708,22 @@ final class Base implements \ArrayAccess {
 			}
 		}
 		if (PHP_SAPI=='cli-server' &&
-			preg_match('/^'.preg_quote($base,'/').'$/',$this->hive['URI']))
+			preg_match('/^'.preg_quote($base,'/').'$/',$this->URI))
 			$this->reroute('/');
 		if (ini_get('auto_globals_jit'))
 			// Override setting
 			$GLOBALS+=['_ENV'=>$_ENV,'_REQUEST'=>$_REQUEST];
 		// Sync PHP globals with corresponding hive keys
-		$this->init=$this->hive;
-		foreach (explode('|',self::GLOBALS) as $global) {
+		foreach (explode('|',Base::GLOBALS) as $global) {
 			$sync=$this->sync($global);
-			$this->init+=[
-				$global=>preg_match('/SERVER|ENV/',$global)?$sync:[]
-			];
+			if (preg_match('/SERVER|ENV/',$global))
+				$this->_hive_states['init'][0]->{$global} = $sync;
 		}
 		if ($check && $error=error_get_last())
 			// Error detected
 			$this->error(500,
 				sprintf(self::E_Fatal,$error['message']),[$error]);
-		date_default_timezone_set($this->hive['TZ']);
+		date_default_timezone_set($this->TZ);
 		// Register framework autoloader
 		spl_autoload_register([$this,'autoload']);
 		// Register shutdown handler
@@ -2965,9 +3139,9 @@ class Preview extends View {
 			'c'=>'$this->c',
 			'esc'=>'$this->esc',
 			'raw'=>'$this->raw',
-			'export'=>'Base::instance()->export',
-			'alias'=>'Base::instance()->alias',
-			'format'=>'Base::instance()->format'
+			'export'=>'\F3\Base::instance()->export',
+			'alias'=>'\F3\Base::instance()->alias',
+			'format'=>'\F3\Base::instance()->format'
 		];
 
 	protected
@@ -3002,7 +3176,7 @@ class Preview extends View {
 	*	@param $str string
 	**/
 	function token($str) {
-		$str=trim(preg_replace('/\{\{(.+?)\}\}/s','\1',$this->fw->compile($str)));
+		$str=trim(preg_replace('/\{\{(.+?)\}\}/s','\1',$this->fw->compile($str, TRUE)));
 		if (preg_match('/^(.+)(?<!\|)\|((?:\h*\w+(?:\h*[,;]?))+)$/s',
 			$str,$parts)) {
 			$str=trim($parts[1]);
@@ -3011,7 +3185,7 @@ class Preview extends View {
 					function_exists($cmd)) ||
 					is_string($cmd=$this->filter($func)))?
 					$cmd.'('.$str.')':
-					'Base::instance()->'.
+					'\F3\Base::instance()->'.
 						'call($this->filter(\''.$func.'\'),['.$str.'])';
 		}
 		return $str;
