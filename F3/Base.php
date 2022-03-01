@@ -91,7 +91,7 @@ class Hive implements \ArrayAccess {
 	 */
 	protected function cut(string $key): array {
 		return preg_split('/\[\h*[\'"]?(.+?)[\'"]?\h*\]|(->)|\./',
-			$key,NULL,PREG_SPLIT_NO_EMPTY|PREG_SPLIT_DELIM_CAPTURE);
+			$key,-1,PREG_SPLIT_NO_EMPTY|PREG_SPLIT_DELIM_CAPTURE);
 	}
 
 	/**
@@ -326,6 +326,7 @@ class Hive implements \ArrayAccess {
 	 *	@return mixed
 	 *	@param $key string
 	 **/
+	 #[\ReturnTypeWillChange]
 	function offsetExists($key) {
 		$val=$this->ref($key,FALSE);
 		return isset($val);
@@ -337,6 +338,7 @@ class Hive implements \ArrayAccess {
 	 *	@param $key string
 	 *	@param $val mixed
 	 **/
+	 #[\ReturnTypeWillChange]
 	function offsetSet($key,$val) {
 		return $this->set($key,$val);
 	}
@@ -346,6 +348,7 @@ class Hive implements \ArrayAccess {
 	 *	@return mixed
 	 *	@param $key string
 	 **/
+	 #[\ReturnTypeWillChange]
 	function &offsetGet($key) {
 		$val=&$this->ref($key);
 		return $val;
@@ -355,6 +358,7 @@ class Hive implements \ArrayAccess {
 	 *	Convenience method for removing hive key
 	 *	@param $key string
 	 **/
+	 #[\ReturnTypeWillChange]
 	function offsetUnset($key) {
 		$this->clear($key);
 	}
@@ -666,11 +670,11 @@ final class Base extends BaseHive {
 	 * @return mixed
 	 */
 	function cast($val) {
-		if (preg_match('/^(?:0x[0-9a-f]+|0[0-7]+|0b[01]+)$/i',$val))
+		if ($val && preg_match('/^(?:0x[0-9a-f]+|0[0-7]+|0b[01]+)$/i',$val))
 			return intval($val,0);
 		if (is_numeric($val))
 			return $val+0;
-		$val=trim($val);
+		$val=trim($val?:'');
 		if (preg_match('/^\w+$/i',$val) && defined($val))
 			return constant($val);
 		return $val;
@@ -705,18 +709,18 @@ final class Base extends BaseHive {
 				if (version_compare(PHP_VERSION, '7.3.0') >= 0) {
 					unset($jar['expire']);
 					if (isset($_COOKIE[$parts[1]]))
-						setcookie($parts[1],NULL,['expires'=>0]+$jar);
+						setcookie($parts[1],'',['expires'=>0]+$jar);
 					if ($ttl)
 						$jar['expires']=$time+$ttl;
-					setcookie($parts[1],$val,$jar);
+					setcookie($parts[1],$val?:'',$jar);
 				} else {
 					unset($jar['samesite']);
 					if (isset($_COOKIE[$parts[1]]))
 						call_user_func_array('setcookie',
-							array_merge([$parts[1],NULL],['expire'=>0]+$jar));
+							array_merge([$parts[1],''],['expire'=>0]+$jar));
 					if ($ttl)
 						$jar['expire']=$time+$ttl;
-					call_user_func_array('setcookie',[$parts[1],$val]+$jar);
+					call_user_func_array('setcookie',[$parts[1],$val?:'']+$jar);
 				}
 				$_COOKIE[$parts[1]]=$val;
 				return $val;
@@ -791,9 +795,15 @@ final class Base extends BaseHive {
 				$jar=$this->JAR;
 				unset($jar['lifetime']);
 				$jar['expire']=0;
-				$jar['expires']=$jar['expire'];
-				unset($jar['expire']);
-				setcookie($parts[1],NULL,$jar);
+				if (version_compare(PHP_VERSION, '7.3.0') >= 0) {
+					$jar['expires']=$jar['expire'];
+					unset($jar['expire']);
+					setcookie($parts[1],'',$jar);
+				} else {
+					unset($jar['samesite']);
+					call_user_func_array('setcookie',
+						array_merge([$parts[1],''],$jar));
+				}
 				unset($_COOKIE[$parts[1]]);
 			} else
 				parent::clear('REQUEST'.$expr[2]);
@@ -995,7 +1005,7 @@ final class Base extends BaseHive {
 	 **/
 	function split($str,$noempty=TRUE) {
 		return array_map('trim',
-			preg_split('/[,;|]/',$str,0,$noempty?PREG_SPLIT_NO_EMPTY:0));
+			preg_split('/[,;|]/',$str?:'',0,$noempty?PREG_SPLIT_NO_EMPTY:0));
 	}
 
 	/**
@@ -1129,7 +1139,7 @@ final class Base extends BaseHive {
 	**/
 	function hash($str) {
 		return str_pad(base_convert(
-			substr(sha1($str),-16),16,36),11,'0',STR_PAD_LEFT);
+			substr(sha1($str?:''),-16),16,36),11,'0',STR_PAD_LEFT);
 	}
 
 	/**
@@ -1268,10 +1278,11 @@ final class Base extends BaseHive {
 								isset($prop)?$prop:null
 							]
 						);
+					$php81=version_compare(PHP_VERSION, '8.1.0')>=0;
 					switch ($type) {
 						case 'plural':
 							preg_match_all('/(?<tag>\w+)'.
-								'(?:\s*\{\s*(?<data>.+?)\s*\})/',
+								'(?:\s*\{\s*(?<data>.*?)\s*\})/',
 								$mod,$matches,PREG_SET_ORDER);
 							$ord=['zero','one','two'];
 							foreach ($matches as $match) {
@@ -1351,19 +1362,42 @@ final class Base extends BaseHive {
 									($frac?strlen($frac)-2:0),
 								$decimal_point,$thousands_sep);
 						case 'date':
-							if (empty($mod) || $mod=='short')
-								$prop='%x';
-							elseif ($mod=='full')
-								$prop='%A, %d %B %Y';
-							elseif ($mod!='custom')
-								$prop='%d %B %Y';
-							return strftime($prop,$args[$pos]);
+							if ($php81) {
+								$lang = $this->split($this->LANGUAGE);
+								// requires intl extension
+								$formatter = new IntlDateFormatter($lang[0],
+									(empty($mod) || $mod=='short')
+										? IntlDateFormatter::SHORT :
+										($mod=='full' ? IntlDateFormatter::LONG : IntlDateFormatter::MEDIUM),
+									IntlDateFormatter::NONE);
+								return $formatter->format($args[$pos]);
+							} else {
+								if (empty($mod) || $mod=='short')
+									$prop='%x';
+								elseif ($mod=='full')
+									$prop='%A, %d %B %Y';
+								elseif ($mod!='custom')
+									$prop='%d %B %Y';
+								return strftime($prop,$args[$pos]);
+							}
 						case 'time':
-							if (empty($mod) || $mod=='short')
-								$prop='%X';
-							elseif ($mod!='custom')
-								$prop='%r';
-							return strftime($prop,$args[$pos]);
+							if ($php81) {
+								$lang = $this->split($this->LANGUAGE);
+								// requires intl extension
+								$formatter = new IntlDateFormatter($lang[0],
+									IntlDateFormatter::NONE,
+									(empty($mod) || $mod=='short')
+										? IntlDateFormatter::SHORT :
+										($mod=='full' ? IntlDateFormatter::LONG : IntlDateFormatter::MEDIUM),
+									IntlTimeZone::createTimeZone($this->hive['TZ']));
+								return $formatter->format($args[$pos]);
+							} else {
+								if (empty($mod) || $mod=='short')
+									$prop='%X';
+								elseif ($mod!='custom')
+									$prop='%r';
+								return strftime($prop,$args[$pos]);
+							}
 						default:
 							return $expr[0];
 					}
@@ -1389,7 +1423,7 @@ final class Base extends BaseHive {
 	*	@param $code string
 	**/
 	function language($code) {
-		$code=preg_replace('/\h+|;q=[0-9.]+/','',$code);
+		$code=preg_replace('/\h+|;q=[0-9.]+/','',$code?:'');
 		$code.=($code?',':'').$this->FALLBACK;
 		$this->languages=[];
 		foreach (array_reverse(explode(',',$code)) as $lang)
@@ -1525,7 +1559,7 @@ final class Base extends BaseHive {
 				$time=microtime(TRUE);
 				header_remove('Pragma');
 				header('Cache-Control: max-age='.$secs);
-				header('Expires: '.gmdate('r',$time+$secs));
+				header('Expires: '.gmdate('r',round($time+$secs)));
 				header('Last-Modified: '.gmdate('r'));
 			}
 			else {
@@ -1644,7 +1678,7 @@ final class Base extends BaseHive {
 			$loggable=$this->split($loggable);
 		foreach ($loggable as $status)
 			if ($status=='*' ||
-				preg_match('/^'.preg_replace('/\D/','\d',$status).'$/',$code)) {
+				preg_match('/^'.preg_replace('/\D/','\d',$status).'$/',(string) $code)) {
 				error_log($text);
 				foreach (explode("\n",$trace) as $nexus)
 					if ($nexus)
@@ -1726,7 +1760,7 @@ final class Base extends BaseHive {
 		if (empty($parts[4]))
 			user_error(sprintf(self::E_Pattern,$pattern),E_USER_ERROR);
 		$url=parse_url($parts[4]);
-		parse_str(@$url['query'],$GLOBALS['_GET']);
+		parse_str(isset($url['query'])?$url['query']:'',$GLOBALS['_GET']);
 		if (preg_match('/GET|HEAD/',$verb))
 			$GLOBALS['_GET']=array_merge($GLOBALS['_GET'],$args);
 		$GLOBALS['_POST']=$verb=='POST'?$args:[];
@@ -2077,7 +2111,7 @@ final class Base extends BaseHive {
 							++$ctr;
 							if ($ctr/$kbps>($elapsed=microtime(TRUE)-$now) &&
 								!connection_aborted())
-								usleep(1e6*($ctr/$kbps-$elapsed));
+								usleep(round(1e6*($ctr/$kbps-$elapsed)));
 							echo $part;
 						}
 					}
@@ -2599,7 +2633,7 @@ final class Base extends BaseHive {
 					$req.='?'.$query;
 			}
 			$_SERVER['REQUEST_URI']=$req;
-			parse_str($query,$GLOBALS['_GET']);
+			parse_str($query?:'',$GLOBALS['_GET']);
 		}
 		elseif (function_exists('getallheaders')) {
 			foreach (getallheaders() as $key=>$val) {
@@ -2621,8 +2655,8 @@ final class Base extends BaseHive {
 					$headers[strtr(ucwords(strtolower(strtr(
 						substr($key,5),'_',' '))),' ','-')]=&$_SERVER[$key];
 		}
-		if (isset($headers['X-HTTP-Method-Override']))
-			$_SERVER['REQUEST_METHOD']=$headers['X-HTTP-Method-Override'];
+		if (isset($headers['X-Http-Method-Override']))
+			$_SERVER['REQUEST_METHOD']=$headers['X-Http-Method-Override'];
 		elseif ($_SERVER['REQUEST_METHOD']=='POST' && isset($_POST['_method']))
 			$_SERVER['REQUEST_METHOD']=strtoupper($_POST['_method']);
 		$scheme=isset($_SERVER['HTTPS']) && $_SERVER['HTTPS']=='on' ||
@@ -2696,7 +2730,6 @@ final class Base extends BaseHive {
 		];
 		// Create hive
 		parent::__construct(new BaseHive(), $init);
-//		parent::__construct(null, $init);
 		if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE) {
 			unset($jar['expire']);
 			session_cache_limiter('');
@@ -2710,9 +2743,11 @@ final class Base extends BaseHive {
 		if (PHP_SAPI=='cli-server' &&
 			preg_match('/^'.preg_quote($base,'/').'$/',$this->URI))
 			$this->reroute('/');
-		if (ini_get('auto_globals_jit'))
+		if (ini_get('auto_globals_jit')) {
 			// Override setting
-			$GLOBALS+=['_ENV'=>$_ENV,'_REQUEST'=>$_REQUEST];
+			$GLOBALS['_ENV']=$_ENV;
+			$GLOBALS['_REQUEST']=$_REQUEST;
+		}
 		// Sync PHP globals with corresponding hive keys
 		foreach (explode('|',Base::GLOBALS) as $global) {
 			$sync=$this->sync($global);
@@ -2876,7 +2911,7 @@ class Cache {
 		if (!$this->dsn)
 			return TRUE;
 		$regex='/'.preg_quote($this->prefix.'.','/').'.*'.
-			preg_quote($suffix,'/').'/';
+			preg_quote($suffix?:'','/').'/';
 		$parts=explode('=',$this->dsn,2);
 		switch ($parts[0]) {
 			case 'apc':
@@ -3176,7 +3211,7 @@ class Preview extends View {
 	*	@param $str string
 	**/
 	function token($str) {
-		$str=trim(preg_replace('/\{\{(.+?)\}\}/s','\1',$this->fw->compile($str, TRUE)));
+		$str=trim(preg_replace('/\{\{(.+?)\}\}/s','\1',$this->fw->compile($str)));
 		if (preg_match('/^(.+)(?<!\|)\|((?:\h*\w+(?:\h*[,;]?))+)$/s',
 			$str,$parts)) {
 			$str=trim($parts[1]);

@@ -39,7 +39,8 @@ class Audit {
 	*	@param $str string
 	**/
 	function url($str) {
-		return is_string(filter_var($str,FILTER_VALIDATE_URL));
+		return is_string(filter_var($str,FILTER_VALIDATE_URL))
+			&& !preg_match('/^(javascript|php):\/\/.*$/i', $str);
 	}
 
 	/**
