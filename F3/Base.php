@@ -187,7 +187,7 @@ class Hive implements \ArrayAccess {
 	 *	@param $str string
 	 *	@param $evaluate bool compile expressions as well or only convert variable access
 	 **/
-	function compile($str, $evaluate=FALSE) {
+	function compile($str, $evaluate=TRUE) {
 		return (!$evaluate)
 			? preg_replace_callback(
 				'/^@(\w+)((?:\..+|\[(?:(?:[^\[\]]*|(?R))*)\])*)/',
@@ -223,7 +223,7 @@ class Hive implements \ArrayAccess {
 										$sub[1]=(int)$sub[1];
 									$out='['.
 										(isset($sub[3])?
-											$this->compile($sub[3], TRUE):
+											$this->compile($sub[3]):
 											$this->export($sub[1])).
 										']';
 								}
@@ -423,7 +423,7 @@ class BaseHive extends Hive {
 		'expose'=>FALSE,
 		'ttl'=>0
 	];
-	public int $DEBUG = 0;
+	public int $DEBUG = 2;
 	public array $DIACRITICS = [];
 	public string $DNSBL = '';
 	public array $EMOJI = [];
@@ -476,7 +476,7 @@ class BaseHive extends Hive {
 	public string $SEED = '';
 	public string $SERIALIZER = 'php';
 	public string $TEMP = 'tmp/';
-	public int $TIME = 0;
+	public float $TIME = 0;
 	public string $TZ = '';
 	public string $UI = './';
 	public mixed $UNLOAD = NULL;
