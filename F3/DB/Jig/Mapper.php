@@ -23,7 +23,7 @@
 namespace F3\DB\Jig;
 
 //! Flat-file DB mapper
-class Mapper extends \DB\Cursor {
+class Mapper extends \F3\DB\Cursor {
 
 	protected
 		//! Flat-file DB wrapper

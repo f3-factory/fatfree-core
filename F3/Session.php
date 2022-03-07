@@ -186,7 +186,7 @@ class Session extends Magic {
 			[$this,'cleanup']
 		);
 		register_shutdown_function('session_commit');
-		$fw=\Base::instance();
+		$fw=Base::instance();
 		$headers=$fw->HEADERS;
 		$this->_csrf=$fw->hash($fw->SEED.
 			extension_loaded('openssl')?

@@ -23,7 +23,7 @@
 namespace F3\DB\Mongo;
 
 //! MongoDB mapper
-class Mapper extends \DB\Cursor {
+class Mapper extends \F3\DB\Cursor {
 
 	protected
 		//! MongoDB wrapper

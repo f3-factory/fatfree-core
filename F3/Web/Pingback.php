@@ -75,7 +75,7 @@ class Pingback {
 			$doc=new \DOMDocument('1.0',$fw->ENCODING);
 			$doc->stricterrorchecking=FALSE;
 			$doc->recover=TRUE;
-			if (@$doc->loadhtml($req['body'])) {
+			if ($doc->loadhtml($req['body'])) {
 				// Parse anchor tags
 				$links=$doc->getelementsbytagname('a');
 				foreach ($links as $link) {
