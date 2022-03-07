@@ -277,8 +277,8 @@ class Hive implements \ArrayAccess {
 			);
 		if (is_null($val)) {
 			// Attempt to retrieve from cache
-//			if (Cache::instance()->exists($this->hash($key).'.var',$data))
-//				return $data;
+			if (Cache::instance()->exists($this->hash($key).'.var',$data))
+				return $data;
 		}
 		return $val;
 	}
@@ -293,9 +293,6 @@ class Hive implements \ArrayAccess {
 	function exists($key,&$val=NULL) {
 		$val=$this->ref($key,FALSE);
 		return isset($val);
-//		return isset($val)?
-//			TRUE:
-//			(Cache::instance()->exists($this->hash($key).'.var',$val)?:FALSE);
 	}
 
 	/**
@@ -307,9 +304,6 @@ class Hive implements \ArrayAccess {
 	function devoid($key,&$val=NULL) {
 		$val=$this->ref($key,FALSE);
 		return empty($val);
-//		return empty($val) &&
-//			(!Cache::instance()->exists($this->hash($key).'.var',$val) ||
-//				!$val);
 	}
 
 	function state(string $state) {
@@ -409,7 +403,7 @@ class BaseHive extends Hive {
 	public bool $AJAX = FALSE;
 	public ?string $ALIAS = NULL;
 	public array $ALIASES = [];
-	public string|array $AUTOLOAD = 'lib/';
+	public string|array $AUTOLOAD = './';
 	public string $BASE = '';
 	public int $BITMASK = ENT_COMPAT|ENT_SUBSTITUTE;
 	public ?string $BODY = NULL;
@@ -461,7 +455,7 @@ class BaseHive extends Hive {
 	public array $PARAMS = [];
 	public string $PATH = '';
 	public ?string $PATTERN = NULL;
-	public string $PLUGINS = './';
+	public string $PLUGINS = 'lib/';
 	public int $PORT = 80;
 	public ?string $PREFIX = NULL;
 	public string $PREMAP = '';
@@ -698,6 +692,22 @@ final class Base extends BaseHive {
 		return $val;
 	}
 
+	// TODO: disable cache query
+	function exists($key,&$val=NULL) {
+		$exists=parent::exists($key,$val);
+		return $exists?
+			TRUE:
+			(Cache::instance()->exists($this->hash($key).'.var',$val)?:FALSE);
+	}
+
+	// TODO: disable cache query
+	function devoid($key,&$val=NULL) {
+		$devoid=parent::devoid($key,$val);
+		return $devoid &&
+			(!Cache::instance()->exists($this->hash($key).'.var',$val) ||
+				!$val);
+	}
+
 	function set($key,$val,$ttl=0) {
 		$time=$this->TIME;
 		if (preg_match('/^(GET|POST|COOKIE)\b(.+)/',$key,$expr)) {
@@ -805,6 +815,7 @@ final class Base extends BaseHive {
 						array_merge([$parts[1],''],$jar));
 				}
 				unset($_COOKIE[$parts[1]]);
+				return;
 			} else
 				parent::clear('REQUEST'.$expr[2]);
 			parent::clear($key);
@@ -1365,11 +1376,11 @@ final class Base extends BaseHive {
 							if ($php81) {
 								$lang = $this->split($this->LANGUAGE);
 								// requires intl extension
-								$formatter = new IntlDateFormatter($lang[0],
+								$formatter = new \IntlDateFormatter($lang[0],
 									(empty($mod) || $mod=='short')
-										? IntlDateFormatter::SHORT :
-										($mod=='full' ? IntlDateFormatter::LONG : IntlDateFormatter::MEDIUM),
-									IntlDateFormatter::NONE);
+										? \IntlDateFormatter::SHORT :
+										($mod=='full' ? \IntlDateFormatter::LONG : \IntlDateFormatter::MEDIUM),
+									\IntlDateFormatter::NONE);
 								return $formatter->format($args[$pos]);
 							} else {
 								if (empty($mod) || $mod=='short')
@@ -1384,12 +1395,12 @@ final class Base extends BaseHive {
 							if ($php81) {
 								$lang = $this->split($this->LANGUAGE);
 								// requires intl extension
-								$formatter = new IntlDateFormatter($lang[0],
-									IntlDateFormatter::NONE,
+								$formatter = new \IntlDateFormatter($lang[0],
+									\IntlDateFormatter::NONE,
 									(empty($mod) || $mod=='short')
-										? IntlDateFormatter::SHORT :
-										($mod=='full' ? IntlDateFormatter::LONG : IntlDateFormatter::MEDIUM),
-									IntlTimeZone::createTimeZone($this->hive['TZ']));
+										? \IntlDateFormatter::SHORT :
+										($mod=='full' ? \IntlDateFormatter::LONG : \IntlDateFormatter::MEDIUM),
+									\IntlTimeZone::createTimeZone($this->TZ));
 								return $formatter->format($args[$pos]);
 							} else {
 								if (empty($mod) || $mod=='short')
@@ -2712,7 +2723,7 @@ final class Base extends BaseHive {
 			'MB'=>extension_loaded('mbstring'),
 			'PACKAGE'=>self::PACKAGE,
 			'PATH'=>$path,
-			'PLUGINS'=>$this->fixslashes(__DIR__).'/',
+			'PLUGINS'=>$this->fixslashes(__DIR__).'/../',
 			'PORT'=>$port,
 			'QUERY'=>isset($uri['query'])?$uri['query']:'',
 			'REALM'=>$scheme.'://'.$_SERVER['SERVER_NAME'].
