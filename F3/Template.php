@@ -25,23 +25,18 @@ namespace F3;
 //! XML-style template engine
 class Template extends Preview {
 
-	//@{ Error messages
-	const
-		E_Method='Call to undefined method %s()';
-	//@}
+	const E_Method='Call to undefined method %s()';
 
-	protected
-		//! Template tags
-		$tags,
-		//! Custom tag handlers
-		$custom=[];
+	//! Template tags
+	protected string $tags;
+
+	//! Custom tag handlers
+	protected array $custom=[];
 
 	/**
-	*	Template -set- tag handler
-	*	@return string
-	*	@param $node array
-	**/
-	protected function _set(array $node) {
+	 * Template -set- tag handler
+	 */
+	protected function _set(array $node): string {
 		$out='';
 		foreach ($node['@attrib'] as $key=>$val)
 			$out.='$'.$key.'='.
@@ -52,11 +47,9 @@ class Template extends Preview {
 	}
 
 	/**
-	*	Template -include- tag handler
-	*	@return string
-	*	@param $node array
-	**/
-	protected function _include(array $node) {
+	 * Template -include- tag handler
+	 */
+	protected function _include(array $node): string {
 		$attrib=$node['@attrib'];
 		$hive=isset($attrib['with']) &&
 			($attrib['with']=$this->token($attrib['with'])) &&
@@ -83,28 +76,23 @@ class Template extends Preview {
 	}
 
 	/**
-	*	Template -exclude- tag handler
-	*	@return string
-	**/
-	protected function _exclude() {
+	 * Template -exclude- tag handler
+	 */
+	protected function _exclude(): string {
 		return '';
 	}
 
 	/**
-	*	Template -ignore- tag handler
-	*	@return string
-	*	@param $node array
-	**/
-	protected function _ignore(array $node) {
+	 * Template -ignore- tag handler
+	 */
+	protected function _ignore(array $node): string {
 		return $node[0];
 	}
 
 	/**
-	*	Template -loop- tag handler
-	*	@return string
-	*	@param $node array
-	**/
-	protected function _loop(array $node) {
+	 * Template -loop- tag handler
+	 */
+	protected function _loop(array $node): string {
 		$attrib=$node['@attrib'];
 		unset($node['@attrib']);
 		return
@@ -117,11 +105,9 @@ class Template extends Preview {
 	}
 
 	/**
-	*	Template -repeat- tag handler
-	*	@return string
-	*	@param $node array
-	**/
-	protected function _repeat(array $node) {
+	 * Template -repeat- tag handler
+	 */
+	protected function _repeat(array $node): string {
 		$attrib=$node['@attrib'];
 		unset($node['@attrib']);
 		return
@@ -139,11 +125,9 @@ class Template extends Preview {
 	}
 
 	/**
-	*	Template -check- tag handler
-	*	@return string
-	*	@param $node array
-	**/
-	protected function _check(array $node) {
+	 * Template -check- tag handler
+	 */
+	protected function _check(array $node): string {
 		$attrib=$node['@attrib'];
 		unset($node['@attrib']);
 		// Grab <true> and <false> blocks
@@ -162,29 +146,23 @@ class Template extends Preview {
 	}
 
 	/**
-	*	Template -true- tag handler
-	*	@return string
-	*	@param $node array
-	**/
-	protected function _true(array $node) {
+	 * Template -true- tag handler
+	 */
+	protected function _true(array $node): string {
 		return $this->build($node);
 	}
 
 	/**
-	*	Template -false- tag handler
-	*	@return string
-	*	@param $node array
-	**/
-	protected function _false(array $node) {
+	 * Template -false- tag handler
+	 */
+	protected function _false(array $node): string {
 		return '<?php else: ?>'.$this->build($node);
 	}
 
 	/**
-	*	Template -switch- tag handler
-	*	@return string
-	*	@param $node array
-	**/
-	protected function _switch(array $node) {
+	 * Template -switch- tag handler
+	 */
+	protected function _switch(array $node): string {
 		$attrib=$node['@attrib'];
 		unset($node['@attrib']);
 		foreach ($node as $pos=>$block)
@@ -197,11 +175,9 @@ class Template extends Preview {
 	}
 
 	/**
-	*	Template -case- tag handler
-	*	@return string
-	*	@param $node array
-	**/
-	protected function _case(array $node) {
+	 * Template -case- tag handler
+	 */
+	protected function _case(array $node): string {
 		$attrib=$node['@attrib'];
 		unset($node['@attrib']);
 		return
@@ -215,11 +191,9 @@ class Template extends Preview {
 	}
 
 	/**
-	*	Template -default- tag handler
-	*	@return string
-	*	@param $node array
-	**/
-	protected function _default(array $node) {
+	 * Template -default- tag handler
+	 */
+	protected function _default(array $node): string {
 		return
 			'<?php default: ?>'.
 				$this->build($node).
@@ -228,10 +202,9 @@ class Template extends Preview {
 
 	/**
 	*	Assemble markup
-	*	@return string
 	*	@param $node array|string
 	**/
-	function build($node) {
+	function build($node): string {
 		if (is_string($node))
 			return parent::build($node);
 		$out='';
@@ -241,36 +214,30 @@ class Template extends Preview {
 	}
 
 	/**
-	*	Extend template with custom tag
-	*	@return NULL
-	*	@param $tag string
-	*	@param $func callback
-	**/
-	function extend($tag,$func) {
+	 * Extend template with custom tag
+	 */
+	function extend(string $tag, callable|string $func): void {
 		$this->tags.='|'.$tag;
 		$this->custom['_'.$tag]=$func;
 	}
 
 	/**
-	*	Call custom tag handler
-	*	@return string|FALSE
-	*	@param $func string
-	*	@param $args array
-	**/
-	function __call($func,array $args) {
+	 * Call custom tag handler
+	 */
+	function __call(string $func, array $args): string|false {
 		if ($func[0]=='_')
 			return call_user_func_array($this->custom[$func],$args);
 		if (method_exists($this,$func))
 			return call_user_func_array([$this,$func],$args);
 		user_error(sprintf(self::E_Method,$func),E_USER_ERROR);
+		return false;
 	}
 
 	/**
 	*	Parse string for template directives and tokens
 	*	@return array
-	*	@param $text string
 	**/
-	function parse($text) {
+	function parse(string $text) {
 		$text=parent::parse($text);
 		// Build tree structure
 		for ($ptr=0,$w=5,$len=strlen($text),$tree=[],$tmp='';$ptr<$len;)

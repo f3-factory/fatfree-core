@@ -63,7 +63,7 @@ class Hive implements \ArrayAccess {
 	function __construct(
 		/** @var Hive Key-value store */
 		 ?Hive $hive=NULL,
-		 ?array $data=NULL
+		 array $data=[]
 	) {
 		// if Hive object is given, use it as wrapped hive instead
 		if ($hive)
@@ -80,7 +80,7 @@ class Hive implements \ArrayAccess {
 				self::OWN_KEYS)
 		);
 		// copy fluent hive data
-		foreach ($data?:[] as $key => $value) {
+		foreach ($data as $key => $value) {
 			$this->_hive->{$key} = $value;
 		}
 		$this->state('init');
@@ -104,10 +104,7 @@ class Hive implements \ArrayAccess {
 		$null=NULL;
 		$parts=is_array($key) ? $key : $this->cut($key);
 		// use base hive as default value store when none was given
-		if (is_null($var) && !$this->_hive) {
-			$hive = $this;
-		} else
-			$hive = $this->_hive;
+		$hive = is_null($var) && !$this->_hive ? $this : $this->_hive;
 		if (is_null($var)) {
 			if (property_exists($hive,$parts[0])
 				&& !in_array($key,Hive::OWN_KEYS)) {
@@ -153,7 +150,7 @@ class Hive implements \ArrayAccess {
 	 *	Convenience method for removing hive key
 	 *	@param $key string
 	 **/
-	function clear(string $key) {
+	function clear(string $key): void {
 		$parts = $this->cut($key);
 		if (!$this->_hive) {
 			// proxy call handler
@@ -168,9 +165,9 @@ class Hive implements \ArrayAccess {
 			eval('unset('.$val.');');
 		}
 		// typed properties
-		elseif (isset($this->_hive_states['init']) && property_exists($this->_hive_states['init'][0],$parts[0])) {
+		elseif (isset($this->_hive_states['init'])
+			&& property_exists($initState = $this->_hive_states['init'][0],$parts[0])) {
 			/** @var static $initState */
-			$initState = $this->_hive_states['init'][0];
 			if ($initState->exists($key, $val)) {
 				// Reset default value (cannot remove property and reuse it afterwards)
 				$this->set($key, $val);
@@ -183,11 +180,11 @@ class Hive implements \ArrayAccess {
 
 	/**
 	 *	Convert JS-style token to PHP expression
-	 *	@return string
 	 *	@param $str string
 	 *	@param $evaluate bool compile expressions as well or only convert variable access
-	 **/
-	function compile($str, $evaluate=TRUE) {
+	 *	@return string
+	 */
+	function compile(string $str, bool $evaluate=TRUE): string {
 		return (!$evaluate)
 			? preg_replace_callback(
 				'/^@(\w+)((?:\..+|\[(?:(?:[^\[\]]*|(?R))*)\])*)/',
@@ -197,11 +194,10 @@ class Hive implements \ArrayAccess {
 						$str.=preg_replace_callback(
 							'/\.([^.\[\]]+)|\[((?:[^\[\]\'"]*|(?R))*)\]/',
 							function($sub) {
-								$val=isset($sub[2]) ? $sub[2] : $sub[1];
+								$val=$sub[2] ?? $sub[1];
 								if (ctype_digit($val))
 									$val=(int)$val;
-								$out='['.$this->export($val).']';
-								return $out;
+								return '['.$this->export($val).']';
 							},
 							$expr[2]
 						);
@@ -243,21 +239,15 @@ class Hive implements \ArrayAccess {
 
 	/**
 	 *	Return string representation of expression
-	 *	@return string
-	 *	@param $expr mixed
-	 **/
-	function export($expr) {
+	 */
+	function export(mixed $expr): string {
 		return var_export($expr,TRUE);
 	}
 
 	/**
 	 *	Bind value to hive key
-	 *	@return mixed
-	 *	@param $key string
-	 *	@param $val mixed
-	 *	@param $ttl int
-	 **/
-	function set($key,$val) {
+	 */
+	function set(string $key, mixed $val, ?int $ttl=null): mixed {
 		$ref=&$this->ref($key);
 		$ref=$val;
 		return $ref;
@@ -265,12 +255,10 @@ class Hive implements \ArrayAccess {
 
 	/**
 	 *	Retrieve contents of hive key
-	 *	@return mixed
-	 *	@param $key string
-	 *	@param $args string|array
-	 **/
-	function get($key,$args=NULL) {
+	 */
+	function get(string $key, string|array $args=NULL): mixed {
 		if (is_string($val=$this->ref($key,FALSE)) && !is_null($args))
+			// TODO: move this to hive class?
 			return call_user_func_array(
 				[$this,'format'],
 				array_merge([$val],is_array($args)?$args:[$args])
@@ -286,64 +274,54 @@ class Hive implements \ArrayAccess {
 	/**
 	 *	Return TRUE if hive key is set
 	 *	(or return timestamp and TTL if cached)
-	 *	@return bool
-	 *	@param $key string
-	 *	@param $val mixed
-	 **/
-	function exists($key,&$val=NULL) {
+	 */
+	function exists(string $key, mixed &$val=NULL): bool {
 		$val=$this->ref($key,FALSE);
 		return isset($val);
 	}
 
 	/**
 	 *	Return TRUE if hive key is empty and not cached
-	 *	@param $key string
-	 *	@param $val mixed
-	 *	@return bool
 	 **/
-	function devoid($key,&$val=NULL) {
+	function devoid(string $key, mixed &$val=NULL): bool {
 		$val=$this->ref($key,FALSE);
 		return empty($val);
 	}
 
-	function state(string $state) {
-		$this->_hive_states[$state] = [clone $this->_hive, $this->_hive_data];
+	/**
+	 * Memorize current hive state
+	 */
+	function state(string $name): void {
+		$this->_hive_states[$name] = [clone $this->_hive, $this->_hive_data];
 	}
 
-	function restore(string $state) {
+	/**
+	 * Restore previous hive state
+	 */
+	function restore(string $state): void {
 		$this->_hive = clone $this->_hive_states[$state][0];
 		$this->_hive_data = $this->_hive_states[$state][1];
 	}
 
 	/**
 	 *	Convenience method for checking hive key
-	 *	@return mixed
-	 *	@param $key string
-	 **/
-	 #[\ReturnTypeWillChange]
-	function offsetExists($key) {
+	 */
+	function offsetExists($key): bool {
 		$val=$this->ref($key,FALSE);
 		return isset($val);
 	}
 
 	/**
 	 *	Convenience method for assigning hive value
-	 *	@return mixed
-	 *	@param $key string
-	 *	@param $val mixed
-	 **/
-	 #[\ReturnTypeWillChange]
-	function offsetSet($key,$val) {
-		return $this->set($key,$val);
+	 */
+	function offsetSet(mixed $key, mixed $val): void {
+		$this->set($key,$val);
 	}
 
 	/**
 	 *	Convenience method for retrieving hive value
-	 *	@return mixed
-	 *	@param $key string
-	 **/
-	 #[\ReturnTypeWillChange]
-	function &offsetGet($key) {
+	 */
+	function &offsetGet($key): mixed {
 		$val=&$this->ref($key);
 		return $val;
 	}
@@ -352,46 +330,36 @@ class Hive implements \ArrayAccess {
 	 *	Convenience method for removing hive key
 	 *	@param $key string
 	 **/
-	 #[\ReturnTypeWillChange]
-	function offsetUnset($key) {
+	function offsetUnset($key): void {
 		$this->clear($key);
 	}
 
 	/**
 	 *	Alias for offsetexists()
-	 *	@return mixed
-	 *	@param $key string
-	 **/
-	function __isset($key) {
-		$val=$this->ref($key,FALSE);
+	 */
+	function __isset(string $key): bool {
 		return $this->offsetExists($key);
 	}
 
 	/**
 	 *	Alias for offsetset()
-	 *	@return mixed
-	 *	@param $key string
-	 *	@param $val mixed
-	 **/
-	function __set($key,$val) {
-		return $this->set($key,$val);
+	 */
+	function __set(string $key,mixed $val): void {
+		$this->set($key,$val);
 	}
 
 	/**
 	 *	Alias for offsetget()
-	 *	@return mixed
-	 *	@param $key string
-	 **/
-	function &__get($key) {
+	 */
+	function &__get(string $key): mixed {
 		$val=&$this->ref($key);
 		return $val;
 	}
 
 	/**
 	 *	Alias for offsetunset()
-	 *	@param $key string
-	 **/
-	function __unset($key) {
+	 */
+	function __unset(string $key): void {
 		$this->clear($key);
 	}
 
@@ -592,18 +560,16 @@ final class Base extends BaseHive {
 	private array $locks=[];
 
 	/**
-	*	Sync PHP global with corresponding hive key
-	**/
+	 * Sync PHP global with corresponding hive key
+	 */
 	function sync(string $key): ?array {
 		return $GLOBALS['_'.$key] = &$this->_hive->{$key};
 	}
 
 	/**
 	 * drop sync of PHP global with corresponding hive key
-	 * @param string $key
-	 * @return array
 	 */
-	function desync(string $key): ?array {
+	function desync(string $key): array {
 		unset($this->_hive->{$key});
 		return $this->_hive->{$key}=$GLOBALS['_'.$key] ?? [];
 	}
@@ -639,11 +605,9 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Parse string containing key-value pairs
-	*	@return array
-	*	@param $str string
-	**/
-	function parse($str) {
+	 * Parse string containing key-value pairs
+	 */
+	function parse(string $str): array {
 		preg_match_all('/(\w+|\*)\h*=\h*(?:\[(.+?)\]|(.+?))(?=,|$)/',
 			$str,$pairs,PREG_SET_ORDER);
 		$out=[];
@@ -660,10 +624,8 @@ final class Base extends BaseHive {
 
 	/**
 	 * Cast string variable to PHP type or constant
-	 * @param $val
-	 * @return mixed
 	 */
-	function cast($val) {
+	function cast(mixed $val): mixed {
 		if ($val && preg_match('/^(?:0x[0-9a-f]+|0[0-7]+|0b[01]+)$/i',$val))
 			return intval($val,0);
 		if (is_numeric($val))
@@ -693,22 +655,20 @@ final class Base extends BaseHive {
 	}
 
 	// TODO: disable cache query
-	function exists($key,&$val=NULL) {
+	function exists(string $key, mixed &$val=NULL): bool {
 		$exists=parent::exists($key,$val);
-		return $exists?
-			TRUE:
-			(Cache::instance()->exists($this->hash($key).'.var',$val)?:FALSE);
+		return $exists || !!Cache::instance()->exists($this->hash($key).'.var',$val);
 	}
 
 	// TODO: disable cache query
-	function devoid($key,&$val=NULL) {
+	function devoid(string $key, mixed &$val=NULL): bool {
 		$devoid=parent::devoid($key,$val);
 		return $devoid &&
 			(!Cache::instance()->exists($this->hash($key).'.var',$val) ||
 				!$val);
 	}
 
-	function set($key,$val,$ttl=0) {
+	function set(string $key,mixed $val, ?int $ttl=null): mixed {
 		$time=$this->TIME;
 		if (preg_match('/^(GET|POST|COOKIE)\b(.+)/',$key,$expr)) {
 			$this->set('REQUEST'.$expr[2],$val);
@@ -716,22 +676,12 @@ final class Base extends BaseHive {
 				$parts=$this->cut($key);
 				$jar=$this->unserialize($this->serialize($this->JAR));
 				unset($jar['lifetime']);
-				if (version_compare(PHP_VERSION, '7.3.0') >= 0) {
-					unset($jar['expire']);
-					if (isset($_COOKIE[$parts[1]]))
-						setcookie($parts[1],'',['expires'=>0]+$jar);
-					if ($ttl)
-						$jar['expires']=$time+$ttl;
-					setcookie($parts[1],$val?:'',$jar);
-				} else {
-					unset($jar['samesite']);
-					if (isset($_COOKIE[$parts[1]]))
-						call_user_func_array('setcookie',
-							array_merge([$parts[1],''],['expire'=>0]+$jar));
-					if ($ttl)
-						$jar['expire']=$time+$ttl;
-					call_user_func_array('setcookie',[$parts[1],$val?:'']+$jar);
-				}
+				unset($jar['expire']);
+				if (isset($_COOKIE[$parts[1]]))
+					setcookie($parts[1],'',['expires'=>0]+$jar);
+				if ($ttl)
+					$jar['expires']=$time+$ttl;
+				setcookie($parts[1],$val?:'',$jar);
 				$_COOKIE[$parts[1]]=$val;
 				return $val;
 			}
@@ -774,12 +724,7 @@ final class Base extends BaseHive {
 				$jar=$this->unserialize($this->serialize($this->JAR));
 				unset($jar['expire']);
 				if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
-					if (version_compare(PHP_VERSION, '7.3.0') >= 0)
-						session_set_cookie_params($jar);
-					else {
-						unset($jar['samesite']);
-						call_user_func_array('session_set_cookie_params',$jar);
-					}
+					session_set_cookie_params($jar);
 			}
 		}
 		if ($ttl)
@@ -789,10 +734,9 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Unset hive key
-	*	@param $key string
-	**/
-	function clear(string $key) {
+	 * Unset hive key
+	 */
+	function clear(string $key): void {
 		// Normalize array literal
 		$cache=Cache::instance();
 		$parts=$this->cut($key);
@@ -805,15 +749,9 @@ final class Base extends BaseHive {
 				$jar=$this->JAR;
 				unset($jar['lifetime']);
 				$jar['expire']=0;
-				if (version_compare(PHP_VERSION, '7.3.0') >= 0) {
-					$jar['expires']=$jar['expire'];
-					unset($jar['expire']);
-					setcookie($parts[1],'',$jar);
-				} else {
-					unset($jar['samesite']);
-					call_user_func_array('setcookie',
-						array_merge([$parts[1],''],$jar));
-				}
+				$jar['expires']=$jar['expire'];
+				unset($jar['expire']);
+				setcookie($parts[1],'',$jar);
 				unset($_COOKIE[$parts[1]]);
 				return;
 			} else
@@ -842,22 +780,17 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Return TRUE if hive variable is 'on'
-	*	@return bool
-	*	@param $key string
-	**/
-	function checked($key) {
+	 * Return TRUE if hive variable is 'on'
+	 */
+	function checked(string $key): bool {
 		$ref=&$this->ref($key);
 		return $ref=='on';
 	}
 
 	/**
-	*	Return TRUE if property has public visibility
-	*	@return bool
-	*	@param $obj object
-	*	@param $key string
-	**/
-	function visible($obj,$key) {
+	 * Return TRUE if property has public visibility
+	 */
+	function visible(object $obj, string $key): bool {
 		if (property_exists($obj,$key)) {
 			$ref=new \ReflectionProperty(get_class($obj),$key);
 			$out=$ref->ispublic();
@@ -868,12 +801,9 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Multi-variable assignment using associative array
-	*	@param $vars array
-	*	@param $prefix string
-	*	@param $ttl int
-	**/
-	function mset(array $vars,$prefix='',$ttl=0) {
+	 * Multi-variable assignment using associative array
+	 */
+	function mset(array $vars,string $prefix='',int $ttl=0): void {
 		foreach ($vars as $key=>$val)
 			$this->set($prefix.$key,$val,$ttl);
 	}
@@ -882,113 +812,86 @@ final class Base extends BaseHive {
 	*	Publish hive contents
 	*	@return array
 	**/
-	function hive() {
+	function hive(): array {
 		return (array) $this->_hive + $this->_hive_data;
 	}
 
 	/**
-	*	Copy contents of hive variable to another
-	*	@return mixed
-	*	@param $src string
-	*	@param $dst string
-	**/
-	function copy($src,$dst) {
+	 * Copy contents of hive variable to another
+	 */
+	function copy(string $src, string $dst): mixed {
 		$ref=&$this->ref($dst);
 		return $ref=$this->ref($src,FALSE);
 	}
 
 	/**
-	*	Concatenate string to hive string variable
-	*	@return string
-	*	@param $key string
-	*	@param $val string
-	**/
-	function concat($key,$val) {
+	 * Concatenate string to hive string variable
+	 */
+	function concat(string $key, string $val): string {
 		$ref=&$this->ref($key);
 		$ref.=$val;
 		return $ref;
 	}
 
 	/**
-	*	Swap keys and values of hive array variable
-	*	@return array
-	*	@param $key string
-	*	@public
-	**/
-	function flip($key) {
+	 * Swap keys and values of hive array variable
+	 */
+	function flip(string $key): array {
 		$ref=&$this->ref($key);
 		return $ref=array_combine(array_values($ref),array_keys($ref));
 	}
 
 	/**
-	*	Add element to the end of hive array variable
-	*	@return mixed
-	*	@param $key string
-	*	@param $val mixed
-	**/
-	function push($key,$val) {
+	 * Add element to the end of hive array variable
+	 */
+	function push(string $key, mixed $val): mixed {
 		$ref=&$this->ref($key);
 		$ref[]=$val;
 		return $val;
 	}
 
 	/**
-	*	Remove last element of hive array variable
-	*	@return mixed
-	*	@param $key string
-	**/
-	function pop($key) {
+	 * Remove last element of hive array variable
+	 */
+	function pop(string $key): mixed {
 		$ref=&$this->ref($key);
 		return array_pop($ref);
 	}
 
 	/**
-	*	Add element to the beginning of hive array variable
-	*	@return mixed
-	*	@param $key string
-	*	@param $val mixed
-	**/
-	function unshift($key,$val) {
+	 * Add element to the beginning of hive array variable
+	 */
+	function unshift(string $key, mixed $val): mixed {
 		$ref=&$this->ref($key);
 		array_unshift($ref,$val);
 		return $val;
 	}
 
 	/**
-	*	Remove first element of hive array variable
-	*	@return mixed
-	*	@param $key string
-	**/
-	function shift($key) {
+	 * Remove first element of hive array variable
+	 */
+	function shift(string $key): mixed {
 		$ref=&$this->ref($key);
 		return array_shift($ref);
 	}
 
 	/**
-	*	Merge array with hive array variable
-	*	@return array
-	*	@param $key string
-	*	@param $src string|array
-	*	@param $keep bool
-	**/
-	function merge($key,$src,$keep=FALSE) {
+	 * Merge array with hive array variable
+	 */
+	function merge(string $key, string|array $src, bool $keep=FALSE): array {
 		$ref=&$this->ref($key);
 		if (!$ref)
 			$ref=[];
-		$out=array_merge($ref,is_string($src)?$this->_hive[$src]:$src);
+		$out=[...$ref,...(is_string($src)?$this->_hive[$src]:$src)];
 		if ($keep)
 			$ref=$out;
 		return $out;
 	}
 
 	/**
-	*	Extend hive array variable with default values from $src
-	*	@return array
-	*	@param $key string
-	*	@param $src string|array
-	*	@param $keep bool
-	**/
-	function extend($key,$src,$keep=FALSE) {
+	 * Extend hive array variable with default values from $src
+	 */
+	function extend(string $key,string|array $src, bool $keep=FALSE): array {
 		$ref=&$this->ref($key);
 		if (!$ref)
 			$ref=[];
@@ -1000,32 +903,24 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Convert backslashes to slashes
-	*	@return string
-	*	@param $str string
-	**/
-	function fixslashes($str) {
+	 * Convert backslashes to slashes
+	 */
+	function fixslashes(string $str): string {
 		return $str?strtr($str,'\\','/'):$str;
 	}
 
 	/**
-	 *	Split comma-, semi-colon, or pipe-separated string
-	 *	@return array
-	 *	@param $str string
-	 *	@param $noempty bool
-	 **/
-	function split($str,$noempty=TRUE) {
+	 * Split comma-, semi-colon, or pipe-separated string
+	 */
+	function split(?string $str, bool $noempty=TRUE): array {
 		return array_map('trim',
 			preg_split('/[,;|]/',$str?:'',0,$noempty?PREG_SPLIT_NO_EMPTY:0));
 	}
 
 	/**
-	*	Convert PHP expression/value to compressed exportable string
-	*	@return string
-	*	@param $arg mixed
-	*	@param $stack array
-	**/
-	function stringify($arg,array $stack=NULL) {
+	 * Convert PHP expression/value to compressed exportable string
+	 */
+	function stringify(mixed $arg, array $stack=NULL): string {
 		if ($stack) {
 			foreach ($stack as $node)
 				if ($arg===$node)
@@ -1039,9 +934,8 @@ final class Base extends BaseHive {
 				foreach (get_object_vars($arg) as $key=>$val)
 					$str.=($str?',':'').
 						$this->export($key).'=>'.
-						$this->stringify($val,
-							array_merge($stack,[$arg]));
-				return get_class($arg).'::__set_state(['.$str.'])';
+						$this->stringify($val,[...$stack,$arg]);
+				return $arg::class.'::__set_state(['.$str.'])';
 			case 'array':
 				$str='';
 				$num=isset($arg[0]) &&
@@ -1049,82 +943,69 @@ final class Base extends BaseHive {
 				foreach ($arg as $key=>$val)
 					$str.=($str?',':'').
 						($num?'':($this->export($key).'=>')).
-						$this->stringify($val,array_merge($stack,[$arg]));
+						$this->stringify($val,[...$stack,$arg]);
 				return '['.$str.']';
 			default:
 				return $this->export($arg);
 		}
 	}
 
-	function state(string $state) {
-		foreach (explode('|',Base::GLOBALS) as $global) {
-			$this->desync($global);
-		}
-		parent::state($state);
-		foreach (explode('|',Base::GLOBALS) as $global) {
-			$this->sync($global);
-		}
-	}
-
-	function restore(string $state, bool $sync=TRUE) {
-		parent::restore($state);
-		if ($sync)
-			foreach (explode('|',Base::GLOBALS) as $global) {
-				$this->sync($global);
-			}
+	/**
+	 * Memorize current hive state
+	 */
+	function state(string $name): void {
+		$globals = explode('|',Base::GLOBALS);
+		array_map( [$this,'desync'], $globals);
+		parent::state($name);
+		array_map( [$this,'sync'], $globals);
 	}
 
 	/**
-	*	Flatten array values and return as CSV string
-	*	@return string
-	*	@param $args array
-	**/
-	function csv(array $args) {
+	 * Restore previous hive state
+	 */
+	function restore(string $state, bool $sync=TRUE): void {
+		parent::restore($state);
+		if ($sync)
+			array_map( [$this,'sync'], explode('|',Base::GLOBALS));
+	}
+
+	/**
+	 * Flatten array values and return as CSV string
+	 */
+	function csv(array $args): string {
 		return implode(',',array_map('stripcslashes',
 			array_map([$this,'stringify'],$args)));
 	}
 
 	/**
-	*	Convert snakecase string to camelcase
-	*	@return string
-	*	@param $str string
-	**/
-	function camelcase($str) {
+	 * Convert snakecase string to camelcase
+	 */
+	function camelcase(string $str): string {
 		return preg_replace_callback(
 			'/_(\pL)/u',
-			function($match) {
-				return strtoupper($match[1]);
-			},
-			$str
+			fn($match) => strtoupper($match[1]),$str
 		);
 	}
 
 	/**
-	*	Convert camelcase string to snakecase
-	*	@return string
-	*	@param $str string
-	**/
-	function snakecase($str) {
+	 * Convert camelcase string to snakecase
+	 */
+	function snakecase(string $str): string {
 		return strtolower(preg_replace('/(?!^)\p{Lu}/u','_\0',$str));
 	}
 
 	/**
-	*	Return -1 if specified number is negative, 0 if zero,
-	*	or 1 if the number is positive
-	*	@return int
-	*	@param $num mixed
-	**/
-	function sign($num) {
+	 * Return -1 if specified number is negative, 0 if zero,
+	 * or 1 if the number is positive
+	 */
+	function sign(int|float $num): int {
 		return $num?($num/abs($num)):0;
 	}
 
 	/**
-	*	Extract values of array whose keys start with the given prefix
-	*	@return array
-	*	@param $arr array
-	*	@param $prefix string
-	**/
-	function extract($arr,$prefix) {
+	 * Extract values of array whose keys start with the given prefix
+	 */
+	function extract(array $arr, string $prefix): array {
 		$out=[];
 		foreach (preg_grep('/^'.preg_quote($prefix,'/').'/',array_keys($arr))
 			as $key)
@@ -1133,63 +1014,47 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Convert class constants to array
-	*	@return array
-	*	@param $class object|string
-	*	@param $prefix string
-	**/
-	function constants($class,$prefix='') {
+	 * Convert class constants to array
+	 */
+	function constants(object|string $class, string $prefix=''): array {
 		$ref=new \ReflectionClass($class);
 		return $this->extract($ref->getconstants(),$prefix);
 	}
 
 	/**
-	*	Generate 64bit/base36 hash
-	*	@return string
-	*	@param $str
-	**/
-	function hash($str) {
+	 * Generate 64bit/base36 hash
+	 */
+	function hash(string $str): string {
 		return str_pad(base_convert(
 			substr(sha1($str?:''),-16),16,36),11,'0',STR_PAD_LEFT);
 	}
 
 	/**
-	*	Return Base64-encoded equivalent
-	*	@return string
-	*	@param $data string
-	*	@param $mime string
-	**/
-	function base64($data,$mime) {
+	 * Return Base64-encoded equivalent
+	 */
+	function base64(string $data, string $mime): string {
 		return 'data:'.$mime.';base64,'.base64_encode($data);
 	}
 
 	/**
-	*	Convert special characters to HTML entities
-	*	@return string
-	*	@param $str string
-	**/
-	function encode($str) {
-		return @htmlspecialchars($str,$this->BITMASK,
+	 * Convert special characters to HTML entities
+	 */
+	function encode(string $str): string {
+		return htmlspecialchars($str,$this->BITMASK,
 			$this->ENCODING)?:$this->scrub($str);
 	}
 
 	/**
-	*	Convert HTML entities back to characters
-	*	@return string
-	*	@param $str string
-	**/
-	function decode($str) {
+	 * Convert HTML entities back to characters
+	 */
+	function decode(string $str): string {
 		return htmlspecialchars_decode($str,$this->BITMASK);
 	}
 
 	/**
-	*	Invoke callback recursively for all data types
-	*	@return mixed
-	*	@param $arg mixed
-	*	@param $func callback
-	*	@param $stack array
-	**/
-	function recursive($arg,$func,$stack=[]) {
+	 * Invoke callback recursively for all data types
+	 */
+	function recursive(mixed $arg, callable $func, array $stack=[]): mixed {
 		if ($stack) {
 			foreach ($stack as $node)
 				if ($arg===$node)
@@ -1203,28 +1068,23 @@ final class Base extends BaseHive {
 					$cast=is_a($arg,'IteratorAggregate')?
 						iterator_to_array($arg):get_object_vars($arg);
 					foreach ($cast as $key=>$val)
-						$arg->$key=$this->recursive(
-							$val,$func,array_merge($stack,[$arg]));
+						$arg->$key=$this->recursive($val,$func,[...$stack,$arg]);
 				}
 				return $arg;
 			case 'array':
 				$copy=[];
 				foreach ($arg as $key=>$val)
-					$copy[$key]=$this->recursive($val,$func,
-						array_merge($stack,[$arg]));
+					$copy[$key]=$this->recursive($val,$func,[...$stack,$arg]);
 				return $copy;
 		}
 		return $func($arg);
 	}
 
 	/**
-	*	Remove HTML tags (except those enumerated) and non-printable
-	*	characters to mitigate XSS/code injection attacks
-	*	@return mixed
-	*	@param $arg mixed
-	*	@param $tags string
-	**/
-	function clean($arg,$tags=NULL) {
+	 * Remove HTML tags (except those enumerated) and non-printable
+	 * characters to mitigate XSS/code injection attacks
+	 */
+	function clean(mixed $arg, string $tags=NULL): mixed {
 		return $this->recursive($arg,
 			function($val) use($tags) {
 				if ($tags!='*')
@@ -1237,20 +1097,16 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Similar to clean(), except that variable is passed by reference
-	*	@return mixed
-	*	@param $var mixed
-	*	@param $tags string
-	**/
-	function scrub(&$var,$tags=NULL) {
+	 * Similar to clean(), except that variable is passed by reference
+	 */
+	function scrub(mixed &$var, string$tags=NULL): mixed {
 		return $var=$this->clean($var,$tags);
 	}
 
 	/**
-	*	Return locale-aware formatted string
-	*	@return string
-	**/
-	function format() {
+	 * Return locale-aware formatted string
+	 */
+	function format(): string {
 		$args=func_get_args();
 		$val=array_shift($args);
 		// Get formatting rules
@@ -1283,11 +1139,7 @@ final class Base extends BaseHive {
 					if (isset($this->FORMATS[$type]))
 						return $this->call(
 							$this->FORMATS[$type],
-							[
-								$args[$pos],
-								isset($mod)?$mod:null,
-								isset($prop)?$prop:null
-							]
+							[$args[$pos], $mod ?? NULL, $prop ?? NULL]
 						);
 					$php81=version_compare(PHP_VERSION, '8.1.0')>=0;
 					switch ($type) {
@@ -1368,9 +1220,7 @@ final class Base extends BaseHive {
 							$frac=$args[$pos]-(int)$args[$pos];
 							return number_format(
 								$args[$pos],
-								isset($prop)?
-									$prop:
-									($frac?strlen($frac)-2:0),
+								$prop ?? ($frac?strlen($frac)-2:0),
 								$decimal_point,$thousands_sep);
 						case 'date':
 							if ($php81) {
@@ -1420,20 +1270,9 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Return string representation of expression
-	*	@return string
-	*	@param $expr mixed
-	**/
-	function export($expr) {
-		return var_export($expr,TRUE);
-	}
-
-	/**
-	*	Assign/auto-detect language
-	*	@return string
-	*	@param $code string
-	**/
-	function language($code) {
+	 * Assign/auto-detect language
+	 */
+	function language(string $code): string {
 		$code=preg_replace('/\h+|;q=[0-9.]+/','',$code?:'');
 		$code.=($code?',':'').$this->FALLBACK;
 		$this->languages=[];
@@ -1468,12 +1307,9 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Return lexicon entries
-	*	@return array
-	*	@param $path string
-	*	@param $ttl int
-	**/
-	function lexicon($path,$ttl=0) {
+	 * Return lexicon entries
+	 */
+	function lexicon(string $path, ?int $ttl=0): array {
 		$languages=$this->languages?:explode(',',$this->FALLBACK);
 		$cache=Cache::instance();
 		if ($ttl && $cache->exists(
@@ -1514,25 +1350,19 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	 *	Return string representation of PHP value
-	 *	@return string
-	 *	@param $arg mixed
-	 **/
-	function serialize($arg) {
-		switch (strtolower($this->SERIALIZER)) {
-			case 'igbinary':
-				return igbinary_serialize($arg);
-			default:
-				return serialize($arg);
-		}
+	 * Return string representation of PHP value
+	 */
+	function serialize(mixed $arg): string {
+		return match (strtolower($this->SERIALIZER)) {
+			'igbinary' => igbinary_serialize($arg),
+			default => serialize($arg),
+		};
 	}
 
 	/**
-	 *	Return PHP value derived from string
-	 *	@return string
-	 *	@param $arg mixed
-	 **/
-	function unserialize($arg) {
+	 * Return PHP value derived from string
+	 */
+	function unserialize(string $arg): mixed  {
 		switch (strtolower($this->SERIALIZER)) {
 			case 'igbinary':
 				return igbinary_unserialize($arg);
@@ -1542,11 +1372,9 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Send HTTP status header; Return text equivalent of status code
-	*	@return string
-	*	@param $code int
-	**/
-	function status($code) {
+	 * Send HTTP status header; Return text equivalent of status code
+	 */
+	function status(int $code): string {
 		$reason=@constant('self::HTTP_'.$code);
 		if (!$this->CLI && !headers_sent())
 			header($_SERVER['SERVER_PROTOCOL'].' '.$code.' '.$reason);
@@ -1554,12 +1382,10 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Send cache metadata to HTTP client
-	*	@param $secs int
-	**/
-	function expire($secs=0) {
+	 * Send cache metadata to HTTP client
+	 */
+	function expire(int $secs=0): void {
 		if (!$this->CLI && !headers_sent()) {
-			$secs=(int)$secs;
 			if ($this->PACKAGE)
 				header('X-Powered-By: '.$this->PACKAGE);
 			if ($this->XFRAME)
@@ -1582,25 +1408,19 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Return HTTP user agent
-	*	@return string
-	**/
-	function agent(array $headers=null) {
+	 * Return HTTP user agent
+	 */
+	function agent(array $headers=null): string {
 		if (!$headers)
 			$headers=$this->HEADERS;
-		return isset($headers['X-Operamini-Phone-UA'])?
-			$headers['X-Operamini-Phone-UA']:
-			(isset($headers['X-Skyfire-Phone'])?
-				$headers['X-Skyfire-Phone']:
-				(isset($headers['User-Agent'])?
-					$headers['User-Agent']:''));
+		return $headers['X-Operamini-Phone-UA'] ?? ($headers['X-Skyfire-Phone'] ??
+				($headers['User-Agent'] ?? ''));
 	}
 
 	/**
-	*	Return TRUE if XMLHttpRequest detected
-	*	@return bool
-	**/
-	function ajax(array $headers=null) {
+	 * Return TRUE if XMLHttpRequest detected
+	 */
+	function ajax(array $headers=null): bool {
 		if (!$headers)
 			$headers=$this->HEADERS;
 		return isset($headers['X-Requested-With']) &&
@@ -1611,23 +1431,17 @@ final class Base extends BaseHive {
 	*	Sniff IP address
 	*	@return string
 	**/
-	function ip() {
+	function ip(): string {
 		$headers=$this->HEADERS;
-		return isset($headers['Client-IP'])?
-			$headers['Client-IP']:
-			(isset($headers['X-Forwarded-For'])?
+		return $headers['Client-IP'] ?? (isset($headers['X-Forwarded-For'])?
 				explode(',',$headers['X-Forwarded-For'])[0]:
-				(isset($_SERVER['REMOTE_ADDR'])?
-					$_SERVER['REMOTE_ADDR']:''));
+				($_SERVER['REMOTE_ADDR'] ?? ''));
 	}
 
 	/**
-	*	Return filtered stack trace as a formatted string (or array)
-	*	@return string|array
-	*	@param $trace array|NULL
-	*	@param $format bool
-	**/
-	function trace(array $trace=NULL,$format=TRUE) {
+	 * Return filtered stack trace as a formatted string (or array)
+	 */
+	function trace(array $trace=NULL, bool $format=TRUE): string|array {
 		if (!$trace) {
 			$trace=debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
 			$frame=$trace[0];
@@ -1636,15 +1450,12 @@ final class Base extends BaseHive {
 		}
 		$debug=$this->DEBUG;
 		$trace=array_filter(
-			$trace,
-			function($frame) use($debug) {
-				return isset($frame['file']) &&
-					($debug>1 ||
-					(($frame['file']!=__FILE__ || $debug) &&
-					(empty($frame['function']) ||
-					!preg_match('/^(?:(?:trigger|user)_error|'.
-						'__call|call_user_func)/',$frame['function']))));
-			}
+			$trace,fn($frame) => isset($frame['file']) &&
+				($debug>1 ||
+				(($frame['file']!=__FILE__ || $debug) &&
+				(empty($frame['function']) ||
+				!preg_match('/^(?:(?:trigger|user)_error|'.
+					'__call|call_user_func)/',$frame['function']))))
 		);
 		if (!$format)
 			return $trace;
@@ -1667,15 +1478,11 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Log error; Execute ONERROR handler if defined, else display
-	*	default error page (HTML for synchronous requests, JSON string
-	*	for AJAX requests)
-	*	@param $code int
-	*	@param $text string
-	*	@param $trace array
-	*	@param $level int
-	**/
-	function error($code,$text='',array $trace=NULL,$level=0) {
+	 * Log error; Execute ONERROR handler if defined, else display
+	 * default error page (HTML for synchronous requests, JSON string
+	 * for AJAX requests)
+	 */
+	function error(int $code, string $text='', array $trace=NULL, int $level=0): void {
 		$prior=$this->ERROR;
 		$header=$this->status($code);
 		$req=$this->VERB.' '.$this->PATH;
@@ -1723,7 +1530,7 @@ final class Base extends BaseHive {
 			if ($this->CLI)
 				echo PHP_EOL.'==================================='.PHP_EOL.
 					'ERROR '.$error['code'].' - '.$error['status'].PHP_EOL.
-					$error['text'].PHP_EOL.PHP_EOL.(isset($error['trace']) ? $error['trace'] : '');
+					$error['text'].PHP_EOL.PHP_EOL.($error['trace'] ?? '');
 			else
 				echo $this->AJAX?
 					json_encode($error):
@@ -1746,15 +1553,9 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Mock HTTP request
-	*	@return mixed
-	*	@param $pattern string
-	*	@param $args array
-	*	@param $headers array
-	*	@param $body string
-	**/
-	function mock($pattern,
-		array $args=NULL,array $headers=NULL,$body=NULL) {
+	 * Mock HTTP request
+	 */
+	function mock(string $pattern, array $args=NULL, array $headers=NULL, string $body=NULL): mixed {
 		if (!$args)
 			$args=[];
 		$types=['sync','ajax','cli'];
@@ -1771,7 +1572,7 @@ final class Base extends BaseHive {
 		if (empty($parts[4]))
 			user_error(sprintf(self::E_Pattern,$pattern),E_USER_ERROR);
 		$url=parse_url($parts[4]);
-		parse_str(isset($url['query'])?$url['query']:'',$GLOBALS['_GET']);
+		parse_str($url['query'] ?? '',$GLOBALS['_GET']);
 		if (preg_match('/GET|HEAD/',$verb))
 			$GLOBALS['_GET']=array_merge($GLOBALS['_GET'],$args);
 		$GLOBALS['_POST']=$verb=='POST'?$args:[];
@@ -1794,14 +1595,9 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Assemble url from alias name
-	*	@return string
-	*	@param $name string
-	*	@param $params array|string
-	*	@param $query string|array
-	*	@param $fragment string
-	**/
-	function alias($name,$params=[],$query=NULL,$fragment=NULL) {
+	 * Assemble url from alias name
+	 */
+	function alias(string $name, array|string $params=[], string|array $query=NULL, string $fragment=NULL): string {
 		if (!is_array($params))
 			$params=$this->parse($params);
 		if (empty($this->ALIASES[$name]))
@@ -1813,14 +1609,9 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Bind handler to route pattern
-	*	@return NULL
-	*	@param $pattern string|array
-	*	@param $handler callback
-	*	@param $ttl int
-	*	@param $kbps int
-	**/
-	function route($pattern,$handler,$ttl=0,$kbps=0) {
+	 * Bind handler to route pattern
+	 */
+	function route(string|array $pattern, callable|string $handler, int $ttl=0, int $kbps=0): void {
 		$types=['sync','ajax','cli'];
 		$alias=null;
 		if (is_array($pattern)) {
@@ -1852,13 +1643,9 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Reroute to specified URI
-	*	@return NULL
-	*	@param $url array|string
-	*	@param $permanent bool
-	*	@param $die bool
-	**/
-	function reroute($url=NULL,$permanent=FALSE,$die=TRUE) {
+	 * Reroute to specified URI
+	 */
+	function reroute(array|string $url=NULL, bool $permanent=FALSE, bool $die=TRUE): void {
 		if (!$url)
 			$url=$this->REALM;
 		if (is_array($url))
@@ -1867,7 +1654,7 @@ final class Base extends BaseHive {
 			$url,$parts) && isset($this->ALIASES[$parts[1]]))
 			$url=$this->build($this->ALIASES[$parts[1]],
 					isset($parts[2])?$this->parse($parts[2]):[]).
-				(isset($parts[3])?$parts[3]:'').(isset($parts[4])?$parts[4]:'');
+				($parts[3] ?? '').($parts[4] ?? '');
 		else
 			$url=$this->build($url);
 		if (($handler=$this->ONREROUTE) &&
@@ -1892,14 +1679,9 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Provide ReST interface by mapping HTTP verb to class method
-	*	@return NULL
-	*	@param $url string
-	*	@param $class string|object
-	*	@param $ttl int
-	*	@param $kbps int
-	**/
-	function map($url,$class,$ttl=0,$kbps=0) {
+	 * Provide ReST interface by mapping HTTP verb to class method
+	 */
+	function map(string $url, string|object $class, int $ttl=0, int $kbps=0): void {
 		if (is_array($url)) {
 			foreach ($url as $item)
 				$this->map($item,$class,$ttl,$kbps);
@@ -1913,29 +1695,23 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Redirect a route to another URL
-	*	@return NULL
-	*	@param $pattern string|array
-	*	@param $url string
-	*	@param $permanent bool
-	*/
-	function redirect($pattern,$url,$permanent=TRUE) {
+	 * Redirect a route to another URL
+	 */
+	function redirect(string|array $pattern, string $url, bool $permanent=TRUE): void {
 		if (is_array($pattern)) {
 			foreach ($pattern as $item)
 				$this->redirect($item,$url,$permanent);
 			return;
 		}
-		$this->route($pattern,function($fw) use($url,$permanent) {
-			$fw->reroute($url,$permanent);
-		});
+		$this->route($pattern,fn(Base $fw) =>
+			$fw->reroute($url,$permanent)
+		);
 	}
 
 	/**
-	*	Return TRUE if IPv4 address exists in DNSBL
-	*	@return bool
-	*	@param $ip string
-	**/
-	function blacklisted($ip) {
+	 * Return TRUE if IPv4 address exists in DNSBL
+	 */
+	function blacklisted(string $ip): bool {
 		if ($this->DNSBL &&
 			!in_array($ip,
 				is_array($this->EXEMPT)?
@@ -1954,12 +1730,9 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Applies the specified URL mask and returns parameterized matches
-	*	@return $args array
-	*	@param $pattern string
-	*	@param $url string|NULL
-	**/
-	function mask($pattern,$url=NULL) {
+	 * Applies the specified URL mask and returns parameterized matches
+	 */
+	function mask(string $pattern, ?string $url=NULL): array {
 		if (!$url)
 			$url=$this->rel($this->URI);
 		$case=$this->CASELESS?'i':'';
@@ -1992,10 +1765,9 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Match routes against incoming URI
-	*	@return mixed
-	**/
-	function run() {
+	 * Match routes against incoming URI
+	 */
+	function run(): mixed {
 		if ($this->blacklisted($this->IP))
 			// Spammer detected
 			$this->error(403);
@@ -2006,7 +1778,7 @@ final class Base extends BaseHive {
 		$paths=[];
 		foreach ($keys=array_keys($this->ROUTES) as $key) {
 			$path=preg_replace('/@\w+/','*@',$key);
-			if (substr($path,-1)!='*')
+			if (!str_ends_with($path,'*'))
 				$path.='+';
 			$paths[]=$path;
 		}
@@ -2057,9 +1829,7 @@ final class Base extends BaseHive {
 					$handler=preg_replace_callback('/({)?@(\w+\b)(?(1)})/',
 						function($id) use($args) {
 							$pid=count($id)>2?2:1;
-							return isset($args[$id[$pid]])?
-								$args[$id[$pid]]:
-								$id[0];
+							return $args[$id[$pid]] ?? $id[0];
 						},
 						$handler
 					);
@@ -2161,13 +1931,9 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Loop until callback returns TRUE (for long polling)
-	*	@return mixed
-	*	@param $func callback
-	*	@param $args array
-	*	@param $timeout int
-	**/
-	function until($func,$args=NULL,$timeout=60) {
+	 * Loop until callback returns TRUE (for long polling)
+	 */
+	function until(callable|string $func, ?array $args=NULL, int $timeout=60): mixed {
 		if (!$args)
 			$args=[];
 		$time=time();
@@ -2200,10 +1966,10 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Disconnect HTTP client;
-	*	Set FcgidOutputBufferSize to zero if server uses mod_fcgid;
-	*	Disable mod_deflate when rendering text/html output
-	**/
+	 * Disconnect HTTP client;
+	 * Set FcgidOutputBufferSize to zero if server uses mod_fcgid;
+	 * Disable mod_deflate when rendering text/html output
+	 */
 	function abort() {
 		if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
 			session_start();
@@ -2222,12 +1988,9 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Grab the real route handler behind the string expression
-	*	@return string|array
-	*	@param $func string
-	*	@param $args array
-	**/
-	function grab($func,$args=NULL) {
+	 * Grab the real route handler behind the string expression
+	 */
+	function grab(string $func, ?array $args=NULL): string|array {
 		if (preg_match('/(.+)\h*(->|::)\h*(.+)/s',$func,$parts)) {
 			// Convert string to executable PHP callback
 			if (!class_exists($parts[1]))
@@ -2264,13 +2027,9 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Execute callback/hooks (supports 'class->method' format)
-	*	@return mixed|FALSE
-	*	@param $func callback
-	*	@param $args mixed
-	*	@param $hooks string
-	**/
-	function call($func,$args=NULL,$hooks='') {
+	 * Execute callback/hooks (supports 'class->method' format)
+	 */
+	function call(callable|string $func, mixed $args=NULL, string $hooks=''): mixed {
 		if (!is_array($args))
 			$args=[$args];
 		// Grab the real handler behind the string representation
@@ -2316,13 +2075,10 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Execute specified callbacks in succession; Apply same arguments
-	*	to all callbacks
-	*	@return array
-	*	@param $funcs array|string
-	*	@param $args mixed
-	**/
-	function chain($funcs,$args=NULL) {
+	 * Execute specified callbacks in succession; Apply same arguments
+	 * to all callbacks
+	 */
+	function chain(array|string $funcs, mixed $args=NULL): array {
 		$out=[];
 		foreach (is_array($funcs)?$funcs:$this->split($funcs) as $func)
 			$out[]=$this->call($func,$args);
@@ -2330,26 +2086,20 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Execute specified callbacks in succession; Relay result of
-	*	previous callback as argument to the next callback
-	*	@return array
-	*	@param $funcs array|string
-	*	@param $args mixed
-	**/
-	function relay($funcs,$args=NULL) {
+	 * Execute specified callbacks in succession; Relay result of
+	 * previous callback as argument to the next callback
+	 */
+	function relay(array|string $funcs, mixed $args=NULL): mixed {
 		foreach (is_array($funcs)?$funcs:$this->split($funcs) as $func)
 			$args=[$this->call($func,$args)];
 		return array_shift($args);
 	}
 
 	/**
-	*	Configure framework according to .ini-style file settings;
-	*	If optional 2nd arg is provided, template strings are interpreted
-	*	@return object
-	*	@param $source string|array
-	*	@param $allow bool
-	**/
-	function config($source,$allow=FALSE) {
+	 * Configure framework according to .ini-style file settings;
+	 * If optional 2nd arg is provided, template strings are interpreted
+	 */
+	function config(string|array $source, bool $allow=FALSE): Base {
 		if (is_string($source))
 			$source=$this->split($source);
 		if ($allow)
@@ -2418,7 +2168,7 @@ final class Base extends BaseHive {
 						);
 						preg_match('/^(?<section>[^:]+)(?:\:(?<func>.+))?/',
 							$sec,$parts);
-						$func=isset($parts['func'])?$parts['func']:NULL;
+						$func=$parts['func'] ?? NULL;
 						$custom=(strtolower($parts['section'])!='globals');
 						if ($func)
 							$args=[$this->call($func,$args)];
@@ -2444,13 +2194,9 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Create mutex, invoke callback then drop ownership when done
-	*	@return mixed
-	*	@param $id string
-	*	@param $func callback
-	*	@param $args mixed
-	**/
-	function mutex($id,$func,$args=NULL) {
+	 * Create mutex, invoke callback then drop ownership when done
+	 */
+	function mutex(string $id, callable|string $func, mixed $args=NULL): mixed {
 		if (!is_dir($tmp=$this->TEMP))
 			mkdir($tmp,self::MODE,TRUE);
 		// Use filesystem lock
@@ -2470,33 +2216,24 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Read file (with option to apply Unix LF as standard line ending)
-	*	@return string
-	*	@param $file string
-	*	@param $lf bool
-	**/
-	function read($file,$lf=FALSE) {
+	 * Read file (with option to apply Unix LF as standard line ending)
+	 */
+	function read(string $file, bool $lf=FALSE): string {
 		$out=@file_get_contents($file);
 		return $lf?preg_replace('/\r\n|\r/',"\n",$out):$out;
 	}
 
 	/**
-	*	Exclusive file write
-	*	@return int|FALSE
-	*	@param $file string
-	*	@param $data mixed
-	*	@param $append bool
-	**/
-	function write($file,$data,$append=FALSE) {
+	 * Exclusive file write
+	 */
+	function write(string $file, mixed $data, bool $append=FALSE): int|false {
 		return file_put_contents($file,$data,$this->LOCK|($append?FILE_APPEND:0));
 	}
 
 	/**
-	*	Apply syntax highlighting
-	*	@return string
-	*	@param $text string
-	**/
-	function highlight($text) {
+	 * Apply syntax highlighting
+	 */
+	function highlight(string $text): string {
 		$out='';
 		$pre=FALSE;
 		$text=trim($text);
@@ -2522,26 +2259,22 @@ final class Base extends BaseHive {
 	*	Dump expression with syntax highlighting
 	*	@param $expr mixed
 	**/
-	function dump($expr) {
+	function dump(mixed $expr) {
 		echo $this->highlight($this->stringify($expr));
 	}
 
 	/**
-	*	Return path (and query parameters) relative to the base directory
-	*	@return string
-	*	@param $url string
-	**/
-	function rel($url) {
+	 * Return path (and query parameters) relative to the base directory
+	 */
+	function rel(string $url): string {
 		return preg_replace('/^(?:https?:\/\/)?'.
 			preg_quote($this->BASE,'/').'(\/.*|$)/','\1',$url);
 	}
 
 	/**
-	*	Namespace-aware class autoloader
-	*	@return mixed
-	*	@param $class string
-	**/
-	protected function autoload($class) {
+	 * Namespace-aware class autoloader
+	 */
+	protected function autoload(string $class): mixed {
 		$class=$this->fixslashes(ltrim($class,'\\'));
 		/** @var callable $func */
 		$func=NULL;
@@ -2557,10 +2290,9 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Execute framework/application shutdown sequence
-	*	@param $cwd string
-	**/
-	function unload($cwd) {
+	 * Execute framework/application shutdown sequence
+	 */
+	function unload(string $cwd) {
 		chdir($cwd);
 		if (!($error=error_get_last()) &&
 			session_status()==PHP_SESSION_ACTIVE)
@@ -2577,15 +2309,13 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	*	Call function identified by hive key
-	*	@return mixed
-	*	@param $key string
-	*	@param $args array
-	**/
-	function __call($key,array $args) {
+	 * Call function identified by hive key
+	 */
+	function __call(string $key, array $args): mixed {
 		if ($this->exists($key,$val))
 			return call_user_func_array($val,$args);
 		user_error(sprintf(self::E_Method,$key),E_USER_ERROR);
+		return null;
 	}
 
 	//! Bootstrap
@@ -2624,7 +2354,7 @@ final class Base extends BaseHive {
 				$_SERVER['argv'][1]='/';
 			}
 			$req=$query='';
-			if (substr($_SERVER['argv'][1],0,1)=='/') {
+			if (str_starts_with($_SERVER['argv'][1],'/')) {
 				$req=$_SERVER['argv'][1];
 				$query=parse_url($req,PHP_URL_QUERY);
 			} else {
@@ -2662,7 +2392,7 @@ final class Base extends BaseHive {
 			if (isset($_SERVER['CONTENT_TYPE']))
 				$headers['Content-Type']=&$_SERVER['CONTENT_TYPE'];
 			foreach (array_keys($_SERVER) as $key)
-				if (substr($key,0,5)=='HTTP_')
+				if (str_starts_with($key,'HTTP_'))
 					$headers[strtr(ucwords(strtolower(strtr(
 						substr($key,5),'_',' '))),' ','-')]=&$_SERVER[$key];
 		}
@@ -2725,7 +2455,7 @@ final class Base extends BaseHive {
 			'PATH'=>$path,
 			'PLUGINS'=>$this->fixslashes(__DIR__).'/../',
 			'PORT'=>$port,
-			'QUERY'=>isset($uri['query'])?$uri['query']:'',
+			'QUERY'=> $uri['query'] ?? '',
 			'REALM'=>$scheme.'://'.$_SERVER['SERVER_NAME'].
 				(!in_array($port,[80,443])?(':'.$port):'').
 				$_SERVER['REQUEST_URI'],
@@ -2744,12 +2474,7 @@ final class Base extends BaseHive {
 		if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE) {
 			unset($jar['expire']);
 			session_cache_limiter('');
-			if (version_compare(PHP_VERSION, '7.3.0') >= 0)
-				session_set_cookie_params($jar);
-			else {
-				unset($jar['samesite']);
-				call_user_func_array('session_set_cookie_params',$jar);
-			}
+			session_set_cookie_params($jar);
 		}
 		if (PHP_SAPI=='cli-server' &&
 			preg_match('/^'.preg_quote($base,'/').'$/',$this->URI))
@@ -2783,50 +2508,32 @@ class Cache {
 
 	use Prefab;
 
-	protected
-		//! Cache DSN
-		$dsn,
-		//! Prefix for cache entries
-		$prefix,
-		//! MemCache or Redis object
-		$ref;
+	//! Cache DSN
+	protected ?string $dsn=NULL;
+
+	//! Prefix for cache entries
+	protected ?string $prefix=NULL;
+
+	//! MemCache or Redis object
+	protected ?object $ref=NULL;
 
 	/**
-	*	Return timestamp and TTL of cache entry or FALSE if not found
-	*	@return array|FALSE
-	*	@param $key string
-	*	@param $val mixed
-	**/
-	function exists($key,&$val=NULL) {
+	 * Return timestamp and TTL of cache entry or FALSE if not found
+	 */
+	function exists(string $key, mixed &$val=NULL): array|false {
 		$fw=Base::instance();
 		if (!$this->dsn)
 			return FALSE;
 		$ndx=$this->prefix.'.'.$key;
 		$parts=explode('=',$this->dsn,2);
-		switch ($parts[0]) {
-			case 'apc':
-			case 'apcu':
-				$raw=call_user_func($parts[0].'_fetch',$ndx);
-				break;
-			case 'redis':
-				$raw=$this->ref->get($ndx);
-				break;
-			case 'memcache':
-				$raw=memcache_get($this->ref,$ndx);
-				break;
-			case 'memcached':
-				$raw=$this->ref->get($ndx);
-				break;
-			case 'wincache':
-				$raw=wincache_ucache_get($ndx);
-				break;
-			case 'xcache':
-				$raw=xcache_get($ndx);
-				break;
-			case 'folder':
-				$raw=$fw->read($parts[1].$ndx);
-				break;
-		}
+		$raw = match ($parts[0]) {
+			'apc','apcu' => call_user_func($parts[0].'_fetch',$ndx),
+			'redis','memcached' => $this->ref->get($ndx),
+			'memcache' => memcache_get($this->ref,$ndx),
+			'wincache' => wincache_ucache_get($ndx),
+			'xcache' => xcache_get($ndx),
+			'folder' => $fw->read($parts[1].$ndx),
+		};
 		if (!empty($raw)) {
 			list($val,$time,$ttl)=(array)$fw->unserialize($raw);
 			if ($ttl===0 || $time+$ttl>microtime(TRUE))
@@ -2838,13 +2545,9 @@ class Cache {
 	}
 
 	/**
-	*	Store value in cache
-	*	@return mixed|FALSE
-	*	@param $key string
-	*	@param $val mixed
-	*	@param $ttl int
-	**/
-	function set($key,$val,$ttl=0) {
+	 * Store value in cache
+	 */
+	function set(string $key, mixed $val, int $ttl=0): mixed {
 		$fw=Base::instance();
 		if (!$this->dsn)
 			return TRUE;
@@ -2853,72 +2556,50 @@ class Cache {
 			$ttl=$cached[1];
 		$data=$fw->serialize([$val,microtime(TRUE),$ttl]);
 		$parts=explode('=',$this->dsn,2);
-		switch ($parts[0]) {
-			case 'apc':
-			case 'apcu':
-				return call_user_func($parts[0].'_store',$ndx,$data,$ttl);
-			case 'redis':
-				return $this->ref->set($ndx,$data,$ttl?['ex'=>$ttl]:[]);
-			case 'memcache':
-				return memcache_set($this->ref,$ndx,$data,0,$ttl);
-			case 'memcached':
-				return $this->ref->set($ndx,$data,$ttl);
-			case 'wincache':
-				return wincache_ucache_set($ndx,$data,$ttl);
-			case 'xcache':
-				return xcache_set($ndx,$data,$ttl);
-			case 'folder':
-				return $fw->write($parts[1].
-					str_replace(['/','\\'],'',$ndx),$data);
-		}
-		return FALSE;
+		return match ($parts[0]) {
+			'apc','apcu' => call_user_func($parts[0].'_store',$ndx,$data,$ttl),
+			'redis' => $this->ref->set($ndx,$data,$ttl?['ex' => $ttl]:[]),
+			'memcache' => memcache_set($this->ref,$ndx,$data,0,$ttl),
+			'memcached' => $this->ref->set($ndx,$data,$ttl),
+			'wincache' => wincache_ucache_set($ndx,$data,$ttl),
+			'xcache' => xcache_set($ndx,$data,$ttl),
+			'folder' => $fw->write($parts[1].
+				str_replace(['/','\\'],'',$ndx),$data),
+			default => FALSE,
+		};
 	}
 
 	/**
-	*	Retrieve value of cache entry
-	*	@return mixed|FALSE
-	*	@param $key string
-	**/
-	function get($key) {
+	 * Retrieve value of cache entry
+	 */
+	function get(string $key): mixed {
 		return $this->dsn && $this->exists($key,$data)?$data:FALSE;
 	}
 
 	/**
-	*	Delete cache entry
-	*	@return bool
-	*	@param $key string
-	**/
-	function clear($key) {
+	 * Delete cache entry
+	 */
+	function clear(string $key): bool {
 		if (!$this->dsn)
-			return;
+			return false;
 		$ndx=$this->prefix.'.'.$key;
 		$parts=explode('=',$this->dsn,2);
-		switch ($parts[0]) {
-			case 'apc':
-			case 'apcu':
-				return call_user_func($parts[0].'_delete',$ndx);
-			case 'redis':
-				return $this->ref->del($ndx);
-			case 'memcache':
-				return memcache_delete($this->ref,$ndx);
-			case 'memcached':
-				return $this->ref->delete($ndx);
-			case 'wincache':
-				return wincache_ucache_delete($ndx);
-			case 'xcache':
-				return xcache_unset($ndx);
-			case 'folder':
-				return @unlink($parts[1].$ndx);
-		}
-		return FALSE;
+		return match ($parts[0]) {
+			'apc','apcu' => call_user_func($parts[0].'_delete',$ndx),
+			'redis' => $this->ref->del($ndx),
+			'memcache' => memcache_delete($this->ref,$ndx),
+			'memcached' => $this->ref->delete($ndx),
+			'wincache' => wincache_ucache_delete($ndx),
+			'xcache' => xcache_unset($ndx),
+			'folder' => @unlink($parts[1].$ndx),
+			default => FALSE,
+		};
 	}
 
 	/**
-	*	Clear contents of cache backend
-	*	@return bool
-	*	@param $suffix string
-	**/
-	function reset($suffix=NULL) {
+	 * Clear contents of cache backend
+	 */
+	function reset(?string $suffix=NULL): bool {
 		if (!$this->dsn)
 			return TRUE;
 		$regex='/'.preg_quote($this->prefix.'.','/').'.*'.
@@ -2988,12 +2669,9 @@ class Cache {
 	}
 
 	/**
-	*	Load/auto-detect cache backend
-	*	@return string
-	*	@param $dsn bool|string
-	*	@param $seed bool|string
-	**/
-	function load($dsn,$seed=NULL) {
+	 * Load/auto-detect cache backend
+	 */
+	function load(bool|string $dsn, ?string $seed=NULL): string {
 		$fw=Base::instance();
 		if ($dsn=trim($dsn)) {
 			if (preg_match('/^redis=(.+)/',$dsn,$parts) &&
@@ -3040,10 +2718,9 @@ class Cache {
 	}
 
 	/**
-	*	Class constructor
-	*	@param $dsn bool|string
-	**/
-	function __construct($dsn=FALSE) {
+	 * Class constructor
+	 */
+	function __construct(bool|string $dsn=FALSE) {
 		if ($dsn)
 			$this->load($dsn);
 	}
@@ -3055,58 +2732,46 @@ class View {
 
 	use Prefab;
 
-	private
-		//! Temporary hive
-		$temp;
+	//! Temporary hive
+	private ?array $temp;
 
-	protected
-		//! Template file
-		$file,
-		//! Post-rendering handler
-		$trigger,
-		//! Nesting level
-		$level=0;
+	//! Template file
+	protected string $file;
 
-	/** @var Base Framework instance */
-	protected $fw;
+	//! Post-rendering handler
+	protected array $trigger=[];
+
+	//! Nesting level
+	protected int $level=0;
+
+	protected Base $fw;
 
 	function __construct() {
 		$this->fw=Base::instance();
 	}
 
 	/**
-	*	Encode characters to equivalent HTML entities
-	*	@return string
-	*	@param $arg mixed
-	**/
-	function esc($arg) {
+	 * Encode characters to equivalent HTML entities
+	 */
+	function esc(mixed $arg): string|array {
 		return $this->fw->recursive($arg,
-			function($val) {
-				return is_string($val)?$this->fw->encode($val):$val;
-			}
+			fn($val) => is_string($val)?$this->fw->encode($val):$val
 		);
 	}
 
 	/**
-	*	Decode HTML entities to equivalent characters
-	*	@return string
-	*	@param $arg mixed
-	**/
-	function raw($arg) {
+	 * Decode HTML entities to equivalent characters
+	 */
+	function raw(mixed $arg): string|array {
 		return $this->fw->recursive($arg,
-			function($val) {
-				return is_string($val)?$this->fw->decode($val):$val;
-			}
+			fn($val) => is_string($val)?$this->fw->decode($val):$val
 		);
 	}
 
 	/**
-	*	Create sandbox for template execution
-	*	@return string
-	*	@param $hive array
-	*	@param $mime string
-	**/
-	protected function sandbox(array $hive=NULL,$mime=NULL) {
+	 * Create sandbox for template execution
+	 */
+	protected function sandbox(?array $hive=NULL, ?string $mime=NULL): string {
 		$fw=$this->fw;
 		$implicit=FALSE;
 		if (is_null($hive)) {
@@ -3136,14 +2801,9 @@ class View {
 	}
 
 	/**
-	*	Render template
-	*	@return string
-	*	@param $file string
-	*	@param $mime string
-	*	@param $hive array
-	*	@param $ttl int
-	**/
-	function render($file,$mime='text/html',array $hive=NULL,$ttl=0) {
+	 * Render template
+	 */
+	function render(string $file, ?string $mime='text/html', ?array $hive=NULL, int $ttl=0): string {
 		$fw=$this->fw;
 		$cache=Cache::instance();
 		foreach ($fw->split($fw->UI) as $dir) {
@@ -3155,9 +2815,8 @@ class View {
 					session_start();
 				$fw->sync('SESSION');
 				$data=$this->sandbox($hive,$mime);
-				if (isset($this->trigger['afterrender']))
-					foreach($this->trigger['afterrender'] as $func)
-						$data=$fw->call($func,[$data, $dir.$file]);
+				foreach($this->trigger['afterrender']??[] as $func)
+					$data=$fw->call($func,[$data, $dir.$file]);
 				if ($ttl)
 					$cache->set($hash,$data,$ttl);
 				return $data;
@@ -3167,10 +2826,9 @@ class View {
 	}
 
 	/**
-	*	post rendering handler
-	*	@param $func callback
-	*/
-	function afterrender($func) {
+	 * post rendering handler
+	 */
+	function afterrender(callable|string $func) {
 		$this->trigger['afterrender'][]=$func;
 	}
 
@@ -3179,36 +2837,31 @@ class View {
 //! Lightweight template engine
 class Preview extends View {
 
-	protected
-		//! token filter
-		$filter=[
-			'c'=>'$this->c',
-			'esc'=>'$this->esc',
-			'raw'=>'$this->raw',
-			'export'=>'\F3\Base::instance()->export',
-			'alias'=>'\F3\Base::instance()->alias',
-			'format'=>'\F3\Base::instance()->format'
-		];
+	//! token filter
+	protected array $filter=[
+		'c'=>'$this->c',
+		'esc'=>'$this->esc',
+		'raw'=>'$this->raw',
+		'export'=>'\F3\Base::instance()->export',
+		'alias'=>'\F3\Base::instance()->alias',
+		'format'=>'\F3\Base::instance()->format'
+	];
 
-	protected
-		//! newline interpolation
-		$interpolation=true;
+	//! newline interpolation
+	protected bool $interpolation=true;
 
 	/**
 	 * Enable/disable markup parsing interpolation
 	 * mainly used for adding appropriate newlines
-	 * @param $bool bool
 	 */
-	function interpolation($bool) {
+	function interpolation(bool $bool) {
 		$this->interpolation=$bool;
 	}
 
 	/**
-	*	Return C-locale equivalent of number
-	*	@return string
-	*	@param $val int|float
-	**/
-	function c($val) {
+	 * Return C-locale equivalent of number
+	 */
+	function c(mixed $val): string {
 		$locale=setlocale(LC_NUMERIC,0);
 		setlocale(LC_NUMERIC,'C');
 		$out=(string)(float)$val;
@@ -3217,11 +2870,9 @@ class Preview extends View {
 	}
 
 	/**
-	*	Convert token to variable
-	*	@return string
-	*	@param $str string
-	**/
-	function token($str) {
+	 * Convert token to variable
+	 */
+	function token(string $str): string {
 		$str=trim(preg_replace('/\{\{(.+?)\}\}/s','\1',$this->fw->compile($str)));
 		if (preg_match('/^(.+)(?<!\|)\|((?:\h*\w+(?:\h*[,;]?))+)$/s',
 			$str,$parts)) {
@@ -3238,26 +2889,25 @@ class Preview extends View {
 	}
 
 	/**
-	*	Register or get (one specific or all) token filters
-	*	@param string $key
-	*	@param string|closure $func
-	*	@return array|closure|string
-	*/
-	function filter($key=NULL,$func=NULL) {
+	 * Register or get (one specific or all) token filters
+	 *	@param string $key
+	 *	@param string|closure $func
+	 *	@return array|closure|string
+	 */
+	function filter(string $key=NULL, callable|string|null $func=NULL): mixed {
 		if (!$key)
 			return array_keys($this->filter);
 		$key=strtolower($key);
 		if (!$func)
 			return $this->filter[$key];
 		$this->filter[$key]=$func;
+		return NULL;
 	}
 
 	/**
-	*	Assemble markup
-	*	@return string
-	*	@param $node string
-	**/
-	protected function build($node) {
+	 * Assemble markup
+	 */
+	protected function build($node): string {
 		return preg_replace_callback(
 			'/\{~(.+?)~\}|\{\*(.+?)\*\}|\{\-(.+?)\-\}|'.
 			'\{\{(.+?)\}\}((\r?\n)*)/s',
@@ -3282,15 +2932,9 @@ class Preview extends View {
 	}
 
 	/**
-	*	Render template string
-	*	@return string
-	*	@param $node string|array
-	*	@param $hive array
-	*	@param $ttl int
-	*	@param $persist bool
-	*	@param $escape bool
-	**/
-	function resolve($node,array $hive=NULL,$ttl=0,$persist=FALSE,$escape=NULL) {
+	 * Render template string
+	 */
+	function resolve(string|array $node, array $hive=NULL, int $ttl=0, bool $persist=FALSE, ?bool $escape=NULL): string {
 		$fw=$this->fw;
 		$cache=Cache::instance();
 		if ($escape!==NULL) {
@@ -3332,11 +2976,9 @@ class Preview extends View {
 	}
 
 	/**
-	 *	Parse template string
-	 *	@return string
-	 *	@param $text string
-	 **/
-	function parse($text) {
+	 * Parse template string
+	 */
+	function parse(string $text) {
 		// Remove PHP code and comments
 		return preg_replace(
 			'/\h*<\?(?!xml)(?:php|\s*=)?.+?\?>\h*|'.
@@ -3344,14 +2986,9 @@ class Preview extends View {
 	}
 
 	/**
-	*	Render template
-	*	@return string
-	*	@param $file string
-	*	@param $mime string
-	*	@param $hive array
-	*	@param $ttl int
-	**/
-	function render($file,$mime='text/html',array $hive=NULL,$ttl=0) {
+	 * Render template
+	 */
+	function render(string $file, ?string $mime='text/html', ?array $hive=NULL, int $ttl=0): string {
 		$fw=$this->fw;
 		$cache=Cache::instance();
 		if (!is_dir($tmp=$fw->TEMP))
@@ -3364,9 +3001,8 @@ class Preview extends View {
 					$fw->SEED.'.'.$fw->hash($view).'.php')) ||
 					filemtime($this->file)<filemtime($view)) {
 					$contents=$fw->read($view);
-					if (isset($this->trigger['beforerender']))
-						foreach ($this->trigger['beforerender'] as $func)
-							$contents=$fw->call($func, [$contents, $view]);
+					foreach ($this->trigger['beforerender']??[] as $func)
+						$contents=$fw->call($func, [$contents, $view]);
 					$text=$this->parse($contents);
 					$fw->write($this->file,$this->build($text));
 				}
@@ -3375,9 +3011,8 @@ class Preview extends View {
 					session_start();
 				$fw->sync('SESSION');
 				$data=$this->sandbox($hive,$mime);
-				if(isset($this->trigger['afterrender']))
-					foreach ($this->trigger['afterrender'] as $func)
-						$data=$fw->call($func, [$data, $view]);
+				foreach ($this->trigger['afterrender']??[] as $func)
+					$data=$fw->call($func, [$data, $view]);
 				if ($ttl)
 					$cache->set($hash,$data,$ttl);
 				return $data;
@@ -3387,10 +3022,9 @@ class Preview extends View {
 	}
 
 	/**
-	 *	post rendering handler
-	 *	@param $func callback
+	 * post rendering handler
 	 */
-	function beforerender($func) {
+	function beforerender(callable|string $func) {
 		$this->trigger['beforerender'][]=$func;
 	}
 
@@ -3742,18 +3376,16 @@ class ISO {
 	//@}
 
 	/**
-	*	Return list of languages indexed by ISO 639-1 language code
-	*	@return array
-	**/
-	function languages() {
+	 * Return list of languages indexed by ISO 639-1 language code
+	 */
+	function languages(): array {
 		return Base::instance()->constants($this,'LC_');
 	}
 
 	/**
-	*	Return list of countries indexed by ISO 3166-1 country code
-	*	@return array
-	**/
-	function countries() {
+	 * Return list of countries indexed by ISO 3166-1 country code
+	 */
+	function countries(): array {
 		return Base::instance()->constants($this,'CC_');
 	}
 
@@ -3762,43 +3394,34 @@ class ISO {
 //! Container for singular object instances
 final class Registry {
 
-	private static
-		//! Object catalog
-		$table;
+	//! Object catalog
+	private static array $table;
 
 	/**
-	*	Return TRUE if object exists in catalog
-	*	@return bool
-	*	@param $key string
-	**/
-	static function exists($key) {
+	 * Return TRUE if object exists in catalog
+	 */
+	static function exists(string $key): bool {
 		return isset(self::$table[$key]);
 	}
 
 	/**
-	*	Add object to catalog
-	*	@return object
-	*	@param $key string
-	*	@param $obj object
-	**/
-	static function set($key,$obj) {
+	 * Add object to catalog
+	 */
+	static function set(string $key, object $obj): object {
 		return self::$table[$key]=$obj;
 	}
 
 	/**
-	*	Retrieve object from catalog
-	*	@return object
-	*	@param $key string
-	**/
-	static function get($key) {
+	 * Retrieve object from catalog
+	 */
+	static function get(string $key): object {
 		return self::$table[$key];
 	}
 
 	/**
-	*	Delete object from catalog
-	*	@param $key string
-	**/
-	static function clear($key) {
+	 * Delete object from catalog
+	 */
+	static function clear(string $key) {
 		self::$table[$key]=NULL;
 		unset(self::$table[$key]);
 	}
