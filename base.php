@@ -784,7 +784,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $str string
 	**/
 	function snakecase($str) {
-		return strtolower(preg_replace('/(?!^)\p{Lu}/u','_\0',$str));
+		return ltrim(strtolower(str_replace('/_', '/', preg_replace('/[A-Z]([A-Z](?![a-z]))*/u', '_$0', $str))), '_');
 	}
 
 	/**
@@ -2229,7 +2229,8 @@ final class Base extends Prefab implements ArrayAccess {
 			if (($func && is_file($file=$func($auto.$class).'.php')) ||
 				is_file($file=$auto.$class.'.php') ||
 				is_file($file=$auto.strtolower($class).'.php') ||
-				is_file($file=strtolower($auto.$class).'.php'))
+				is_file($file=strtolower($auto.$class).'.php') ||
+				is_file($file=$auto.$this->snakecase($class).'.php'))
 				return require($file);
 	}
 
