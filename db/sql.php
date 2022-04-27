@@ -124,8 +124,8 @@ class SQL {
 	function value($type,$val) {
 		switch ($type) {
 			case self::PARAM_FLOAT:
-				if (!is_string($val))
-					$val=str_replace(',','.',$val);
+				if (!is_string($val) && $val !== NULL)
+					$val=str_replace(',','.',(string) $val);
 				return $val;
 			case \PDO::PARAM_NULL:
 				return NULL;
