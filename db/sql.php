@@ -319,7 +319,7 @@ class SQL {
 		$cache=\Cache::instance();
 		if ($fw->CACHE && $ttl &&
 			($cached=$cache->exists(
-				$hash=$fw->hash($this->dsn.$table).'.schema',$result)) &&
+				$hash=$fw->hash($this->dsn.$table.(is_array($fields) ? implode(',',$fields) : $fields)).'.schema',$result)) &&
 			$cached[0]+$ttl>microtime(TRUE))
 			return $result;
 		if (strpos($table,'.'))
