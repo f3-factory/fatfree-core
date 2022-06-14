@@ -2483,13 +2483,7 @@ final class Base extends Prefab implements ArrayAccess {
 			'CACHE'=>FALSE,
 			'CASELESS'=>TRUE,
 			'CLI'=>$cli,
-			'CORS'=>[
-				'headers'=>'',
-				'origin'=>FALSE,
-				'credentials'=>FALSE,
-				'expose'=>FALSE,
-				'ttl'=>0
-			],
+			'CORS'=>[],
 			'DEBUG'=>0,
 			'DIACRITICS'=>[],
 			'DNSBL'=>'',
@@ -2547,6 +2541,13 @@ final class Base extends Prefab implements ArrayAccess {
 			'VERB'=>&$_SERVER['REQUEST_METHOD'],
 			'VERSION'=>self::VERSION,
 			'XFRAME'=>'SAMEORIGIN'
+		];
+		$this->hive['CORS']+=[
+			'headers'=>'',
+			'origin'=>FALSE,
+			'credentials'=>FALSE,
+			'expose'=>FALSE,
+			'ttl'=>0
 		];
 		if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE) {
 			unset($jar['expire']);
