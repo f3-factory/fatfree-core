@@ -166,13 +166,18 @@ final class Base extends Prefab implements ArrayAccess {
 	*	Replace tokenized URL with available token values
 	*	@return string
 	*	@param $url array|string
+	*	@param $addParams boolean merge default PARAMS from hive into args
 	*	@param $args array
 	**/
-	function build($url,$args=[]) {
-		$args+=$this->hive['PARAMS'];
+	function build($url, $args=[], bool $addParams=TRUE) {
+		if ($addParams)
+			$args+=$this->recursive($this->hive['PARAMS'], fn($val) => !is_array($val)
+				? implode('/', array_map('urlencode', explode('/', $val)))
+				: $val
+			);
 		if (is_array($url))
 			foreach ($url as &$var) {
-				$var=$this->build($var,$args);
+				$var=$this->build($var,$args, false);
 				unset($var);
 			}
 		else {
