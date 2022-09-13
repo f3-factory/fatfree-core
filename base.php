@@ -171,10 +171,8 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function build($url, $args=[], bool $addParams=TRUE) {
 		if ($addParams)
-			$args+=$this->recursive($this->hive['PARAMS'], fn($val) => !is_array($val)
-				? implode('/', array_map('urlencode', explode('/', $val)))
-				: $val
-			);
+			$args+=$this->recursive($this->hive['PARAMS'], fn($val) =>
+				implode('/', array_map('urlencode', explode('/', $val))));
 		if (is_array($url))
 			foreach ($url as &$var) {
 				$var=$this->build($var,$args, false);
