@@ -220,7 +220,7 @@ class Mapper extends \DB\Cursor {
 		if (isset($this->as))
 			$sql.=' AS '.$this->db->quotekey($this->as);
 		$args=[];
-		if (is_array($filter)) {
+		if (is_array($filter) && !empty($filter)) {
 			$args=isset($filter[1]) && is_array($filter[1])?
 				$filter[1]:
 				array_slice($filter,1,NULL,TRUE);
