@@ -2,7 +2,7 @@
 
 /*
 
-	Copyright (c) 2009-2019 F3::Factory/Bong Cosca, All rights reserved.
+	Copyright (c) 2022 F3::Factory, All rights reserved.
 
 	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
 
@@ -49,10 +49,10 @@ class Hive implements \ArrayAccess {
 
 	const E_Hive='Invalid hive key %s';
 
-	/** @var Hive|null wrapped Hive */
+	/** @var Hive|null shadow Hive */
 	protected ?Hive $_hive = NULL;
 
-	/** @var array non-typed hive properties */
+	/** @var array dynamic hive properties */
 	protected array $_hive_data = [];
 
 	/** @var array state storage */
@@ -65,7 +65,7 @@ class Hive implements \ArrayAccess {
 		 ?Hive $hive=NULL,
 		 array $data=[]
 	) {
-		// if Hive object is given, use it as wrapped hive instead
+		// if Hive object is given, use it as shadow hive instead
 		if ($hive)
 			$this->_hive = $hive->_hive;
 		// proxy for uninitialized Hive
@@ -106,12 +106,10 @@ class Hive implements \ArrayAccess {
 		// use base hive as default value store when none was given
 		$hive = is_null($var) && !$this->_hive ? $this : $this->_hive;
 		if (is_null($var)) {
+			// select origin of value storage (property or fluent data)
 			if (property_exists($hive,$parts[0])
-				&& !in_array($key,Hive::OWN_KEYS)) {
-				if ($add)
-					$var=&$hive->{$parts[0]};
-				else
-					$var=$hive->{$parts[0]};
+				&& !in_array($parts[0],Hive::OWN_KEYS)) {
+				$var=&$hive->{$parts[0]};
 				array_shift($parts);
 			} elseif ($add)
 				$var=&$this->_hive_data;
@@ -119,6 +117,7 @@ class Hive implements \ArrayAccess {
 				$var=$this->_hive_data;
 		}
 		$obj=FALSE;
+		// assemble nested value access
 		foreach ($parts as $part)
 			if ($part=='->')
 				$obj=TRUE;
@@ -448,7 +447,6 @@ class BaseHive extends Hive {
 	public string $VERSION = '';
 	public string $XFRAME = 'SAMEORIGIN';
 
-	public ?array $GLOBALS = [];
 	public ?array $GET = [];
 	public ?array $POST = [];
 	public ?array $COOKIE = [];
@@ -2280,7 +2278,7 @@ final class Base extends BaseHive {
 	/**
 	 * Namespace-aware class autoloader
 	 */
-	protected function autoload(string $class): mixed {
+	protected function autoload(string $class): void {
 		$class=$this->fixslashes(ltrim($class,'\\'));
 		/** @var callable $func */
 		$func=NULL;
@@ -2292,7 +2290,7 @@ final class Base extends BaseHive {
 				is_file($file=$auto.$class.'.php') ||
 				is_file($file=$auto.strtolower($class).'.php') ||
 				is_file($file=strtolower($auto.$class).'.php'))
-				return require($file);
+				require($file);
 	}
 
 	/**
