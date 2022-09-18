@@ -576,12 +576,20 @@ final class Base extends BaseHive {
 
 	/**
 	*	Replace tokenized URL with available token values
+	*	@return string
+	*	@param $url array|string
+	*	@param $addParams boolean merge default PARAMS from hive into args
+	*	@param $args array
 	**/
-	function build(string|array $url,array $args=[]): string|array {
-		$args+=$this->PARAMS;
+	function build(string|array $url, array $args=[], bool $addParams=TRUE) {
+		if ($addParams)
+			$args+=$this->recursive($this->PARAMS, fn($val) => !is_array($val)
+				? implode('/', array_map('urlencode', explode('/', $val)))
+				: $val
+			);
 		if (is_array($url))
 			foreach ($url as &$var) {
-				$var=$this->build($var,$args);
+				$var=$this->build($var,$args, false);
 				unset($var);
 			}
 		else {
