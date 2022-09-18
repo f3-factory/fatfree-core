@@ -583,10 +583,8 @@ final class Base extends BaseHive {
 	**/
 	function build(string|array $url, array $args=[], bool $addParams=TRUE) {
 		if ($addParams)
-			$args+=$this->recursive($this->PARAMS, fn($val) => !is_array($val)
-				? implode('/', array_map('urlencode', explode('/', $val)))
-				: $val
-			);
+			$args+=$this->recursive($this->PARAMS, fn($val) =>
+				implode('/', array_map('urlencode', explode('/', $val))));
 		if (is_array($url))
 			foreach ($url as &$var) {
 				$var=$this->build($var,$args, false);
