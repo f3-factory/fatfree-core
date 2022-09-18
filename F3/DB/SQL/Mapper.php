@@ -149,13 +149,11 @@ class Mapper extends \F3\DB\Cursor {
 	*	@return mixed
 	*	@param $func string
 	*	@param $args array
+	*	@deprecated (this is only used for custom dynamic properties that are callables
 	**/
 	function __call($func,$args) {
-		return call_user_func_array(
-			(array_key_exists($func,$this->props)?
-				$this->props[$func]:
-				$this->$func),$args
-		);
+		$callable = (array_key_exists($func,$this->props) ? $this->props[$func] : $this->$func);
+		return $callable ? call_user_func_array($callable,$args) : null;
 	}
 
 	/**
