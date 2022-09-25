@@ -246,7 +246,7 @@ class Template extends Preview {
 				'(?:\h*=\h*(?:"(?:.*?)"|\'(?:.*?)\'))?|'.
 				'\h*\{\{.+?\}\})*)\h*(\/?)>/is',
 				substr($text,$ptr),$match)) {
-				if (strlen($tmp) || $match[1])
+				if (strlen($tmp) || isset($match[1]))
 					$tree[]=$tmp.$match[1];
 				// Element node
 				if ($match[2]) {
