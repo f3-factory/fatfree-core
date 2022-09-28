@@ -49,9 +49,6 @@ class Hive implements \ArrayAccess {
 
 	const E_Hive='Invalid hive key %s';
 
-	/** @var Hive|null shadow Hive */
-	protected ?Hive $_hive = NULL;
-
 	/** @var array dynamic hive properties */
 	protected array $_hive_data = [];
 
@@ -61,13 +58,13 @@ class Hive implements \ArrayAccess {
 	const OWN_KEYS = ['_hive','_hive_data','_hive_states'];
 
 	function __construct(
-		/** @var Hive Key-value store */
-		 ?Hive $hive=NULL,
+		/** @var Hive|null shadow for typed hive properties */
+		 protected ?Hive $_hive=NULL,
 		 array $data=[]
 	) {
 		// if Hive object is given, use it as shadow hive instead
-		if ($hive)
-			$this->_hive = $hive->_hive;
+		if ($_hive)
+			$this->_hive = $_hive->_hive;
 		// proxy for uninitialized Hive
 		if (!$this->_hive) {
 			$this->_hive = clone $this;
@@ -103,9 +100,9 @@ class Hive implements \ArrayAccess {
 	{
 		$null=NULL;
 		$parts=is_array($key) ? $key : $this->cut($key);
-		// use base hive as default value store when none was given
-		$hive = is_null($var) && !$this->_hive ? $this : $this->_hive;
 		if (is_null($var)) {
+			// use base hive as default value store when none was given
+			$hive = !$this->_hive ? $this : $this->_hive;
 			// select origin of value storage (property or fluent data)
 			if (property_exists($hive,$parts[0])
 				&& !in_array($parts[0],Hive::OWN_KEYS)) {
@@ -116,7 +113,7 @@ class Hive implements \ArrayAccess {
 			else
 				$var=$this->_hive_data;
 		}
-		$obj=FALSE;
+		$obj=is_object($var);
 		// assemble nested value access
 		foreach ($parts as $part)
 			if ($part=='->')
