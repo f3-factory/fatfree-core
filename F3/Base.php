@@ -146,6 +146,18 @@ class Hive implements \ArrayAccess {
 	}
 
 	/**
+	 * export hive to array
+	 */
+	function toArray(): array {
+		$out = [];
+		foreach (array_diff(array_keys(get_object_vars($this->_hive) + $this->_hive_data),
+			self::OWN_KEYS) as $key) {
+			$out[$key] = $this->get($key);
+		}
+		return $out;
+	}
+
+	/**
 	 *	Convenience method for removing hive key
 	 *	@param $key string
 	 **/
@@ -258,13 +270,10 @@ class Hive implements \ArrayAccess {
 	function get(string $key, string|array $args=NULL): mixed {
 		if (is_string($val=$this->ref($key,FALSE)) && !is_null($args))
 			// TODO: move this to hive class?
-			return call_user_func_array(
-				[$this,'format'],
-				array_merge([$val],is_array($args)?$args:[$args])
-			);
+			return Base::instance()->format($val, ...(is_array($args)?$args:[$args]));
 		if (is_null($val)) {
 			// Attempt to retrieve from cache
-			if (Cache::instance()->exists($this->hash($key).'.var',$data))
+			if (Cache::instance()->exists(Base::instance()->hash($key).'.var',$data))
 				return $data;
 		}
 		return $val;
@@ -2757,7 +2766,7 @@ class View {
 	/**
 	 * Encode characters to equivalent HTML entities
 	 */
-	function esc(mixed $arg): string|array {
+	function esc(mixed $arg): string|Hive|array {
 		return $this->fw->recursive($arg,
 			fn($val) => is_string($val)?$this->fw->encode($val):$val
 		);
@@ -2775,7 +2784,7 @@ class View {
 	/**
 	 * Create sandbox for template execution
 	 */
-	protected function sandbox(?array $hive=NULL, ?string $mime=NULL): string {
+	protected function sandbox(Hive|array|null $hive=NULL, ?string $mime=NULL): string {
 		$fw=$this->fw;
 		$implicit=FALSE;
 		if (is_null($hive)) {
@@ -2793,7 +2802,7 @@ class View {
 			if (isset($hive['ALIASES']))
 				$hive['ALIASES']=$fw->build($hive['ALIASES']);
 		}
-		$this->temp=$hive;
+		$this->temp=is_object($hive) && method_exists($hive,'toArray') ? $hive->toArray() : $hive;
 		unset($fw,$hive,$implicit,$mime);
 		extract($this->temp);
 		$this->temp=NULL;
@@ -2992,7 +3001,7 @@ class Preview extends View {
 	/**
 	 * Render template
 	 */
-	function render(string $file, ?string $mime='text/html', ?array $hive=NULL, int $ttl=0): string {
+	function render(string $file, ?string $mime='text/html', Hive|array|null $hive=NULL, int $ttl=0): string {
 		$fw=$this->fw;
 		$cache=Cache::instance();
 		if (!is_dir($tmp=$fw->TEMP))
