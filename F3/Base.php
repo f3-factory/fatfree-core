@@ -100,9 +100,10 @@ class Hive implements \ArrayAccess {
 	 * array elements, and object properties by default. Use $var to specify
 	 * a different hive, array or object to work with.
 	 */
-	public function &ref(array|string $key, bool $add=TRUE, mixed &$var=NULL): mixed
+	public function &ref(array|string $key, bool $add=TRUE, mixed &$var=NULL, mixed $val=NULL): mixed
 	{
 		$null=NULL;
+		$eager=NULL;
 		$parts=is_array($key) ? $key : $this->cut($key);
 		// use base hive as default value store when none was given
 		if (is_null($var)) {
@@ -111,8 +112,20 @@ class Hive implements \ArrayAccess {
 			// select origin of value storage (property or fluent data)
 			if (property_exists($hive,$parts[0])
 				&& !in_array($parts[0],Hive::OWN_KEYS)) {
-				$var=&$hive->{$parts[0]};
-				array_shift($parts);
+				if ((new ReflectionProperty(static::class, $parts[0]))
+					->isInitialized($hive)) {
+					$var=&$hive->{$parts[0]};
+					array_shift($parts);
+				} else {
+					// eagerly initialize property for reference
+					$eager=$parts[0];
+					$var=$null;
+					if (count($parts) === 1) {
+						$hive->{$eager} = $val;
+						$var=&$hive->{$eager};
+						array_shift($parts);
+					}
+				}
 			} elseif ($add)
 				$var=&$this->_hive_data;
 			else
@@ -120,10 +133,11 @@ class Hive implements \ArrayAccess {
 		}
 		$obj=is_object($var);
 		// assemble nested value access
-		foreach ($parts as $part)
-			if ($part=='->')
+		foreach ($parts as $part) {
+			if ($part=='->') {
 				$obj=TRUE;
-			elseif ($obj) {
+				continue;
+			} elseif ($obj) {
 				$obj=FALSE;
 				if (!is_object($var))
 					$var=new \stdClass;
@@ -144,6 +158,13 @@ class Hive implements \ArrayAccess {
 					break;
 				}
 			}
+			if ($eager) {
+				// eager initialize for nested depth access
+				$hive->{$parts[0]} = $var;
+				$var=&$hive->{$parts[0]};
+				$eager=NULL;
+			}
+		}
 		return $var;
 	}
 
@@ -165,7 +186,6 @@ class Hive implements \ArrayAccess {
 	 **/
 	function clear(string $key): void {
 		$parts = $this->cut($key);
-//		if (!$this->_hive) {
 		if (!Registry::get('hive_ref')->isInitialized($this)) {
 			// proxy call handler
 			$val = preg_replace('/^(\$hive)/','$this',
@@ -262,7 +282,7 @@ class Hive implements \ArrayAccess {
 	 *	Bind value to hive key
 	 */
 	function set(string $key, mixed $val, ?int $ttl=null): mixed {
-		$ref=&$this->ref($key);
+		$ref=&$this->ref($key, true, $null, $val);
 		$ref=$val;
 		return $ref;
 	}
@@ -655,7 +675,7 @@ final class Base extends BaseHive {
 	/**
 	 * handle core-specific hive features
 	 */
-	public function &ref(array|string $key, bool $add=TRUE, mixed &$var=NULL): mixed
+	public function &ref(array|string $key, bool $add=TRUE, mixed &$var=NULL, mixed $val=NULL): mixed
 	{
 		$parts=$this->cut($key);
 		if ($parts[0]=='SESSION') {
@@ -666,7 +686,7 @@ final class Base extends BaseHive {
 		} elseif (!preg_match('/^\w+$/',$parts[0]))
 			user_error(sprintf(self::E_Hive,$this->stringify($key)),
 				E_USER_ERROR);
-		$val = &parent::ref($parts,$add,$var);
+		$val = &parent::ref($parts,$add,$var, $val);
 		return $val;
 	}
 
