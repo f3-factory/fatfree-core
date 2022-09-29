@@ -59,6 +59,8 @@ class Hive implements \ArrayAccess {
 
 	const OWN_KEYS = ['_hive','_hive_data','_hive_states'];
 
+	protected static ?\Closure $isShadow = NULL;
+
 	function __construct(
 		/** @var Hive|null shadow for typed hive properties */
 		 protected ?Hive $_hive=NULL,
@@ -84,7 +86,10 @@ class Hive implements \ArrayAccess {
 			$this->_hive->{$key} = $value;
 		}
 		$this->state('init');
-		Registry::set('hive_ref', new ReflectionProperty(self::class, '_hive'));
+		if (!self::$isShadow) {
+			$ref = new ReflectionProperty(self::class, '_hive');
+			self::$isShadow = fn($obj) => !$ref->isInitialized($obj);
+		}
 	}
 
 	/**
@@ -108,7 +113,7 @@ class Hive implements \ArrayAccess {
 		// use base hive as default value store when none was given
 		if (is_null($var)) {
 			// when _hive is available, it's a call from the wrapper, otherwise from within the shadow hive
-			$hive = Registry::get('hive_ref')->isInitialized($this) ? $this->_hive : $this;
+			$hive = (self::$isShadow)($this) ? $this : $this->_hive;
 			// select origin of value storage (property or fluent data)
 			if (property_exists($hive,$parts[0])
 				&& !in_array($parts[0],Hive::OWN_KEYS)) {
@@ -187,7 +192,7 @@ class Hive implements \ArrayAccess {
 	function clear(string $key): void {
 		$parts = $this->cut($key);
 		// proxy call handler
-		if (!Registry::get('hive_ref')->isInitialized($this)) {
+		if ((self::$isShadow)($this)) {
 			eval('unset('.$this->compile('@this->'.$key,FALSE).');');
 		}
 		// fluent data
@@ -278,7 +283,7 @@ class Hive implements \ArrayAccess {
 	 *	Bind value to hive key
 	 */
 	function set(string $key, mixed $val, ?int $ttl=null): mixed {
-		$ref=&$this->ref($key, true, $null, $val);
+		$ref=&$this->ref($key, val: $val);
 		$ref=$val;
 		return $ref;
 	}
@@ -303,7 +308,7 @@ class Hive implements \ArrayAccess {
 	 */
 	public function accessible(string $key): bool
 	{
-		$hive = Registry::get('hive_ref')->isInitialized($this) ? $this->_hive : $this;
+		$hive = (self::$isShadow)($this) ? $this : $this->_hive;
 		$init=TRUE;
 		if (property_exists($hive,$key)
 			&& !in_array($key,Hive::OWN_KEYS)) {
