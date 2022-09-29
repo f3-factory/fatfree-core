@@ -23,6 +23,8 @@
 namespace F3;
 
 use Exception;
+use ReflectionClass;
+use ReflectionProperty;
 
 /**
  * Mixin for single-instance classes
@@ -68,19 +70,21 @@ class Hive implements \ArrayAccess {
 		// proxy for uninitialized Hive
 		if (!$this->_hive) {
 			$this->_hive = clone $this;
-			unset($this->_hive->_hive_data,$this->_hive->_hive_states);
+			foreach ($this::OWN_KEYS as $key) {
+				unset($this->_hive->{$key});
+			}
 		}
 		// enable proxy pattern
-		array_map(function($key) {
-			unset($this->{$key});
-			},array_diff(array_keys(get_object_vars($this->_hive)),
-				self::OWN_KEYS)
-		);
+		array_map(function($prop) {
+			unset($this->{$prop->getName()});
+		},(new ReflectionClass($this))
+			->getProperties(ReflectionProperty::IS_PUBLIC));
 		// copy fluent hive data
 		foreach ($data as $key => $value) {
 			$this->_hive->{$key} = $value;
 		}
 		$this->state('init');
+		Registry::set('hive_ref', new ReflectionProperty(self::class, '_hive'));
 	}
 
 	/**
@@ -100,9 +104,10 @@ class Hive implements \ArrayAccess {
 	{
 		$null=NULL;
 		$parts=is_array($key) ? $key : $this->cut($key);
+		// use base hive as default value store when none was given
 		if (is_null($var)) {
-			// use base hive as default value store when none was given
-			$hive = !$this->_hive ? $this : $this->_hive;
+			// when _hive is available, it's a call from the wrapper, otherwise from within the shadow hive
+			$hive = Registry::get('hive_ref')->isInitialized($this) ? $this->_hive : $this;
 			// select origin of value storage (property or fluent data)
 			if (property_exists($hive,$parts[0])
 				&& !in_array($parts[0],Hive::OWN_KEYS)) {
@@ -160,7 +165,8 @@ class Hive implements \ArrayAccess {
 	 **/
 	function clear(string $key): void {
 		$parts = $this->cut($key);
-		if (!$this->_hive) {
+//		if (!$this->_hive) {
+		if (!Registry::get('hive_ref')->isInitialized($this)) {
 			// proxy call handler
 			$val = preg_replace('/^(\$hive)/','$this',
 				$this->compile('@hive'.(count($parts)>1?'.':'->').$key,FALSE));
@@ -179,7 +185,7 @@ class Hive implements \ArrayAccess {
 			if ($initState->exists($key, $val)) {
 				// Reset default value (cannot remove property and reuse it afterwards)
 				$this->set($key, $val);
-			} elseif (isset($parts[1])) {
+			} else {
 				// forward call to proxy
 				$this->_hive->clear($key);
 			}
