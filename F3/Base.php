@@ -186,17 +186,13 @@ class Hive implements \ArrayAccess {
 	 **/
 	function clear(string $key): void {
 		$parts = $this->cut($key);
+		// proxy call handler
 		if (!Registry::get('hive_ref')->isInitialized($this)) {
-			// proxy call handler
-			$val = preg_replace('/^(\$hive)/','$this',
-				$this->compile('@hive'.(count($parts)>1?'.':'->').$key,FALSE));
-			eval('unset('.$val.');');
+			eval('unset('.$this->compile('@this->'.$key,FALSE).');');
 		}
 		// fluent data
 		elseif (array_key_exists($parts[0],$this->_hive_data)) {
-			$val=preg_replace('/^(\$hive)/','$this->_hive_data',
-				$this->compile('@hive.'.$key, FALSE));
-			eval('unset('.$val.');');
+			eval('unset('.$this->compile('@this->_hive_data.'.$key, FALSE).');');
 		}
 		// typed properties
 		elseif (isset($this->_hive_states['init'])
@@ -221,7 +217,7 @@ class Hive implements \ArrayAccess {
 	function compile(string $str, bool $evaluate=TRUE): string {
 		return (!$evaluate)
 			? preg_replace_callback(
-				'/^@(\w+)((?:\..+|\[(?:(?:[^\[\]]*|(?R))*)\])*)/',
+				'/^@(\w+)((?:\..+|\[(?:(?:[^\[\]]*|(?R))*)\]|(?:\->|::)\w+)*)/',
 				function($expr) {
 					$str='$'.$expr[1];
 					if (isset($expr[2]))
@@ -335,7 +331,7 @@ class Hive implements \ArrayAccess {
 	function devoid(string $key, mixed &$val=NULL): bool {
 		$parts = $this->cut($key);
 		if (!$this->accessible($parts[0]))
-			return false;
+			return true;
 		$val=$this->ref($key,FALSE);
 		return empty($val);
 	}
