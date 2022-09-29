@@ -303,10 +303,28 @@ class Hive implements \ArrayAccess {
 	}
 
 	/**
+	 * Return TRUE if a hive key is accessible and typed property is initialized
+	 */
+	public function accessible(string $key): bool
+	{
+		$hive = Registry::get('hive_ref')->isInitialized($this) ? $this->_hive : $this;
+		$init=TRUE;
+		if (property_exists($hive,$key)
+			&& !in_array($key,Hive::OWN_KEYS)) {
+			$init = (new ReflectionProperty(static::class, $key))
+				->isInitialized($hive);
+		}
+		return $init;
+	}
+
+	/**
 	 *	Return TRUE if hive key is set
 	 *	(or return timestamp and TTL if cached)
 	 */
 	function exists(string $key, mixed &$val=NULL): bool {
+		$parts = $this->cut($key);
+		if (!$this->accessible($parts[0]))
+			return false;
 		$val=$this->ref($key,FALSE);
 		return isset($val);
 	}
@@ -315,6 +333,9 @@ class Hive implements \ArrayAccess {
 	 *	Return TRUE if hive key is empty and not cached
 	 **/
 	function devoid(string $key, mixed &$val=NULL): bool {
+		$parts = $this->cut($key);
+		if (!$this->accessible($parts[0]))
+			return false;
 		$val=$this->ref($key,FALSE);
 		return empty($val);
 	}
@@ -338,8 +359,7 @@ class Hive implements \ArrayAccess {
 	 *	Convenience method for checking hive key
 	 */
 	function offsetExists($key): bool {
-		$val=$this->ref($key,FALSE);
-		return isset($val);
+		return $this->exists($key);
 	}
 
 	/**
@@ -369,7 +389,7 @@ class Hive implements \ArrayAccess {
 	 *	Alias for offsetexists()
 	 */
 	function __isset(string $key): bool {
-		return $this->offsetExists($key);
+		return $this->exists($key);
 	}
 
 	/**
