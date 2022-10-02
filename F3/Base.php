@@ -342,18 +342,36 @@ class Hive implements \ArrayAccess {
 	}
 
 	/**
+	 * deep clone object with its public properties
+	 */
+	public function clone(mixed $item): mixed {
+		if (is_object($item)) {
+			if (!(new \ReflectionObject($item))->isCloneable())
+				return $item;
+			$new = clone $item;
+			foreach (get_object_vars($item) as $key => $var)
+				$new->{$key} = $this->clone($var);
+		} elseif (is_array($item)) {
+			$new = [];
+			foreach ($item as $key => $var)
+				$new[$key] = $this->clone($var);
+		}
+		return $new ?? $item;
+	}
+
+	/**
 	 * Memorize current hive state
 	 */
 	function state(string $name): void {
-		$this->_hive_states[$name] = [clone $this->_hive, $this->_hive_data];
+		$this->_hive_states[$name] = $this->clone([$this->_hive, $this->_hive_data]);
 	}
 
 	/**
 	 * Restore previous hive state
 	 */
 	function restore(string $state): void {
-		$this->_hive = clone $this->_hive_states[$state][0];
-		$this->_hive_data = $this->_hive_states[$state][1];
+		$this->_hive = $this->clone($this->_hive_states[$state][0]);
+		$this->_hive_data = $this->clone($this->_hive_states[$state][1]);
 	}
 
 	/**
@@ -1022,8 +1040,15 @@ final class Base extends BaseHive {
 	 */
 	function restore(string $state, bool $sync=TRUE): void {
 		parent::restore($state);
-		if ($sync)
+		if ($sync) {
 			array_map( [$this,'sync'], explode('|',Base::GLOBALS));
+			foreach (getallheaders()??[] as $key=>$val) {
+				$tmp=strtoupper(strtr($key,'-','_'));
+				$key=ucwords(strtolower($key), '-');
+				if (isset($_SERVER['HTTP_'.$tmp]))
+					$_SERVER['HTTP_'.$tmp] = &$this->HEADERS[$key];
+			}
+		}
 	}
 
 	/**
@@ -2433,25 +2458,12 @@ final class Base extends BaseHive {
 			$_SERVER['REQUEST_URI']=$req;
 			parse_str($query?:'',$GLOBALS['_GET']);
 		}
-		elseif (function_exists('getallheaders')) {
-			foreach (getallheaders() as $key=>$val) {
-				$tmp=strtoupper(strtr($key,'-','_'));
-				// TODO: use ucwords delimiters for php 5.4.32+ & 5.5.16+
-				$key=strtr(ucwords(strtolower(strtr($key,'-',' '))),' ','-');
-				$headers[$key]=$val;
-				if (isset($_SERVER['HTTP_'.$tmp]))
-					$headers[$key]=&$_SERVER['HTTP_'.$tmp];
-			}
-		}
-		else {
-			if (isset($_SERVER['CONTENT_LENGTH']))
-				$headers['Content-Length']=&$_SERVER['CONTENT_LENGTH'];
-			if (isset($_SERVER['CONTENT_TYPE']))
-				$headers['Content-Type']=&$_SERVER['CONTENT_TYPE'];
-			foreach (array_keys($_SERVER) as $key)
-				if (str_starts_with($key,'HTTP_'))
-					$headers[strtr(ucwords(strtolower(strtr(
-						substr($key,5),'_',' '))),' ','-')]=&$_SERVER[$key];
+		else foreach (getallheaders() as $key=>$val) {
+			$tmp=strtoupper(strtr($key,'-','_'));
+			$key=ucwords(strtolower($key), '-');
+			$headers[$key]=$val;
+			if (isset($_SERVER['HTTP_'.$tmp]))
+				$headers[$key]=$_SERVER['HTTP_'.$tmp];
 		}
 		if (isset($headers['X-Http-Method-Override']))
 			$_SERVER['REQUEST_METHOD']=$headers['X-Http-Method-Override'];
