@@ -20,11 +20,14 @@
 
 */
 
-namespace F3;
+namespace F3 {
 
-use Exception;
-use ReflectionClass;
-use ReflectionProperty;
+    use Exception;
+    use F3\Http\Router;
+    use F3\Http\Status;
+    use F3\Http\Verb;
+    use ReflectionClass;
+    use ReflectionProperty;
 
 /**
  * Mixin for single-instance classes
@@ -163,7 +166,7 @@ class Hive implements \ArrayAccess {
 					break;
 				}
 			}
-			if ($eager) {
+			if ($eager && isset($hive)) {
 				// eager initialize for nested depth access
 				$hive->{$parts[0]} = $var;
 				$var=&$hive->{$parts[0]};
@@ -293,7 +296,6 @@ class Hive implements \ArrayAccess {
 	 */
 	function get(string $key, string|array $args=NULL): mixed {
 		if (is_string($val=$this->ref($key,FALSE)) && !is_null($args))
-			// TODO: move this to hive class?
 			return Base::instance()->format($val, ...(is_array($args)?$args:[$args]));
 		if (is_null($val)) {
 			// Attempt to retrieve from cache
@@ -531,65 +533,12 @@ class BaseHive extends Hive {
 //! Base structure
 final class Base extends BaseHive {
 
-	use Prefab;
+	use Prefab, Router;
 
 	//@{ Framework details
 	const
 		PACKAGE='Fat-Free Framework',
-		VERSION='4.0.0-dev.0';
-	//@}
-
-	//@{ HTTP status codes (RFC 2616)
-	const
-		HTTP_100='Continue',
-		HTTP_101='Switching Protocols',
-		HTTP_103='Early Hints',
-		HTTP_200='OK',
-		HTTP_201='Created',
-		HTTP_202='Accepted',
-		HTTP_203='Non-Authorative Information',
-		HTTP_204='No Content',
-		HTTP_205='Reset Content',
-		HTTP_206='Partial Content',
-		HTTP_300='Multiple Choices',
-		HTTP_301='Moved Permanently',
-		HTTP_302='Found',
-		HTTP_303='See Other',
-		HTTP_304='Not Modified',
-		HTTP_305='Use Proxy',
-		HTTP_307='Temporary Redirect',
-		HTTP_308='Permanent Redirect',
-		HTTP_400='Bad Request',
-		HTTP_401='Unauthorized',
-		HTTP_402='Payment Required',
-		HTTP_403='Forbidden',
-		HTTP_404='Not Found',
-		HTTP_405='Method Not Allowed',
-		HTTP_406='Not Acceptable',
-		HTTP_407='Proxy Authentication Required',
-		HTTP_408='Request Timeout',
-		HTTP_409='Conflict',
-		HTTP_410='Gone',
-		HTTP_411='Length Required',
-		HTTP_412='Precondition Failed',
-		HTTP_413='Request Entity Too Large',
-		HTTP_414='Request-URI Too Long',
-		HTTP_415='Unsupported Media Type',
-		HTTP_416='Requested Range Not Satisfiable',
-		HTTP_417='Expectation Failed',
-		HTTP_421='Misdirected Request',
-		HTTP_422='Unprocessable Entity',
-		HTTP_423='Locked',
-		HTTP_429='Too Many Requests',
-		HTTP_451='Unavailable For Legal Reasons',
-		HTTP_500='Internal Server Error',
-		HTTP_501='Not Implemented',
-		HTTP_502='Bad Gateway',
-		HTTP_503='Service Unavailable',
-		HTTP_504='Gateway Timeout',
-		HTTP_505='HTTP Version Not Supported',
-		HTTP_507='Insufficient Storage',
-		HTTP_511='Network Authentication Required';
+		VERSION='4.0.0-dev.1';
 	//@}
 
 	const
@@ -1457,7 +1406,7 @@ final class Base extends BaseHive {
 	 * Send HTTP status header; Return text equivalent of status code
 	 */
 	function status(int $code): string {
-		$reason=@constant('self::HTTP_'.$code);
+		$reason=@constant(Status::class.'::HTTP_'.$code);
 		if (!$this->CLI && !headers_sent())
 			header($_SERVER['SERVER_PROTOCOL'].' '.$code.' '.$reason);
 		return $reason;
@@ -1691,106 +1640,6 @@ final class Base extends BaseHive {
 	}
 
 	/**
-	 * Bind handler to route pattern
-	 */
-	function route(string|array $pattern, callable|string $handler, int $ttl=0, int $kbps=0): void {
-		$types=['sync','ajax','cli'];
-		$alias=null;
-		if (is_array($pattern)) {
-			foreach ($pattern as $item)
-				$this->route($item,$handler,$ttl,$kbps);
-			return;
-		}
-		preg_match('/([\|\w]+)\h+(?:(?:@?(.+?)\h*:\h*)?(@(\w+)|[^\h]+))'.
-			'(?:\h+\[('.implode('|',$types).')\])?/u',$pattern,$parts);
-		if (isset($parts[2]) && $parts[2]) {
-			if (!preg_match('/^\w+$/',$parts[2]))
-				user_error(sprintf(self::E_Alias,$parts[2]),E_USER_ERROR);
-			$this->ALIASES[$alias=$parts[2]]=$parts[3];
-		}
-		elseif (!empty($parts[4])) {
-			if (empty($this->ALIASES[$parts[4]]))
-				user_error(sprintf(self::E_Named,$parts[4]),E_USER_ERROR);
-			$parts[3]=$this->ALIASES[$alias=$parts[4]];
-		}
-		if (empty($parts[3]))
-			user_error(sprintf(self::E_Pattern,$pattern),E_USER_ERROR);
-		$type=empty($parts[5])?0:constant('self::REQ_'.strtoupper($parts[5]));
-		foreach ($this->split($parts[1]) as $verb) {
-			if (!preg_match('/'.self::VERBS.'/',$verb))
-				$this->error(501,$verb.' '.$this->URI);
-			$this->ROUTES[$parts[3]][$type][strtoupper($verb)]=
-				[$handler,$ttl,$kbps,$alias];
-		}
-	}
-
-	/**
-	 * Reroute to specified URI
-	 */
-	function reroute(array|string $url=NULL, bool $permanent=FALSE, bool $die=TRUE): void {
-		if (!$url)
-			$url=$this->REALM;
-		if (is_array($url))
-			$url=call_user_func_array([$this,'alias'],$url);
-		elseif (preg_match('/^(?:@([^\/()?#]+)(?:\((.+?)\))*(\?[^#]+)*(#.+)*)/',
-			$url,$parts) && isset($this->ALIASES[$parts[1]]))
-			$url=$this->build($this->ALIASES[$parts[1]],
-					isset($parts[2])?$this->parse($parts[2]):[]).
-				($parts[3] ?? '').($parts[4] ?? '');
-		else
-			$url=$this->build($url);
-		if (($handler=$this->ONREROUTE) &&
-			$this->call($handler,[$url,$permanent,$die])!==FALSE)
-			return;
-		if ($url[0]!='/' && !preg_match('/^\w+:\/\//i',$url))
-			$url='/'.$url;
-		if ($url[0]=='/' && (empty($url[1]) || $url[1]!='/')) {
-			$port=$this->PORT;
-			$port=in_array($port,[80,443])?'':(':'.$port);
-			$url=$this->SCHEME.'://'.
-				$this->HOST.$port.$this->BASE.$url;
-		}
-		if ($this->CLI)
-			$this->mock('GET '.$url.' [cli]');
-		else {
-			header('Location: '.$url);
-			$this->status($permanent?301:302);
-			if ($die)
-				die;
-		}
-	}
-
-	/**
-	 * Provide ReST interface by mapping HTTP verb to class method
-	 */
-	function map(string $url, string|object $class, int $ttl=0, int $kbps=0): void {
-		if (is_array($url)) {
-			foreach ($url as $item)
-				$this->map($item,$class,$ttl,$kbps);
-			return;
-		}
-		foreach (explode('|',self::VERBS) as $method)
-			$this->route($method.' '.$url,is_string($class)?
-				$class.'->'.$this->PREMAP.strtolower($method):
-				[$class,$this->PREMAP.strtolower($method)],
-				$ttl,$kbps);
-	}
-
-	/**
-	 * Redirect a route to another URL
-	 */
-	function redirect(string|array $pattern, string $url, bool $permanent=TRUE): void {
-		if (is_array($pattern)) {
-			foreach ($pattern as $item)
-				$this->redirect($item,$url,$permanent);
-			return;
-		}
-		$this->route($pattern,fn(Base $fw) =>
-			$fw->reroute($url,$permanent)
-		);
-	}
-
-	/**
 	 * Return TRUE if IPv4 address exists in DNSBL
 	 */
 	function blacklisted(string $ip): bool {
@@ -1844,172 +1693,6 @@ final class Base extends BaseHive {
 				unset($args[$key]);
 		}
 		return $args;
-	}
-
-	/**
-	 * Match routes against incoming URI
-	 */
-	function run(): mixed {
-		if ($this->blacklisted($this->IP))
-			// Spammer detected
-			$this->error(403);
-		if (!$this->ROUTES)
-			// No routes defined
-			user_error(self::E_Routes,E_USER_ERROR);
-		// Match specific routes first
-		$paths=[];
-		foreach ($keys=array_keys($this->ROUTES) as $key) {
-			$path=preg_replace('/@\w+/','*@',$key);
-			if (!str_ends_with($path,'*'))
-				$path.='+';
-			$paths[]=$path;
-		}
-		$vals=array_values($this->ROUTES);
-		array_multisort($paths,SORT_DESC,$keys,$vals);
-		$this->ROUTES=array_combine($keys,$vals);
-		// Convert to BASE-relative URL
-		$req=urldecode($this->PATH);
-		$preflight=FALSE;
-		if ($cors=(isset($this->HEADERS['Origin']) &&
-			$this->CORS['origin'])) {
-			$cors=$this->CORS;
-			header('Access-Control-Allow-Origin: '.$cors['origin']);
-			header('Access-Control-Allow-Credentials: '.
-				$this->export($cors['credentials']));
-			$preflight=
-				isset($this->HEADERS['Access-Control-Request-Method']);
-		}
-		$allowed=[];
-		foreach ($this->ROUTES as $pattern=>$routes) {
-			if (!$args=$this->mask($pattern,$req))
-				continue;
-			ksort($args);
-			$route=NULL;
-			$ptr=$this->CLI?self::REQ_CLI:$this->AJAX+1;
-			if (isset($routes[$ptr][$this->VERB]) ||
-				isset($routes[$ptr=0]))
-				$route=$routes[$ptr];
-			if (!$route)
-				continue;
-			if (isset($route[$this->VERB]) && !$preflight) {
-				if ($this->VERB=='GET' &&
-					preg_match('/.+\/$/',$this->PATH))
-					$this->reroute(substr($this->PATH,0,-1).
-						($this->QUERY?('?'.$this->QUERY):''));
-				list($handler,$ttl,$kbps,$alias)=$route[$this->VERB];
-				// Capture values of route pattern tokens
-				$this->PARAMS=$args;
-				// Save matching route
-				$this->ALIAS=$alias;
-				$this->PATTERN=$pattern;
-				if ($cors && $cors['expose'])
-					header('Access-Control-Expose-Headers: '.
-						(is_array($cors['expose'])?
-							implode(',',$cors['expose']):$cors['expose']));
-				if (is_string($handler)) {
-					// Replace route pattern tokens in handler if any
-					$handler=preg_replace_callback('/({)?@(\w+\b)(?(1)})/',
-						function($id) use($args) {
-							$pid=count($id)>2?2:1;
-							return $args[$id[$pid]] ?? $id[0];
-						},
-						$handler
-					);
-					if (preg_match('/(.+)\h*(?:->|::)/',$handler,$match) &&
-						!class_exists($match[1]))
-						$this->error(404);
-				}
-				// Process request
-				$result=NULL;
-				$body='';
-				$now=microtime(TRUE);
-				if (preg_match('/GET|HEAD/',$this->VERB) && $ttl) {
-					// Only GET and HEAD requests are cacheable
-					$headers=$this->HEADERS;
-					$cache=Cache::instance();
-					$cached=$cache->exists(
-						$hash=$this->hash($this->VERB.' '.
-							$this->URI).'.url',$data);
-					if ($cached) {
-						if (isset($headers['If-Modified-Since']) &&
-							strtotime($headers['If-Modified-Since'])+
-								$ttl>$now) {
-							$this->status(304);
-							die;
-						}
-						// Retrieve from cache backend
-						list($headers,$body,$result)=$data;
-						if (!$this->CLI)
-							array_walk($headers,'header');
-						$this->expire($cached[0]+$ttl-$now);
-					}
-					else
-						// Expire HTTP client-cached page
-						$this->expire($ttl);
-				}
-				else
-					$this->expire(0);
-				if (!strlen($body)) {
-					if (!$this->RAW && !$this->BODY)
-						$this->BODY=file_get_contents('php://input');
-					ob_start();
-					// Call route handler
-					$result=$this->call($handler,[$this,$args,$handler],
-						'beforeroute,afterroute');
-					$body=ob_get_clean();
-					if (isset($cache) && !error_get_last()) {
-						// Save to cache backend
-						$cache->set($hash,[
-							// Remove cookies
-							preg_grep('/Set-Cookie\:/',headers_list(),
-								PREG_GREP_INVERT),$body,$result],$ttl);
-					}
-				}
-				$this->RESPONSE=$body;
-				if (!$this->QUIET) {
-					if ($kbps) {
-						$ctr=0;
-						foreach (str_split($body,1024) as $part) {
-							// Throttle output
-							++$ctr;
-							if ($ctr/$kbps>($elapsed=microtime(TRUE)-$now) &&
-								!connection_aborted())
-								usleep(round(1e6*($ctr/$kbps-$elapsed)));
-							echo $part;
-						}
-					}
-					else
-						echo $body;
-				}
-				if ($result || $this->VERB!='OPTIONS')
-					return $result;
-			}
-			$allowed=array_merge($allowed,array_keys($route));
-		}
-		if (!$allowed)
-			// URL doesn't match any route
-			$this->error(404);
-		elseif (!$this->CLI) {
-			if (!preg_grep('/Allow:/',$headers_send=headers_list()))
-				// Unhandled HTTP method
-				header('Allow: '.implode(',',array_unique($allowed)));
-			if ($cors) {
-				if (!preg_grep('/Access-Control-Allow-Methods:/',$headers_send))
-					header('Access-Control-Allow-Methods: OPTIONS,'.
-						implode(',',$allowed));
-				if ($cors['headers'] &&
-					!preg_grep('/Access-Control-Allow-Headers:/',$headers_send))
-					header('Access-Control-Allow-Headers: '.
-						(is_array($cors['headers'])?
-							implode(',',$cors['headers']):
-							$cors['headers']));
-				if ($cors['ttl']>0)
-					header('Access-Control-Max-Age: '.$cors['ttl']);
-			}
-			if ($this->VERB!='OPTIONS')
-				$this->error(405);
-		}
-		return FALSE;
 	}
 
 	/**
@@ -2125,7 +1808,7 @@ final class Base extends BaseHive {
 				if (is_array($func))
 					$allowed=array_intersect(
 						array_map('strtoupper',get_class_methods($func[0])),
-						explode('|',self::VERBS)
+                        Verb::names()
 					);
 				header('Allow: '.implode(',',$allowed));
 				$this->error(405);
@@ -3502,5 +3185,358 @@ final class Registry {
 	//! Prohibit instantiation
 	private function __construct() {
 	}
+
+}
+}
+
+namespace F3\Http {
+
+    use F3\Base;
+    use F3\Cache;
+
+    /**
+     * HTTP request methods
+     */
+    enum Verb {
+
+        case GET;
+        case HEAD;
+        case POST;
+        case PUT;
+        case DELETE;
+        case CONNECT;
+        case OPTIONS;
+        case PATCH;
+
+        public static function names(): array {
+            return array_map(fn ($e) => $e->name,self::cases());
+        }
+    }
+
+    /**
+     * HTTP status codes (RFC 2616)
+     */
+    enum Status: string {
+        case HTTP_100 = 'Continue';
+        case HTTP_101 = 'Switching Protocols';
+        case HTTP_103 = 'Early Hints';
+        case HTTP_200 = 'OK';
+        case HTTP_201 = 'Created';
+        case HTTP_202 = 'Accepted';
+        case HTTP_203 = 'Non-Authorative Information';
+        case HTTP_204 = 'No Content';
+        case HTTP_205 = 'Reset Content';
+        case HTTP_206 = 'Partial Content';
+        case HTTP_300 = 'Multiple Choices';
+        case HTTP_301 = 'Moved Permanently';
+        case HTTP_302 = 'Found';
+        case HTTP_303 = 'See Other';
+        case HTTP_304 = 'Not Modified';
+        case HTTP_305 = 'Use Proxy';
+        case HTTP_307 = 'Temporary Redirect';
+        case HTTP_308 = 'Permanent Redirect';
+        case HTTP_400 = 'Bad Request';
+        case HTTP_401 = 'Unauthorized';
+        case HTTP_402 = 'Payment Required';
+        case HTTP_403 = 'Forbidden';
+        case HTTP_404 = 'Not Found';
+        case HTTP_405 = 'Method Not Allowed';
+        case HTTP_406 = 'Not Acceptable';
+        case HTTP_407 = 'Proxy Authentication Required';
+        case HTTP_408 = 'Request Timeout';
+        case HTTP_409 = 'Conflict';
+        case HTTP_410 = 'Gone';
+        case HTTP_411 = 'Length Required';
+        case HTTP_412 = 'Precondition Failed';
+        case HTTP_413 = 'Request Entity Too Large';
+        case HTTP_414 = 'Request-URI Too Long';
+        case HTTP_415 = 'Unsupported Media Type';
+        case HTTP_416 = 'Requested Range Not Satisfiable';
+        case HTTP_417 = 'Expectation Failed';
+        case HTTP_421 = 'Misdirected Request';
+        case HTTP_422 = 'Unprocessable Entity';
+        case HTTP_423 = 'Locked';
+        case HTTP_429 = 'Too Many Requests';
+        case HTTP_451 = 'Unavailable For Legal Reasons';
+        case HTTP_500 = 'Internal Server Error';
+        case HTTP_501 = 'Not Implemented';
+        case HTTP_502 = 'Bad Gateway';
+        case HTTP_503 = 'Service Unavailable';
+        case HTTP_504 = 'Gateway Timeout';
+        case HTTP_505 = 'HTTP Version Not Supported';
+        case HTTP_507 = 'Insufficient Storage';
+        case HTTP_511 = 'Network Authentication Required';
+    };
+
+
+    trait Router {
+
+        /**
+         * Bind handler to route pattern
+         */
+        function route(string|array $pattern, callable|string $handler, int $ttl=0, int $kbps=0): void {
+            $types=['sync','ajax','cli'];
+            $alias=null;
+            if (is_array($pattern)) {
+                foreach ($pattern as $item)
+                    $this->route($item,$handler,$ttl,$kbps);
+                return;
+            }
+            preg_match('/([\|\w]+)\h+(?:(?:@?(.+?)\h*:\h*)?(@(\w+)|[^\h]+))'.
+                '(?:\h+\[('.implode('|',$types).')\])?/u',$pattern,$parts);
+            if (isset($parts[2]) && $parts[2]) {
+                if (!preg_match('/^\w+$/',$parts[2]))
+                    user_error(sprintf(self::E_Alias,$parts[2]),E_USER_ERROR);
+                $this->ALIASES[$alias=$parts[2]]=$parts[3];
+            }
+            elseif (!empty($parts[4])) {
+                if (empty($this->ALIASES[$parts[4]]))
+                    user_error(sprintf(self::E_Named,$parts[4]),E_USER_ERROR);
+                $parts[3]=$this->ALIASES[$alias=$parts[4]];
+            }
+            if (empty($parts[3]))
+                user_error(sprintf(self::E_Pattern,$pattern),E_USER_ERROR);
+            $type=empty($parts[5])?0:constant('self::REQ_'.strtoupper($parts[5]));
+            foreach ($this->split($parts[1]) as $verb) {
+                if (!constant(Verb::class.'::'.$verb))
+                    $this->error(501,$verb.' '.$this->URI);
+                $this->ROUTES[$parts[3]][$type][strtoupper($verb)]=
+                    [$handler,$ttl,$kbps,$alias];
+            }
+        }
+
+        /**
+         * Provide ReST interface by mapping HTTP verb to class method
+         */
+        function map(string $url, string|object $class, int $ttl=0, int $kbps=0): void {
+            if (is_array($url)) {
+                foreach ($url as $item)
+                    $this->map($item,$class,$ttl,$kbps);
+                return;
+            }
+            foreach (Verb::names() as $method)
+                $this->route($method.' '.$url,is_string($class)?
+                    $class.'->'.$this->PREMAP.strtolower($method):
+                    [$class,$this->PREMAP.strtolower($method)],
+                    $ttl,$kbps);
+        }
+
+        /**
+         * Redirect a route to another URL
+         */
+        function redirect(string|array $pattern, string $url, bool $permanent=TRUE): void {
+            if (is_array($pattern)) {
+                foreach ($pattern as $item)
+                    $this->redirect($item,$url,$permanent);
+                return;
+            }
+            $this->route($pattern,fn(Base $fw) =>
+            $fw->reroute($url,$permanent)
+            );
+        }
+
+        /**
+         * Reroute to specified URI
+         */
+        function reroute(array|string $url=NULL, bool $permanent=FALSE, bool $die=TRUE): void {
+            if (!$url)
+                $url=$this->REALM;
+            if (is_array($url))
+                $url=call_user_func_array([$this,'alias'],$url);
+            elseif (preg_match('/^(?:@([^\/()?#]+)(?:\((.+?)\))*(\?[^#]+)*(#.+)*)/',
+                    $url,$parts) && isset($this->ALIASES[$parts[1]]))
+                $url=$this->build($this->ALIASES[$parts[1]],
+                        isset($parts[2])?$this->parse($parts[2]):[]).
+                    ($parts[3] ?? '').($parts[4] ?? '');
+            else
+                $url=$this->build($url);
+            if (($handler=$this->ONREROUTE) &&
+                $this->call($handler,[$url,$permanent,$die])!==FALSE)
+                return;
+            if ($url[0]!='/' && !preg_match('/^\w+:\/\//i',$url))
+                $url='/'.$url;
+            if ($url[0]=='/' && (empty($url[1]) || $url[1]!='/')) {
+                $port=$this->PORT;
+                $port=in_array($port,[80,443])?'':(':'.$port);
+                $url=$this->SCHEME.'://'.
+                    $this->HOST.$port.$this->BASE.$url;
+            }
+            if ($this->CLI)
+                $this->mock('GET '.$url.' [cli]');
+            else {
+                header('Location: '.$url);
+                $this->status($permanent?301:302);
+                if ($die)
+                    die;
+            }
+        }
+
+        /**
+         * Match routes against incoming URI
+         */
+        function run(): mixed {
+            if ($this->blacklisted($this->IP))
+                // Spammer detected
+                $this->error(403);
+            if (!$this->ROUTES)
+                // No routes defined
+                user_error(self::E_Routes,E_USER_ERROR);
+            // Match specific routes first
+            $paths=[];
+            foreach ($keys=array_keys($this->ROUTES) as $key) {
+                $path=preg_replace('/@\w+/','*@',$key);
+                if (!str_ends_with($path,'*'))
+                    $path.='+';
+                $paths[]=$path;
+            }
+            $vals=array_values($this->ROUTES);
+            array_multisort($paths,SORT_DESC,$keys,$vals);
+            $this->ROUTES=array_combine($keys,$vals);
+            // Convert to BASE-relative URL
+            $req=urldecode($this->PATH);
+            $preflight=FALSE;
+            if ($cors=(isset($this->HEADERS['Origin']) &&
+                $this->CORS['origin'])) {
+                $cors=$this->CORS;
+                header('Access-Control-Allow-Origin: '.$cors['origin']);
+                header('Access-Control-Allow-Credentials: '.
+                    $this->export($cors['credentials']));
+                $preflight=
+                    isset($this->HEADERS['Access-Control-Request-Method']);
+            }
+            $allowed=[];
+            foreach ($this->ROUTES as $pattern=>$routes) {
+                if (!$args=$this->mask($pattern,$req))
+                    continue;
+                ksort($args);
+                $route=NULL;
+                $ptr=$this->CLI?self::REQ_CLI:$this->AJAX+1;
+                if (isset($routes[$ptr][$this->VERB]) ||
+                    isset($routes[$ptr=0]))
+                    $route=$routes[$ptr];
+                if (!$route)
+                    continue;
+                if (isset($route[$this->VERB]) && !$preflight) {
+                    if ($this->VERB=='GET' &&
+                        preg_match('/.+\/$/',$this->PATH))
+                        $this->reroute(substr($this->PATH,0,-1).
+                            ($this->QUERY?('?'.$this->QUERY):''));
+                    list($handler,$ttl,$kbps,$alias)=$route[$this->VERB];
+                    // Capture values of route pattern tokens
+                    $this->PARAMS=$args;
+                    // Save matching route
+                    $this->ALIAS=$alias;
+                    $this->PATTERN=$pattern;
+                    if ($cors && $cors['expose'])
+                        header('Access-Control-Expose-Headers: '.
+                            (is_array($cors['expose'])?
+                                implode(',',$cors['expose']):$cors['expose']));
+                    if (is_string($handler)) {
+                        // Replace route pattern tokens in handler if any
+                        $handler=preg_replace_callback('/({)?@(\w+\b)(?(1)})/',
+                            function($id) use($args) {
+                                $pid=count($id)>2?2:1;
+                                return $args[$id[$pid]] ?? $id[0];
+                            },
+                            $handler
+                        );
+                        if (preg_match('/(.+)\h*(?:->|::)/',$handler,$match) &&
+                            !class_exists($match[1]))
+                            $this->error(404);
+                    }
+                    // Process request
+                    $result=NULL;
+                    $body='';
+                    $now=microtime(TRUE);
+                    if (preg_match('/GET|HEAD/',$this->VERB) && $ttl) {
+                        // Only GET and HEAD requests are cacheable
+                        $headers=$this->HEADERS;
+                        $cache=Cache::instance();
+                        $cached=$cache->exists(
+                            $hash=$this->hash($this->VERB.' '.
+                                    $this->URI).'.url',$data);
+                        if ($cached) {
+                            if (isset($headers['If-Modified-Since']) &&
+                                strtotime($headers['If-Modified-Since'])+
+                                $ttl>$now) {
+                                $this->status(304);
+                                die;
+                            }
+                            // Retrieve from cache backend
+                            list($headers,$body,$result)=$data;
+                            if (!$this->CLI)
+                                array_walk($headers,'header');
+                            $this->expire($cached[0]+$ttl-$now);
+                        }
+                        else
+                            // Expire HTTP client-cached page
+                            $this->expire($ttl);
+                    }
+                    else
+                        $this->expire(0);
+                    if (!strlen($body)) {
+                        if (!$this->RAW && !$this->BODY)
+                            $this->BODY=file_get_contents('php://input');
+                        ob_start();
+                        // Call route handler
+                        $result=$this->call($handler,[$this,$args,$handler],
+                            'beforeroute,afterroute');
+                        $body=ob_get_clean();
+                        if (isset($cache) && !error_get_last()) {
+                            // Save to cache backend
+                            $cache->set($hash,[
+                                // Remove cookies
+                                preg_grep('/Set-Cookie\:/',headers_list(),
+                                    PREG_GREP_INVERT),$body,$result],$ttl);
+                        }
+                    }
+                    $this->RESPONSE=$body;
+                    if (!$this->QUIET) {
+                        if ($kbps) {
+                            $ctr=0;
+                            foreach (str_split($body,1024) as $part) {
+                                // Throttle output
+                                ++$ctr;
+                                if ($ctr/$kbps>($elapsed=microtime(TRUE)-$now) &&
+                                    !connection_aborted())
+                                    usleep(round(1e6*($ctr/$kbps-$elapsed)));
+                                echo $part;
+                            }
+                        }
+                        else
+                            echo $body;
+                    }
+                    if ($result || $this->VERB!='OPTIONS')
+                        return $result;
+                }
+                $allowed=array_merge($allowed,array_keys($route));
+            }
+            if (!$allowed)
+                // URL doesn't match any route
+                $this->error(404);
+            elseif (!$this->CLI) {
+                if (!preg_grep('/Allow:/',$headers_send=headers_list()))
+                    // Unhandled HTTP method
+                    header('Allow: '.implode(',',array_unique($allowed)));
+                if ($cors) {
+                    if (!preg_grep('/Access-Control-Allow-Methods:/',$headers_send))
+                        header('Access-Control-Allow-Methods: OPTIONS,'.
+                            implode(',',$allowed));
+                    if ($cors['headers'] &&
+                        !preg_grep('/Access-Control-Allow-Headers:/',$headers_send))
+                        header('Access-Control-Allow-Headers: '.
+                            (is_array($cors['headers'])?
+                                implode(',',$cors['headers']):
+                                $cors['headers']));
+                    if ($cors['ttl']>0)
+                        header('Access-Control-Max-Age: '.$cors['ttl']);
+                }
+                if ($this->VERB!='OPTIONS')
+                    $this->error(405);
+            }
+            return FALSE;
+        }
+
+    }
 
 }
