@@ -169,7 +169,7 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $addParams boolean merge default PARAMS from hive into args
 	*	@param $args array
 	**/
-	function build($url, $args=[], bool $addParams=TRUE) {
+	function build($url, $args=[], $addParams=TRUE) {
 		if ($addParams)
 			$args+=$this->recursive($this->hive['PARAMS'], function($val) {
 				return implode('/', array_map('urlencode', explode('/', $val)));
