@@ -43,7 +43,7 @@ class Service {
         }
         $class = $this->factories[$id];
         // if referenced by other factory, take that instead
-        if (\is_string($class) && $this->factories[$class]) {
+        if (\is_string($class) && isset($this->factories[$class])) {
             $class = $this->factories[$class];
         }
         if ($class instanceof \Closure) {
