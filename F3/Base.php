@@ -1329,10 +1329,12 @@ namespace F3 {
             foreach (preg_grep('/^(?!tr)/i',$this->languages) as $locale) {
                 if ($windows) {
                     $parts=explode('-',$locale);
-                    $locale=@constant('ISO::LC_'.$parts[0]);
+                    if (!defined(ISO::class.'::LC_'.$parts[0]))
+                        continue;
+                    $locale=constant(ISO::class.'::LC_'.$parts[0]);
                     if (isset($parts[1]) &&
-                        $country=@constant('ISO::CC_'.strtolower($parts[1])))
-                        $locale.='-'.$country;
+                        defined($cc=ISO::class.'::CC_'.strtolower($parts[1])))
+                        $locale.='-'.constant($cc);
                 }
                 $locale=str_replace('-','_',$locale);
                 $locales[]=$locale.'.'.ini_get('default_charset');
