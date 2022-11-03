@@ -1097,10 +1097,14 @@ namespace F3 {
                     $ref=new \ReflectionClass($arg);
                     if ($ref->iscloneable()) {
                         $arg=clone($arg);
-                        $cast=is_a($arg,'IteratorAggregate')?
+                        $cast=($it=is_a($arg,'IteratorAggregate'))?
                             iterator_to_array($arg):get_object_vars($arg);
-                        foreach ($cast as $key=>$val)
+                        foreach ($cast as $key=>$val) {
+                            // skip inaccessible properties #350
+                            if (!$it && !isset($arg->$key))
+                                continue;
                             $arg->$key=$this->recursive($val,$func,[...$stack,$arg]);
+                        }
                     }
                     return $arg;
                 case 'array':
