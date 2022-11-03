@@ -65,9 +65,9 @@ namespace F3 {
         protected static ?\Closure $isShadow = NULL;
 
         function __construct(
-            /** @var Hive|null shadow for typed hive properties */
-             protected ?Hive $_hive=NULL,
-             array $data=[]
+            /** shadow for typed hive properties */
+            protected ?Hive $_hive=NULL,
+            array $data=[]
         ) {
             // if Hive object is given, use it as shadow hive instead
             if ($_hive)
@@ -457,6 +457,7 @@ namespace F3 {
             'expose'=>FALSE,
             'ttl'=>0
         ];
+        public ?object $CONTAINER = NULL;
         public int $DEBUG = 2;
         public array $DIACRITICS = [];
         public string $DNSBL = '';
@@ -1408,8 +1409,8 @@ namespace F3 {
         function status(int $code): string {
             $reason=@constant(Status::class.'::HTTP_'.$code);
             if (!$this->CLI && !headers_sent())
-                header($_SERVER['SERVER_PROTOCOL'].' '.$code.' '.$reason);
-            return $reason;
+                header($_SERVER['SERVER_PROTOCOL'].' '.$code.' '.$reason->value);
+            return $reason->value;
         }
 
         /**
@@ -1661,38 +1662,19 @@ namespace F3 {
         }
 
         /**
-         * Applies the specified URL mask and returns parameterized matches
+         * get used traits from class
          */
-        function mask(string $pattern, ?string $url=NULL): array {
-            if (!$url)
-                $url=$this->rel($this->URI);
-            $case=$this->CASELESS?'i':'';
-            $wild=preg_quote($pattern,'/');
-            $i=0;
-            while (is_int($pos=strpos($wild,'\*'))) {
-                $wild=substr_replace($wild,'(?P<_'.$i.'>[^\?]*)',$pos,2);
-                ++$i;
+        function traits(object|string $class, array $traits = []): array
+        {
+            $reflection = !($class instanceof ReflectionClass) ? new ReflectionClass( $class) : $class;
+            if ($reflection->getParentClass()) {
+                $traits = $this->traits($reflection->getParentClass(), $traits);
             }
-            preg_match('/^'.
-                preg_replace(
-                    '/((\\\{)?@(\w+\b)(?(2)\\\}))/',
-                    '(?P<\3>[^\/\?]+)',
-                    $wild).'\/?$/'.$case.'um',$url,$args);
-            foreach (array_keys($args) as $key) {
-                if (preg_match('/^_\d+$/',$key)) {
-                    if (empty($args['*']))
-                        $args['*']=$args[$key];
-                    else {
-                        if (is_string($args['*']))
-                            $args['*']=[$args['*']];
-                        array_push($args['*'],$args[$key]);
-                    }
-                    unset($args[$key]);
-                }
-                elseif (is_numeric($key) && $key)
-                    unset($args[$key]);
+            foreach ($reflection->getTraits() as $trait_key => $trait) {
+                $traits[$trait_key] = $trait->getName();
+                $traits = $this->traits( $trait, $traits);
             }
-            return $args;
+            return $traits;
         }
 
         /**
@@ -1753,7 +1735,7 @@ namespace F3 {
         }
 
         /**
-         * Grab the real route handler behind the string expression
+         * Grab the callable behind a string expression
          */
         function grab(string $func, ?array $args=NULL): string|array {
             if (preg_match('/(.+)\h*(->|::)\h*(.+)/s',$func,$parts)) {
@@ -1761,34 +1743,35 @@ namespace F3 {
                 if (!class_exists($parts[1]))
                     user_error(sprintf(self::E_Class,$parts[1]),E_USER_ERROR);
                 if ($parts[2]=='->') {
-                    if (is_subclass_of($parts[1],'Prefab'))
-                        $parts[1]=call_user_func($parts[1].'::instance');
-                    elseif (isset($this->CONTAINER)) {
-                        $container=$this->CONTAINER;
-                        if (is_object($container) && is_callable([$container,'has'])
-                            && $container->has($parts[1])) // PSR11
-                            $parts[1]=call_user_func([$container,'get'],$parts[1]);
-                        elseif (is_callable($container))
-                            $parts[1]=call_user_func($container,$parts[1],$args);
-                        elseif (is_string($container) &&
-                            is_subclass_of($container,'Prefab'))
-                            $parts[1]=call_user_func($container.'::instance')->
-                                get($parts[1]);
-                        else
-                            user_error(sprintf(self::E_Class,
-                                $this->stringify($parts[1])),
-                                E_USER_ERROR);
-                    }
-                    else {
-                        $ref=new \ReflectionClass($parts[1]);
-                        $parts[1]=method_exists($parts[1],'__construct') && $args?
-                            $ref->newinstanceargs($args):
-                            $ref->newinstance();
-                    }
+                    $parts[1] = $this->make($parts[1], $args ?? []);
                 }
                 $func=[$parts[1],$parts[3]];
             }
             return $func;
+        }
+
+        /**
+         * make new class instance through container if available
+         */
+        public function make(string $class, array $args=[]): mixed {
+            if ($this->CONTAINER) {
+                $container=$this->CONTAINER;
+                if (is_object($container) && is_callable([$container,'has'])
+                    && $container->has($class)) // PSR11
+                    return $container->get($class);
+                elseif (is_callable($container))
+                    return call_user_func($container,$class,$args);
+                else
+                    user_error(sprintf(self::E_Class,
+                        $this->stringify($class)),
+                        E_USER_ERROR);
+            } elseif (in_array(Prefab::class, $this->traits($class))) {
+                return $class::instance();
+            }
+            $ref = new \ReflectionClass($class);
+            return method_exists($class,'__construct') && $args
+                ? $ref->newInstanceArgs($args)
+                : $ref->newInstance();
         }
 
         /**
@@ -3371,6 +3354,41 @@ namespace F3\Http {
                 if ($die)
                     die;
             }
+        }
+
+        /**
+         * Applies the specified URL mask and returns parameterized matches
+         */
+        function mask(string $pattern, ?string $url=NULL): array {
+            if (!$url)
+                $url=$this->rel($this->URI);
+            $case=$this->CASELESS?'i':'';
+            $wild=preg_quote($pattern,'/');
+            $i=0;
+            while (is_int($pos=strpos($wild,'\*'))) {
+                $wild=substr_replace($wild,'(?P<_'.$i.'>[^\?]*)',$pos,2);
+                ++$i;
+            }
+            preg_match('/^'.
+                preg_replace(
+                    '/((\\\{)?@(\w+\b)(?(2)\\\}))/',
+                    '(?P<\3>[^\/\?]+)',
+                    $wild).'\/?$/'.$case.'um',$url,$args);
+            foreach (array_keys($args) as $key) {
+                if (preg_match('/^_\d+$/',$key)) {
+                    if (empty($args['*']))
+                        $args['*']=$args[$key];
+                    else {
+                        if (is_string($args['*']))
+                            $args['*']=[$args['*']];
+                        $args['*'][] = $args[$key];
+                    }
+                    unset($args[$key]);
+                }
+                elseif (is_numeric($key) && $key)
+                    unset($args[$key]);
+            }
+            return $args;
         }
 
         /**
