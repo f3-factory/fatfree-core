@@ -23,6 +23,8 @@
 namespace F3\DB;
 
 //! In-memory/flat-file DB wrapper
+use F3\Base;
+
 class Jig {
 
 	//@{ Storage formats
@@ -58,7 +60,7 @@ class Jig {
 		}
 		if ($this->lazy && isset($this->data[$file]))
 			return $this->data[$file];
-		$fw=\F3\Base::instance();
+		$fw=Base::instance();
 		$raw=$fw->read($dst);
 		switch ($this->format) {
 			case self::FORMAT_JSON:
@@ -81,7 +83,7 @@ class Jig {
 	function write($file,array $data=NULL) {
 		if (!$this->dir || $this->lazy)
 			return count($this->data[$file]=$data);
-		$fw=\F3\Base::instance();
+		$fw=Base::instance();
 		switch ($this->format) {
 			case self::FORMAT_JSON:
 				$out=json_encode($data,JSON_PRETTY_PRINT);
@@ -153,10 +155,10 @@ class Jig {
 	*	@param $dir string
 	*	@param $format int
 	**/
-	function __construct($dir=NULL,$format=self::FORMAT_JSON,$lazy=FALSE) {
+	function __construct(string $dir='', int $format=self::FORMAT_JSON, bool $lazy=FALSE) {
 		if ($dir && !is_dir($dir))
-			mkdir($dir,\F3\Base::MODE,TRUE);
-		$this->uuid=\F3\Base::instance()->hash($this->dir=$dir);
+			mkdir($dir,Base::MODE,TRUE);
+		$this->uuid = Base::instance()->hash($this->dir=$dir);
 		$this->format=$format;
 		$this->lazy=$lazy;
 	}
