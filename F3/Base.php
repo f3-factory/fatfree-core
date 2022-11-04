@@ -3441,6 +3441,7 @@ namespace F3\Http {
                 $route=NULL;
                 $ptr=$this->CLI?self::REQ_CLI:$this->AJAX+1;
                 if (isset($routes[$ptr][$this->VERB]) ||
+                    ($preflight && isset($routes[$ptr])) ||
                     isset($routes[$ptr=0]))
                     $route=$routes[$ptr];
                 if (!$route)
