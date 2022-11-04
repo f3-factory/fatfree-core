@@ -363,7 +363,7 @@ class Web {
 			curl_setopt($curl,CURLOPT_POSTFIELDS,$options['content']);
 		if (isset($options['proxy']))
 			curl_setopt($curl,CURLOPT_PROXY,$options['proxy']);
-		curl_setopt($curl,CURLOPT_ENCODING,'gzip,deflate');
+        curl_setopt($curl,CURLOPT_ENCODING,$options['encoding'] ?? 'gzip,deflate');
 		$timeout=isset($options['timeout'])?
 			$options['timeout']:
 			ini_get('default_socket_timeout');
@@ -621,7 +621,7 @@ class Web {
 		}
 		$this->subst($options['header'],
 			[
-				'Accept-Encoding: gzip,deflate',
+                'Accept-Encoding: '.($options['encoding'] ?? 'gzip,deflate'),
 				'User-Agent: '.(isset($options['user_agent'])?
 					$options['user_agent']:
 					'Mozilla/5.0 (compatible; '.php_uname('s').')'),
