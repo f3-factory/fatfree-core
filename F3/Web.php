@@ -177,7 +177,7 @@ class Web {
 		foreach (explode(',',str_replace(' ','',@$_SERVER['HTTP_ACCEPT']))
 			as $mime)
 			if (preg_match('/(.+?)(?:;q=([\d\.]+)|$)/',$mime,$parts))
-				$accept[$parts[1]]=isset($parts[2])?$parts[2]:1;
+				$accept[$parts[1]]= $parts[2] ?? 1;
 		if (!$accept)
 			$accept['*/*']=1;
 		else {
@@ -285,7 +285,7 @@ class Web {
 						(is_callable($slug)?
 							$slug($base):
 							($this->slug($parts[1]).
-								(isset($parts[2])?$parts[2]:''))):
+								($parts[2] ?? ''))):
 						$base),
 				'tmp_name'=>$tmp,
 				'type'=>$this->mime($base),
@@ -318,7 +318,7 @@ class Web {
 						(is_callable($slug)?
 							$slug($base,$name):
 							($this->slug($parts[1]).
-								(isset($parts[2])?$parts[2]:''))):
+								($parts[2] ?? ''))):
 						$base);
 				$out[$file['name']]=!$file['error'] &&
 					(!file_exists($file['name']) || $overwrite) &&
@@ -364,9 +364,7 @@ class Web {
 		if (isset($options['proxy']))
 			curl_setopt($curl,CURLOPT_PROXY,$options['proxy']);
         curl_setopt($curl,CURLOPT_ENCODING,$options['encoding'] ?? 'gzip,deflate');
-		$timeout=isset($options['timeout'])?
-			$options['timeout']:
-			ini_get('default_socket_timeout');
+		$timeout=$options['timeout'] ?? ini_get('default_socket_timeout');
 		curl_setopt($curl,CURLOPT_CONNECTTIMEOUT,$timeout);
 		curl_setopt($curl,CURLOPT_TIMEOUT,$timeout);
 		$headers=[];
@@ -424,8 +422,7 @@ class Web {
 		$options['header']=implode($eol,$options['header']);
 		$body=@file_get_contents($url,FALSE,
 			stream_context_create(['http'=>$options]));
-		$headers=isset($http_response_header)?
-			$http_response_header:[];
+		$headers= $http_response_header ?? [];
 		$err='';
 		if (is_string($body)) {
 			$match=NULL;
@@ -491,8 +488,7 @@ class Web {
 		}
 		if ($socket) {
 			stream_set_blocking($socket,TRUE);
-			stream_set_timeout($socket,isset($options['timeout'])?
-				$options['timeout']:ini_get('default_socket_timeout'));
+			stream_set_timeout($socket,$options['timeout'] ?? ini_get('default_socket_timeout'));
 			if ($proxy=='socks4') {
 				// SOCKS4; http://en.wikipedia.org/wiki/SOCKS#Protocol
 				$packet="\x04\x01".pack("n", $parts['port']).
@@ -518,7 +514,7 @@ class Web {
 				$content.=$str;
 			fclose($socket);
 			$html=explode($eol.$eol,$content,2);
-			$body=isset($html[1])?$html[1]:'';
+			$body=$html[1] ?? '';
 			$headers=array_merge($headers,$current=explode($eol,$html[0]));
 			$match=NULL;
 			foreach ($current as $header)
@@ -583,7 +579,7 @@ class Web {
 		foreach ($new as $hdr) {
 			$old=preg_grep('/'.preg_quote(strstr($hdr,':',TRUE),'/').':.+/',
 				$old,PREG_GREP_INVERT);
-			array_push($old,$hdr);
+			$old[] = $hdr;
 		}
 	}
 
@@ -622,9 +618,8 @@ class Web {
 		$this->subst($options['header'],
 			[
                 'Accept-Encoding: '.($options['encoding'] ?? 'gzip,deflate'),
-				'User-Agent: '.(isset($options['user_agent'])?
-					$options['user_agent']:
-					'Mozilla/5.0 (compatible; '.php_uname('s').')'),
+				'User-Agent: '.($options['user_agent'] ??
+                    'Mozilla/5.0 (compatible; '.php_uname('s').')'),
 				'Connection: close'
 			]
 		);
@@ -673,7 +668,7 @@ class Web {
 		}
 		$req=[$options['method'].' '.$url];
 		foreach ($options['header'] as $header)
-			array_push($req,$header);
+			$req[] = $header;
 		return array_merge(['request'=>$req],$result);
 	}
 
