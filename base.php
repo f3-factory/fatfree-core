@@ -1720,6 +1720,7 @@ final class Base extends Prefab implements ArrayAccess {
 			$route=NULL;
 			$ptr=$this->hive['CLI']?self::REQ_CLI:$this->hive['AJAX']+1;
 			if (isset($routes[$ptr][$this->hive['VERB']]) ||
+				($preflight && isset($routes[$ptr])) ||
 				isset($routes[$ptr=0]))
 				$route=$routes[$ptr];
 			if (!$route)
