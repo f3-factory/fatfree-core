@@ -2381,8 +2381,11 @@ final class Base extends Prefab implements ArrayAccess {
 		);
 		set_error_handler(
 			function($level,$text,$file,$line) {
-				if ($level & error_reporting())
-					$this->error(500,$text,NULL,$level);
+				if ($level & error_reporting()) {
+					$trace=$this->trace(null, false);
+					array_unshift($trace,['file'=>$file,'line'=>$line]);
+					$this->error(500,$text,$trace,$level);
+				}
 			}
 		);
 		if (!isset($_SERVER['SERVER_NAME']) || $_SERVER['SERVER_NAME']==='')
