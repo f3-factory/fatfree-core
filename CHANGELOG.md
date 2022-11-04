@@ -1,5 +1,24 @@
 CHANGELOG
 
+3.8.1 (05.11.2022)
+*   fix: CORS preflight request fails to find route for ajax-only definitions [bcosca/fatfree#1242](https://github.com/bcosca/fatfree/issues/1242)
+*   fix: add realpath to captcha font filepath, [#314](https://github.com/bcosca/fatfree-core/issues/314)
+*   fix: case-insensitive custom tag matching [#353](https://github.com/bcosca/fatfree-core/issues/353)
+*   fix: php8 error suppression on invalid locale constant access [bcosca/fatfree#1259](https://github.com/bcosca/fatfree/issues/1259)
+*   fix: iteration over inaccessible object properties, fixes [#350](https://github.com/bcosca/fatfree-core/issues/350)
+*   feat: let jig handle utf8 issues more gracefully [#352](https://github.com/bcosca/fatfree-core/issues/352)
+*   fix: BC issue for pre php74
+*   fix: ensure template->parse does render zero text-node, [#354](https://github.com/bcosca/fatfree-core/issues/354)
+*   fix: DB\SQL\Mapper: allow to pass an empty array as $filter, fixes [bcosca/fatfree#1257](https://github.com/bcosca/fatfree/issues/1257)
+*   fix: adhoc null fields in Twig are executed as callable, [#310](https://github.com/bcosca/fatfree-core/issues/310)
+*   fix: ensure merged default PARAMS are properly encoded when building alias, [#345](https://github.com/bcosca/fatfree-core/issues/345)
+*   fix: Added CORS defaults that are not initialized
+*   fix: SQL cache schema for $fields
+*   fix: adhoc field with null value php81 issue, [#339](https://github.com/bcosca/fatfree-core/issues/339)
+*   fix: check against correct identity flags when using IDENTITY_INSERT for sql server
+*   added missing file location in error handler [bcosca/fatfree#1255](https://github.com/bcosca/fatfree/issues/1255)
+*   Web->request, add option to adjust accept-encoding in curl engine [#355](https://github.com/bcosca/fatfree-core/issues/355)
+
 3.8.0 (15 Feb 2022)
 *   Feat: allow access to previous session data in cache-based session handler
 *   Feat: pass session information to onSuspect Session handler
