@@ -1741,9 +1741,13 @@ namespace F3 {
         }
 
         /**
-         * Grab the callable behind a string expression
+         * Grab the callable behind a string or array callable expression
          */
-        function grab(string $func, ?array $args=NULL): string|array {
+        function grab(string|array $func, ?array $args=NULL): string|array {
+            if (is_array($func)) {
+                $func[0] = $this->make($func[0], $args ?? []);
+                return $func;
+            }
             if (preg_match('/(.+)\h*(->|::)\h*(.+)/s',$func,$parts)) {
                 // Convert string to executable PHP callback
                 if (!class_exists($parts[1]))
@@ -1783,11 +1787,11 @@ namespace F3 {
         /**
          * Execute callback/hooks (supports 'class->method' format)
          */
-        function call(callable|string $func, mixed $args=NULL, string $hooks=''): mixed {
+        function call(callable|string|array $func, mixed $args=NULL, string $hooks=''): mixed {
             if (!is_array($args))
                 $args=[$args];
             // Grab the real handler behind the string representation
-            if (is_string($func))
+            if (is_string($func) || is_array($func))
                 $func=$this->grab($func,$args);
             // Execute function; abort if callback/hook returns FALSE
             if (!is_callable($func))
@@ -3268,7 +3272,7 @@ namespace F3\Http {
         /**
          * Bind handler to route pattern
          */
-        function route(string|array $pattern, callable|string $handler, int $ttl=0, int $kbps=0): void {
+        function route(string|array $pattern, callable|array|string $handler, int $ttl=0, int $kbps=0): void {
             $types=['sync','ajax','cli'];
             $alias=null;
             if (is_array($pattern)) {
