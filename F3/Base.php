@@ -504,7 +504,7 @@ namespace F3 {
         public bool $QUIET = FALSE;
         public bool $RAW = FALSE;
         public string $REALM = '';
-        public string $RESPONSE = '';
+        public string|object $RESPONSE = '';
         public string $ROOT = '';
         public array $ROUTES = [];
         public string $SCHEME = 'http';
@@ -545,8 +545,6 @@ namespace F3 {
         const
             //! Mapped PHP globals
             GLOBALS='GET|POST|COOKIE|REQUEST|SESSION|FILES|SERVER|ENV',
-            //! HTTP verbs
-            VERBS='GET|HEAD|POST|PUT|PATCH|DELETE|CONNECT|OPTIONS',
             //! Default directory permissions
             MODE=0755,
             //! Syntax highlighting stylesheet
@@ -1412,11 +1410,15 @@ namespace F3 {
         /**
          * Send HTTP status header; Return text equivalent of status code
          */
-        function status(int $code): string {
-            $reason=@constant(Status::class.'::HTTP_'.$code);
+        function status(int $code, ?string $reason = NULL): string
+        {
+            if ($reason === NULL) {
+                $reason = defined($name = Status::class.'::HTTP_'.$code)
+                    ? constant($name)->value : '';
+            }
             if (!$this->CLI && !headers_sent())
-                header($_SERVER['SERVER_PROTOCOL'].' '.$code.' '.$reason->value);
-            return $reason->value;
+                header($_SERVER['SERVER_PROTOCOL'].' '.$code.' '.$reason);
+            return $reason;
         }
 
         /**
@@ -1791,7 +1793,7 @@ namespace F3 {
             if (!is_array($args))
                 $args=[$args];
             // Grab the real handler behind the string representation
-            if (is_string($func) || is_array($func))
+            if (is_string($func) || (is_array($func) && !is_callable($func)))
                 $func=$this->grab($func,$args);
             // Execute function; abort if callback/hook returns FALSE
             if (!is_callable($func))
@@ -3479,8 +3481,9 @@ namespace F3\Http {
                             $this->error(404);
                     }
                     // Process request
-                    $result=NULL;
+                    $response=$stream=NULL;
                     $body='';
+                    $isPsr=FALSE;
                     $now=microtime(TRUE);
                     if (preg_match('/GET|HEAD/',$this->VERB) && $ttl) {
                         // Only GET and HEAD requests are cacheable
@@ -3494,13 +3497,13 @@ namespace F3\Http {
                                 strtotime($headers['If-Modified-Since'])+
                                 $ttl>$now) {
                                 $this->status(304);
-                                die;
+                                die();
                             }
                             // Retrieve from cache backend
-                            list($headers,$body,$result)=$data;
+                            [$headers,$body,$response]=$data;
                             if (!$this->CLI)
                                 array_walk($headers,'header');
-                            $this->expire($cached[0]+$ttl-$now);
+                            $this->expire((int) ($cached[0]+$ttl-$now));
                         }
                         else
                             // Expire HTTP client-cached page
@@ -3509,39 +3512,72 @@ namespace F3\Http {
                     else
                         $this->expire(0);
                     if (!strlen($body)) {
+                        // get input data from requests PUT,PATCH and POST (as json) etc.
                         if (!$this->RAW && !$this->BODY)
                             $this->BODY=file_get_contents('php://input');
                         ob_start();
                         // Call route handler
-                        $result=$this->call($handler,[$this,$args,$handler],
+                        $response=$this->call($handler,[$this,$args,$handler],
                             'beforeroute,afterroute');
                         $body=ob_get_clean();
-                        if (isset($cache) && !error_get_last()) {
+                        if ($isPsr = is_object($response)
+                            && is_a($response, 'Psr\Http\Message\ResponseInterface')) {
+                            if ($stream = $response->getBody())
+                                $stream->rewind();
+                            if (!$this->CLI) {
+                                header(sprintf('HTTP/%s %d %s',
+                                    $response->getProtocolVersion(),
+                                    $response->getStatusCode(),
+                                    $response->getReasonPhrase()));
+                                foreach ($response->getHeaders() as $name => $values) {
+                                    header($name.": ".implode(", ", $values));
+                                }
+                            }
+                        }
+                        if (isset($cache) && $this->CACHE && !error_get_last()) {
+                            // prepare headers for cache item
+                            $headers=headers_list();
+                            if ($isPsr) {
+                                $body = $stream ? $stream->getContents() : '';
+                                $headers = [
+                                    // status header is not returned by headers_list()
+                                    sprintf('HTTP/%s %d %s',
+                                        $response->getProtocolVersion(),
+                                        $response->getStatusCode(),
+                                        $response->getReasonPhrase()),
+                                    ...$headers,
+                                ];
+                            }
                             // Save to cache backend
                             $cache->set($hash,[
                                 // Remove cookies
-                                preg_grep('/Set-Cookie\:/',headers_list(),
-                                    PREG_GREP_INVERT),$body,$result],$ttl);
+                                preg_grep('/Set-Cookie\:/',$headers,
+                                    PREG_GREP_INVERT),$body,$isPsr ? NULL : $response],$ttl);
                         }
                     }
-                    $this->RESPONSE=$body;
+                    $this->RESPONSE = $isPsr ? $response : $body;
                     if (!$this->QUIET) {
+                        $stream?->rewind();
                         if ($kbps) {
-                            $ctr=0;
-                            foreach (str_split($body,1024) as $part) {
+                            $ctr=$i=0;
+                            if (!$stream)
+                                $max=count($chunks = str_split($body,1024));
+                            while ($stream
+                                ? ($bytes = $stream->read(1024)) !== ''
+                                : $i < $max) {
                                 // Throttle output
                                 ++$ctr;
                                 if ($ctr/$kbps>($elapsed=microtime(TRUE)-$now) &&
                                     !connection_aborted())
                                     usleep(round(1e6*($ctr/$kbps-$elapsed)));
-                                echo $part;
+                                echo $stream ? $bytes : $chunks[$i++];
                             }
                         }
                         else
-                            echo $body;
+                            echo $stream?->getContents() ?? $body;
                     }
-                    if ($result || $this->VERB!='OPTIONS')
-                        return $result;
+                    if ($response || $this->VERB!='OPTIONS')
+                        return $response;
                 }
                 $allowed=array_merge($allowed,array_keys($route));
             }
@@ -3569,6 +3605,44 @@ namespace F3\Http {
                     $this->error(405);
             }
             return FALSE;
+        }
+
+        /**
+         * receive PSR-7 server request object
+         * @return \Psr\Http\Message\ServerRequestInterface
+         */
+        public function getRequest(): object
+        {
+            /** @var \Psr\Http\Message\ServerRequestFactoryInterface $factory */
+            $factory = $this->make('Psr\Http\Message\ServerRequestFactoryInterface');
+            $request = $factory->createServerRequest($this->VERB, $this->REALM, $this->SERVER);
+            foreach ($this->HEADERS as $key => $value) {
+                $request = $request->withHeader($key,
+                    array_map('trim',explode(',', $value)));
+            }
+            $request = $request
+                ->withUri(new Uri($this->REALM))
+                ->withMethod($this->VERB)
+                ->withCookieParams($this->COOKIE)
+                ->withQueryParams($this->GET);
+            if (!$this->CLI) {
+                list(,$version) = explode('/', $this->SERVER['SERVER_PROTOCOL']);
+                $request = $request->withProtocolVersion($version);
+            }
+            if ($this->RAW || $this->BODY) {
+                /** @var \Psr\Http\Message\StreamFactoryInterface $sf */
+                $sf = $this->make('Psr\Http\Message\StreamFactoryInterface');
+                if ($this->RAW && !$this->BODY) {
+                    $res = fopen('php://input', 'r');
+                    $stream = $sf->createStreamFromResource($res);
+                }
+                if ($this->BODY)
+                    $stream = $sf->createStream($this->BODY);
+                if (isset($stream))
+                    $request = $request->withBody(new Stream($this->BODY));
+            }
+            // TODO: withUploadedFiles
+            return $request;
         }
 
     }
