@@ -4,6 +4,7 @@ namespace F3;
 
 /**
  * Service Locator / DI Container
+ * PSR-11 compatible
  */
 class Service {
 
@@ -13,6 +14,9 @@ class Service {
 
     /**
      * Retrieve object instance, create if not existing
+     * @template Class
+     * @param class-string<Class> $id
+     * @return Class
      */
     public function get(string $id, $args = []): object {
         if (Registry::exists($id))
@@ -36,11 +40,15 @@ class Service {
 
     /**
      * Create new object instance
+     * @template Class
+     * @param class-string<Class> $id
+     * @return Class
      */
     public function make(string $id, $args = []): object {
         if (!isset($this->factories[$id])) {
             $this->set($id);
         }
+        /** @var class-string $class */
         $class = $this->factories[$id];
         // if referenced by other factory, take that instead
         if (\is_string($class) && isset($this->factories[$class])) {
