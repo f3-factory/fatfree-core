@@ -1764,6 +1764,9 @@ namespace F3 {
 
         /**
          * make new class instance through container if available
+         * @template Class
+         * @param class-string<Class> $class
+         * @return Class
          */
         public function make(string $class, array $args=[]): mixed {
             if ($this->CONTAINER) {
@@ -3605,44 +3608,6 @@ namespace F3\Http {
                     $this->error(405);
             }
             return FALSE;
-        }
-
-        /**
-         * receive PSR-7 server request object
-         * @return \Psr\Http\Message\ServerRequestInterface
-         */
-        public function getRequest(): object
-        {
-            /** @var \Psr\Http\Message\ServerRequestFactoryInterface $factory */
-            $factory = $this->make('Psr\Http\Message\ServerRequestFactoryInterface');
-            $request = $factory->createServerRequest($this->VERB, $this->REALM, $this->SERVER);
-            foreach ($this->HEADERS as $key => $value) {
-                $request = $request->withHeader($key,
-                    array_map('trim',explode(',', $value)));
-            }
-            $request = $request
-                ->withUri(new Uri($this->REALM))
-                ->withMethod($this->VERB)
-                ->withCookieParams($this->COOKIE)
-                ->withQueryParams($this->GET);
-            if (!$this->CLI) {
-                list(,$version) = explode('/', $this->SERVER['SERVER_PROTOCOL']);
-                $request = $request->withProtocolVersion($version);
-            }
-            if ($this->RAW || $this->BODY) {
-                /** @var \Psr\Http\Message\StreamFactoryInterface $sf */
-                $sf = $this->make('Psr\Http\Message\StreamFactoryInterface');
-                if ($this->RAW && !$this->BODY) {
-                    $res = fopen('php://input', 'r');
-                    $stream = $sf->createStreamFromResource($res);
-                }
-                if ($this->BODY)
-                    $stream = $sf->createStream($this->BODY);
-                if (isset($stream))
-                    $request = $request->withBody(new Stream($this->BODY));
-            }
-            // TODO: withUploadedFiles
-            return $request;
         }
 
     }
