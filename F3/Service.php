@@ -12,6 +12,13 @@ class Service {
 
     private array $factories = [];
 
+    protected Base $f3;
+
+    public function __construct()
+    {
+        $this->f3 = Base::instance();
+    }
+
     /**
      * Retrieve object instance, create if not existing
      * @template Class
@@ -75,12 +82,12 @@ class Service {
     /**
      * get resolved parameter dependency
      */
-    protected function resolveParam(\ReflectionParameter $parameter): mixed
+    public function resolveParam(\ReflectionParameter $parameter): mixed
     {
         $refType = $parameter->getType();
         if ($refType instanceof \ReflectionNamedType) {
             if (!$refType->isBuiltin() && !$refType->allowsNull()) {
-                return $this->get($refType->getName());
+                return $this->f3->make($refType->getName());
             }
             if ($parameter->isDefaultValueAvailable()) {
                 return $parameter->getDefaultValue();

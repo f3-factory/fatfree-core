@@ -1785,66 +1785,46 @@ namespace F3 {
             }
             $ref = new \ReflectionClass($class);
             return method_exists($class,'__construct') && $args
-                ? $ref->newInstanceArgs($args)
+                ? $ref->newInstanceArgs([$this, $args])
                 : $ref->newInstance();
         }
 
         /**
-         * Execute callback/hooks (supports 'class->method' format)
+         * Execute callback (supports 'class->method' format)
          */
-        function call(callable|string|array $func, mixed $args=NULL, string $hooks=''): mixed {
-            if (!is_array($args))
-                $args=[$args];
+        public function call(callable|string|array $func, array $args=[]): mixed
+        {
             // Grab the real handler behind the string representation
-            if (is_string($func) || (is_array($func) && !is_callable($func)))
-                $func=$this->grab($func,$args);
-            // Execute function; abort if callback/hook returns FALSE
-            if (!is_callable($func))
-                // No route handler
-                if ($hooks=='beforeroute,afterroute') {
-                    $allowed=[];
-                    if (is_array($func))
-                        $allowed=array_intersect(
-                            array_map('strtoupper',get_class_methods($func[0])),
-                            Verb::names()
-                        );
-                    header('Allow: '.implode(',',$allowed));
-                    $this->error(405);
-                }
-                else
-                    user_error(sprintf(self::E_Method,
-                        is_string($func)?$func:$this->stringify($func)),
-                        E_USER_ERROR);
-            $obj=FALSE;
-            if (is_array($func)) {
-                $hooks=$this->split($hooks);
-                $obj=TRUE;
-            }
-            // Execute pre-route hook if any
-            if ($obj && $hooks && in_array($hook='beforeroute',$hooks) &&
-                method_exists($func[0],$hook) &&
-                call_user_func_array([$func[0],$hook],$args)===FALSE)
-                return FALSE;
-            // Execute callback
-            $out=call_user_func_array($func,$args?:[]);
-            if ($out===FALSE)
-                return FALSE;
-            // Execute post-route hook if any
-            if ($obj && $hooks && in_array($hook='afterroute',$hooks) &&
-                method_exists($func[0],$hook) &&
-                call_user_func_array([$func[0],$hook],$args)===FALSE)
-                return FALSE;
-            return $out;
+            if (!is_callable($func) && !is_callable($func=$this->grab($func,$args)))
+                user_error(sprintf(self::E_Method,
+                    is_string($func)?$func:$this->stringify($func)),
+                    E_USER_ERROR);
+            if ($this->CONTAINER) {
+                $service = Service::instance();
+                $ref = is_array($func)
+                    ? new \ReflectionMethod(...$func)
+                    : new \ReflectionFunction($func);
+                $out = [];
+                foreach ($ref->getParameters() as $p)
+                    $out[$pn=$p->getName()] = $args[$pn] ?? $service->resolveParam($p);
+                $args = $out;
+            } else
+                $args = array_values($args);
+            return call_user_func_array($func,$args);
         }
 
         /**
          * Execute specified callbacks in succession; Apply same arguments
          * to all callbacks
          */
-        function chain(array|string $funcs, mixed $args=NULL): array {
+        function chain(array|string $funcs, mixed $args=NULL, bool $halt=false): array|false
+        {
             $out=[];
-            foreach (is_array($funcs)?$funcs:$this->split($funcs) as $func)
-                $out[]=$this->call($func,$args);
+            foreach (is_array($funcs)?$funcs:$this->split($funcs) as $func) {
+                $out[] = $r = $this->call($func,$args);
+                if ($halt && $r === FALSE)
+                    break;
+            }
             return $out;
         }
 
@@ -1852,9 +1832,13 @@ namespace F3 {
          * Execute specified callbacks in succession; Relay result of
          * previous callback as argument to the next callback
          */
-        function relay(array|string $funcs, mixed $args=NULL): mixed {
-            foreach (is_array($funcs)?$funcs:$this->split($funcs) as $func)
-                $args=[$this->call($func,$args)];
+        function relay(array|string $funcs, mixed $args=NULL, bool $halt=false): mixed
+        {
+            foreach (is_array($funcs)?$funcs:$this->split($funcs) as $func) {
+                $args=[$out = $this->call($func,$args)];
+                if ($halt && $out === FALSE)
+                    break;
+            }
             return array_shift($args);
         }
 
@@ -3410,6 +3394,40 @@ namespace F3\Http {
         }
 
         /**
+         * Execute route handler with hooks (supports 'class->method' format)
+         */
+        public function callRoute(callable|string|array $func, array $args=[], array $hooks=[]): mixed
+        {
+            // Grab the real handler behind the string representation
+            if (!is_callable($func) && !is_callable($func=$this->grab($func,$args))) {
+                // No route handler found
+                $allowed=[];
+                if (is_array($func))
+                    $allowed=array_intersect(
+                        array_map('strtoupper',get_class_methods($func[0])),
+                        Verb::names()
+                    );
+                header('Allow: '.implode(',',$allowed));
+                $this->error(405);
+            }
+            $obj=is_array($func);
+            // Execute pre-route hook if any
+            if ($obj & in_array($hook='beforeroute',$hooks) &&
+                method_exists($func[0],$hook) &&
+                $this->call([$func[0],$hook],$args)===FALSE)
+                return FALSE;
+            // Execute route handler
+            if (($out=$this->call($func,$args))===FALSE)
+                return FALSE;
+            // Execute post-route hook if any
+            if ($obj & in_array($hook='afterroute',$hooks) &&
+                method_exists($func[0],$hook) &&
+                $this->call([$func[0],$hook],$args)===FALSE)
+                return FALSE;
+            return $out;
+        }
+
+        /**
          * Match routes against incoming URI
          */
         function run(): mixed {
@@ -3520,8 +3538,12 @@ namespace F3\Http {
                             $this->BODY=file_get_contents('php://input');
                         ob_start();
                         // Call route handler
-                        $response=$this->call($handler,[$this,$args,$handler],
-                            'beforeroute,afterroute');
+//                        $response=$this->call($handler,[$this,$args,$handler],
+                        $response=$this->callRoute($handler,[
+                            'f3' => $this,
+                            'params' => $args,
+                            'handler' => $handler
+                        ], ['beforeroute','afterroute']);
                         $body=ob_get_clean();
                         if ($isPsr = is_object($response)
                             && is_a($response, 'Psr\Http\Message\ResponseInterface')) {
