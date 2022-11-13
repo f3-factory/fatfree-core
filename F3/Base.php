@@ -22,12 +22,8 @@
 
 namespace F3 {
 
-    use Exception;
     use F3\Http\Router;
     use F3\Http\Status;
-    use F3\Http\Verb;
-    use ReflectionClass;
-    use ReflectionProperty;
 
     /**
      * Mixin for single-instance classes
@@ -80,17 +76,17 @@ namespace F3 {
                 }
             }
             // enable proxy pattern
-            array_map(function($prop) {
+            \array_map(function($prop) {
                 unset($this->{$prop->getName()});
-            },(new ReflectionClass($this))
-                ->getProperties(ReflectionProperty::IS_PUBLIC));
+            },(new \ReflectionClass($this))
+                ->getProperties(\ReflectionProperty::IS_PUBLIC));
             // copy fluent hive data
             foreach ($data as $key => $value) {
                 $this->_hive->{$key} = $value;
             }
             $this->state('init');
             if (!self::$isShadow) {
-                $ref = new ReflectionProperty(self::class, '_hive');
+                $ref = new \ReflectionProperty(self::class, '_hive');
                 self::$isShadow = fn($obj) => !$ref->isInitialized($obj);
             }
         }
@@ -99,7 +95,7 @@ namespace F3 {
          * Return the parts of specified hive key
          */
         protected function cut(string $key): array {
-            return preg_split('/\[\h*[\'"]?(.+?)[\'"]?\h*\]|(->)|\./',
+            return \preg_split('/\[\h*[\'"]?(.+?)[\'"]?\h*\]|(->)|\./',
                 $key,-1,PREG_SPLIT_NO_EMPTY|PREG_SPLIT_DELIM_CAPTURE);
         }
 
@@ -112,26 +108,26 @@ namespace F3 {
         {
             $null=NULL;
             $eager=NULL;
-            $parts=is_array($key) ? $key : $this->cut($key);
+            $parts=\is_array($key) ? $key : $this->cut($key);
             // use base hive as default value store when none was given
-            if (is_null($var)) {
+            if (\is_null($var)) {
                 // when _hive is available, it's a call from the wrapper, otherwise from within the shadow hive
                 $hive = (self::$isShadow)($this) ? $this : $this->_hive;
                 // select origin of value storage (property or fluent data)
-                if (property_exists($hive,$parts[0])
-                    && !in_array($parts[0],Hive::OWN_KEYS)) {
-                    if ((new ReflectionProperty(static::class, $parts[0]))
+                if (\property_exists($hive,$parts[0])
+                    && !\in_array($parts[0],Hive::OWN_KEYS)) {
+                    if ((new \ReflectionProperty(static::class, $parts[0]))
                         ->isInitialized($hive)) {
                         $var=&$hive->{$parts[0]};
-                        array_shift($parts);
+                        \array_shift($parts);
                     } else {
                         // eagerly initialize property for reference
                         $eager=$parts[0];
                         $var=$null;
-                        if (count($parts) === 1) {
+                        if (\count($parts) === 1) {
                             $hive->{$eager} = $val;
                             $var=&$hive->{$eager};
-                            array_shift($parts);
+                            \array_shift($parts);
                         }
                     }
                 } elseif ($add)
@@ -139,7 +135,7 @@ namespace F3 {
                 else
                     $var=$this->_hive_data;
             }
-            $obj=is_object($var);
+            $obj=\is_object($var);
             // assemble nested value access
             foreach ($parts as $part) {
                 if ($part=='->') {
@@ -147,9 +143,9 @@ namespace F3 {
                     continue;
                 } elseif ($obj) {
                     $obj=FALSE;
-                    if (!is_object($var))
+                    if (!\is_object($var))
                         $var=new \stdClass;
-                    if ($add || property_exists($var,$part))
+                    if ($add || \property_exists($var,$part))
                         $var=&$var->$part;
                     else {
                         $var=&$null;
@@ -157,9 +153,9 @@ namespace F3 {
                     }
                 }
                 else {
-                    if (!is_array($var))
+                    if (!\is_array($var))
                         $var=[];
-                    if ($add || array_key_exists($part,$var))
+                    if ($add || \array_key_exists($part,$var))
                         $var=&$var[$part];
                     else {
                         $var=&$null;
@@ -181,7 +177,7 @@ namespace F3 {
          */
         function toArray(): array {
             $out = [];
-            foreach (array_diff(array_keys(get_object_vars($this->_hive) + $this->_hive_data),
+            foreach (\array_diff(\array_keys(\get_object_vars($this->_hive) + $this->_hive_data),
                 self::OWN_KEYS) as $key) {
                 $out[$key] = $this->get($key);
             }
@@ -189,8 +185,7 @@ namespace F3 {
         }
 
         /**
-         *	Convenience method for removing hive key
-         *	@param $key string
+         * Convenience method for removing hive key
          **/
         function clear(string $key): void {
             $parts = $this->cut($key);
@@ -199,12 +194,12 @@ namespace F3 {
                 eval('unset('.$this->compile('@this->'.$key,FALSE).');');
             }
             // fluent data
-            elseif (array_key_exists($parts[0],$this->_hive_data)) {
+            elseif (\array_key_exists($parts[0],$this->_hive_data)) {
                 eval('unset('.$this->compile('@this->_hive_data.'.$key, FALSE).');');
             }
             // typed properties
             elseif (isset($this->_hive_states['init'])
-                && property_exists($initState = $this->_hive_states['init'][0],$parts[0])) {
+                && \property_exists($initState = $this->_hive_states['init'][0],$parts[0])) {
                 /** @var static $initState */
                 if ($initState->exists($key, $val)) {
                     // Reset default value (cannot remove property and reuse it afterwards)
@@ -217,23 +212,23 @@ namespace F3 {
         }
 
         /**
-         *	Convert JS-style token to PHP expression
-         *	@param $str string
-         *	@param $evaluate bool compile expressions as well or only convert variable access
-         *	@return string
+         * Convert JS-style token to PHP expression
+         * @param $str string
+         * @param $evaluate bool compile expressions as well or only convert variable access
+         * @return string
          */
         function compile(string $str, bool $evaluate=TRUE): string {
             return (!$evaluate)
-                ? preg_replace_callback(
+                ? \preg_replace_callback(
                     '/^@(\w+)((?:\..+|\[(?:(?:[^\[\]]*|(?R))*)\]|(?:\->|::)\w+)*)/',
                     function($expr) {
                         $str='$'.$expr[1];
                         if (isset($expr[2]))
-                            $str.=preg_replace_callback(
+                            $str.=\preg_replace_callback(
                                 '/\.([^.\[\]]+)|\[((?:[^\[\]\'"]*|(?R))*)\]/',
                                 function($sub) {
                                     $val=$sub[2] ?? $sub[1];
-                                    if (ctype_digit($val))
+                                    if (\ctype_digit($val))
                                         $val=(int)$val;
                                     return '['.$this->export($val).']';
                                 },
@@ -243,17 +238,17 @@ namespace F3 {
                     },
                     $str
                 )
-                : preg_replace_callback(
+                : \preg_replace_callback(
                     '/(?<!\w)@(\w+(?:(?:\->|::)\w+)?)'.
                     '((?:\.\w+|\[(?:(?:[^\[\]]*|(?R))*)\]|(?:\->|::)\w+|\()*)/',
                     function($expr) {
                         $str='$'.$expr[1];
                         if (isset($expr[2]))
-                            $str.=preg_replace_callback(
+                            $str.=\preg_replace_callback(
                                 '/\.(\w+)(\()?|\[((?:[^\[\]]*|(?R))*)\]/',
                                 function($sub) {
                                     if (empty($sub[2])) {
-                                        if (ctype_digit($sub[1]))
+                                        if (\ctype_digit($sub[1]))
                                             $sub[1]=(int)$sub[1];
                                         $out='['.
                                             (isset($sub[3])?
@@ -262,7 +257,7 @@ namespace F3 {
                                             ']';
                                     }
                                     else
-                                        $out=function_exists($sub[1])?
+                                        $out=\function_exists($sub[1])?
                                             $sub[0]:
                                             ('['.$this->export($sub[1]).']'.$sub[2]);
                                     return $out;
@@ -276,14 +271,14 @@ namespace F3 {
         }
 
         /**
-         *	Return string representation of expression
+         * Return string representation of expression
          */
         function export(mixed $expr): string {
-            return var_export($expr,TRUE);
+            return \var_export($expr,TRUE);
         }
 
         /**
-         *	Bind value to hive key
+         * Bind value to hive key
          */
         function set(string $key, mixed $val, ?int $ttl=null): mixed {
             $ref=&$this->ref($key, val: $val);
@@ -292,12 +287,12 @@ namespace F3 {
         }
 
         /**
-         *	Retrieve contents of hive key
+         * Retrieve contents of hive key
          */
         function get(string $key, string|array $args=NULL): mixed {
-            if (is_string($val=$this->ref($key,FALSE)) && !is_null($args))
-                return Base::instance()->format($val, ...(is_array($args)?$args:[$args]));
-            if (is_null($val)) {
+            if (\is_string($val=$this->ref($key,FALSE)) && !\is_null($args))
+                return Base::instance()->format($val, ...(\is_array($args)?$args:[$args]));
+            if (\is_null($val)) {
                 // Attempt to retrieve from cache
                 if (Cache::instance()->exists(Base::instance()->hash($key).'.var',$data))
                     return $data;
@@ -312,17 +307,17 @@ namespace F3 {
         {
             $hive = (self::$isShadow)($this) ? $this : $this->_hive;
             $init=TRUE;
-            if (property_exists($hive,$key)
-                && !in_array($key,Hive::OWN_KEYS)) {
-                $init = (new ReflectionProperty(static::class, $key))
+            if (\property_exists($hive,$key)
+                && !\in_array($key,Hive::OWN_KEYS)) {
+                $init = (new \ReflectionProperty(static::class, $key))
                     ->isInitialized($hive);
             }
             return $init;
         }
 
         /**
-         *	Return TRUE if hive key is set
-         *	(or return timestamp and TTL if cached)
+         * Return TRUE if hive key is set
+         * (or return timestamp and TTL if cached)
          */
         function exists(string $key, mixed &$val=NULL): bool {
             $parts = $this->cut($key);
@@ -333,7 +328,7 @@ namespace F3 {
         }
 
         /**
-         *	Return TRUE if hive key is empty and not cached
+         * Return TRUE if hive key is empty and not cached
          **/
         function devoid(string $key, mixed &$val=NULL): bool {
             $parts = $this->cut($key);
@@ -347,13 +342,13 @@ namespace F3 {
          * deep clone object with its public properties
          */
         public function clone(mixed $item): mixed {
-            if (is_object($item)) {
+            if (\is_object($item)) {
                 if (!(new \ReflectionObject($item))->isCloneable())
                     return $item;
                 $new = clone $item;
-                foreach (get_object_vars($item) as $key => $var)
+                foreach (\get_object_vars($item) as $key => $var)
                     $new->{$key} = $this->clone($var);
-            } elseif (is_array($item)) {
+            } elseif (\is_array($item)) {
                 $new = [];
                 foreach ($item as $key => $var)
                     $new[$key] = $this->clone($var);
@@ -377,21 +372,21 @@ namespace F3 {
         }
 
         /**
-         *	Convenience method for checking hive key
+         * Convenience method for checking hive key
          */
         function offsetExists($key): bool {
             return $this->exists($key);
         }
 
         /**
-         *	Convenience method for assigning hive value
+         * Convenience method for assigning hive value
          */
         function offsetSet(mixed $key, mixed $val): void {
             $this->set($key,$val);
         }
 
         /**
-         *	Convenience method for retrieving hive value
+         * Convenience method for retrieving hive value
          */
         function &offsetGet($key): mixed {
             $val=&$this->ref($key);
@@ -399,29 +394,29 @@ namespace F3 {
         }
 
         /**
-         *	Convenience method for removing hive key
-         *	@param $key string
+         * Convenience method for removing hive key
+         * @param $key string
          **/
         function offsetUnset($key): void {
             $this->clear($key);
         }
 
         /**
-         *	Alias for offsetexists()
+         * Alias for offsetexists()
          */
         function __isset(string $key): bool {
             return $this->exists($key);
         }
 
         /**
-         *	Alias for offsetset()
+         * Alias for offsetset()
          */
         function __set(string $key,mixed $val): void {
             $this->set($key,$val);
         }
 
         /**
-         *	Alias for offsetget()
+         * Alias for offsetget()
          */
         function &__get(string $key): mixed {
             $val=&$this->ref($key);
@@ -429,7 +424,7 @@ namespace F3 {
         }
 
         /**
-         *	Alias for offsetunset()
+         * Alias for offsetunset()
          */
         function __unset(string $key): void {
             $this->clear($key);
@@ -601,21 +596,21 @@ namespace F3 {
         function build(string|array $url, array $args=[], bool $addParams=TRUE) {
             if ($addParams)
                 $args+=$this->recursive($this->PARAMS, fn($val) =>
-                    implode('/', array_map('urlencode', explode('/', $val))));
-            if (is_array($url))
+                    \implode('/', \array_map('urlencode', \explode('/', $val))));
+            if (\is_array($url))
                 foreach ($url as &$var) {
                     $var=$this->build($var,$args, false);
                     unset($var);
                 }
             else {
                 $i=0;
-                $url=preg_replace_callback('/(\{)?@(\w+)(?(1)\})|(\*)/',
+                $url=\preg_replace_callback('/(\{)?@(\w+)(?(1)\})|(\*)/',
                     function($match) use(&$i,$args) {
                         if (isset($match[2]) &&
-                            array_key_exists($match[2],$args))
+                            \array_key_exists($match[2],$args))
                             return $args[$match[2]];
                         if (isset($match[3]) &&
-                            array_key_exists($match[3],$args)) {
+                            \array_key_exists($match[3],$args)) {
                             if (!is_array($args[$match[3]]))
                                 return $args[$match[3]];
                             ++$i;
@@ -631,17 +626,17 @@ namespace F3 {
          * Parse string containing key-value pairs
          */
         function parse(string $str): array {
-            preg_match_all('/(\w+|\*)\h*=\h*(?:\[(.+?)\]|(.+?))(?=,|$)/',
+            \preg_match_all('/(\w+|\*)\h*=\h*(?:\[(.+?)\]|(.+?))(?=,|$)/',
                 $str,$pairs,PREG_SET_ORDER);
             $out=[];
             foreach ($pairs as $pair)
                 if ($pair[2]) {
                     $out[$pair[1]]=[];
-                    foreach (explode(',',$pair[2]) as $val)
-                        array_push($out[$pair[1]],$val);
+                    foreach (\explode(',',$pair[2]) as $val)
+                        \array_push($out[$pair[1]],$val);
                 }
                 else
-                    $out[$pair[1]]=trim($pair[3]);
+                    $out[$pair[1]]=\trim($pair[3]);
             return $out;
         }
 
@@ -649,13 +644,13 @@ namespace F3 {
          * Cast string variable to PHP type or constant
          */
         function cast(mixed $val): mixed {
-            if ($val && preg_match('/^(?:0x[0-9a-f]+|0[0-7]+|0b[01]+)$/i',$val))
-                return intval($val,0);
-            if (is_numeric($val))
+            if ($val && \preg_match('/^(?:0x[0-9a-f]+|0[0-7]+|0b[01]+)$/i',$val))
+                return \intval($val,0);
+            if (\is_numeric($val))
                 return $val+0;
-            $val=trim($val?:'');
-            if (preg_match('/^\w+$/i',$val) && defined($val))
-                return constant($val);
+            $val=\trim($val?:'');
+            if (\preg_match('/^\w+$/i',$val) && \defined($val))
+                return \constant($val);
             return $val;
         }
 
@@ -666,12 +661,12 @@ namespace F3 {
         {
             $parts=$this->cut($key);
             if ($parts[0]=='SESSION') {
-                if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE) {
-                    session_start();
+                if (!\headers_sent() && \session_status()!=PHP_SESSION_ACTIVE) {
+                    \session_start();
                     $this->sync('SESSION');
                 }
-            } elseif (!preg_match('/^\w+$/',$parts[0]))
-                user_error(sprintf(self::E_Hive,$this->stringify($key)),
+            } elseif (!\preg_match('/^\w+$/',$parts[0]))
+                \user_error(\sprintf(self::E_Hive,$this->stringify($key)),
                     E_USER_ERROR);
             $val = &parent::ref($parts,$add,$var, $val);
             return $val;
@@ -929,7 +924,7 @@ namespace F3 {
          * Convert backslashes to slashes
          */
         function fixslashes(string $str): string {
-            return $str?strtr($str,'\\','/'):$str;
+            return $str?\strtr($str,'\\','/'):$str;
         }
 
         /**
@@ -977,10 +972,10 @@ namespace F3 {
          * Memorize current hive state
          */
         function state(string $name): void {
-            $globals = explode('|',Base::GLOBALS);
-            array_map( [$this,'desync'], $globals);
+            $globals = \explode('|',Base::GLOBALS);
+            \array_map( [$this,'desync'], $globals);
             parent::state($name);
-            array_map( [$this,'sync'], $globals);
+            \array_map( [$this,'sync'], $globals);
         }
 
         /**
@@ -989,13 +984,14 @@ namespace F3 {
         function restore(string $state, bool $sync=TRUE): void {
             parent::restore($state);
             if ($sync) {
-                array_map( [$this,'sync'], explode('|',Base::GLOBALS));
-                foreach (getallheaders()??[] as $key=>$val) {
-                    $tmp=strtoupper(strtr($key,'-','_'));
-                    $key=ucwords(strtolower($key), '-');
-                    if (isset($_SERVER['HTTP_'.$tmp]))
-                        $_SERVER['HTTP_'.$tmp] = &$this->HEADERS[$key];
-                }
+                \array_map( [$this,'sync'], \explode('|',Base::GLOBALS));
+                if (function_exists('getallheaders'))
+                    foreach (\getallheaders()??[] as $key=>$val) {
+                        $tmp=\strtoupper(\strtr($key,'-','_'));
+                        $key=\ucwords(\strtolower($key), '-');
+                        if (isset($_SERVER['HTTP_'.$tmp]))
+                            $_SERVER['HTTP_'.$tmp] = &$this->HEADERS[$key];
+                    }
             }
         }
 
@@ -1055,8 +1051,8 @@ namespace F3 {
          * Generate 64bit/base36 hash
          */
         function hash(string $str): string {
-            return str_pad(base_convert(
-                substr(sha1($str?:''),-16),16,36),11,'0',STR_PAD_LEFT);
+            return \str_pad(\base_convert(
+                \substr(\sha1($str?:''),-16),16,36),11,'0',STR_PAD_LEFT);
         }
 
         /**
@@ -1307,39 +1303,39 @@ namespace F3 {
          * Assign/auto-detect language
          */
         function language(string $code): string {
-            $code=preg_replace('/\h+|;q=[0-9.]+/','',$code?:'');
+            $code=\preg_replace('/\h+|;q=[0-9.]+/','',$code?:'');
             $code.=($code?',':'').$this->FALLBACK;
             $this->languages=[];
-            foreach (array_reverse(explode(',',$code)) as $lang)
-                if (preg_match('/^(\w{2})(?:-(\w{2}))?\b/i',$lang,$parts)) {
+            foreach (\array_reverse(\explode(',',$code)) as $lang)
+                if (\preg_match('/^(\w{2})(?:-(\w{2}))?\b/i',$lang,$parts)) {
                     // Generic language
-                    array_unshift($this->languages,$parts[1]);
+                    \array_unshift($this->languages,$parts[1]);
                     if (isset($parts[2])) {
                         // Specific language
-                        $parts[0]=$parts[1].'-'.($parts[2]=strtoupper($parts[2]));
-                        array_unshift($this->languages,$parts[0]);
+                        $parts[0]=$parts[1].'-'.($parts[2]=\strtoupper($parts[2]));
+                        \array_unshift($this->languages,$parts[0]);
                     }
                 }
-            $this->languages=array_unique($this->languages);
+            $this->languages=\array_unique($this->languages);
             $locales=[];
-            $windows=preg_match('/^win/i',PHP_OS);
+            $windows=\preg_match('/^win/i',PHP_OS);
             // Work around PHP's Turkish locale bug
-            foreach (preg_grep('/^(?!tr)/i',$this->languages) as $locale) {
+            foreach (\preg_grep('/^(?!tr)/i',$this->languages) as $locale) {
                 if ($windows) {
-                    $parts=explode('-',$locale);
-                    if (!defined(ISO::class.'::LC_'.$parts[0]))
+                    $parts=\explode('-',$locale);
+                    if (!\defined(ISO::class.'::LC_'.$parts[0]))
                         continue;
-                    $locale=constant(ISO::class.'::LC_'.$parts[0]);
+                    $locale=\constant(ISO::class.'::LC_'.$parts[0]);
                     if (isset($parts[1]) &&
-                        defined($cc=ISO::class.'::CC_'.strtolower($parts[1])))
-                        $locale.='-'.constant($cc);
+                        \defined($cc=ISO::class.'::CC_'.\strtolower($parts[1])))
+                        $locale.='-'.\constant($cc);
                 }
-                $locale=str_replace('-','_',$locale);
-                $locales[]=$locale.'.'.ini_get('default_charset');
+                $locale=\str_replace('-','_',$locale);
+                $locales[]=$locale.'.'.\ini_get('default_charset');
                 $locales[]=$locale;
             }
-            setlocale(LC_ALL,$locales);
-            return $this->LANGUAGE=implode(',',$this->languages);
+            \setlocale(LC_ALL,$locales);
+            return $this->LANGUAGE=\implode(',',$this->languages);
         }
 
         /**
@@ -1474,7 +1470,7 @@ namespace F3 {
         function ip(): string {
             $headers=$this->HEADERS;
             return $headers['Client-IP'] ?? (isset($headers['X-Forwarded-For'])?
-                    explode(',',$headers['X-Forwarded-For'])[0]:
+                    \explode(',',$headers['X-Forwarded-For'])[0]:
                     ($_SERVER['REMOTE_ADDR'] ?? ''));
         }
 
@@ -1599,12 +1595,12 @@ namespace F3 {
             if (!$args)
                 $args=[];
             $types=['sync','ajax','cli'];
-            preg_match('/([\|\w]+)\h+(?:@(\w+)(?:(\(.+?)\))*|([^\h]+))'.
-                '(?:\h+\[('.implode('|',$types).')\])?/',$pattern,$parts);
-            $verb=strtoupper($parts[1]);
+            \preg_match('/([\|\w]+)\h+(?:@(\w+)(?:(\(.+?)\))*|([^\h]+))'.
+                '(?:\h+\[('.\implode('|',$types).')\])?/',$pattern,$parts);
+            $verb=\strtoupper($parts[1]);
             if ($parts[2]) {
                 if (empty($this->ALIASES[$parts[2]]))
-                    user_error(sprintf(self::E_Named,$parts[2]),E_USER_ERROR);
+                    \user_error(\sprintf(self::E_Named,$parts[2]),E_USER_ERROR);
                 $parts[4]=$this->ALIASES[$parts[2]];
                 $parts[4]=$this->build($parts[4],
                     isset($parts[3])?$this->parse($parts[3]):[]);
@@ -1674,7 +1670,7 @@ namespace F3 {
          */
         function traits(object|string $class, array $traits = []): array
         {
-            $reflection = !($class instanceof ReflectionClass) ? new ReflectionClass( $class) : $class;
+            $reflection = !($class instanceof \ReflectionClass) ? new \ReflectionClass( $class) : $class;
             if ($reflection->getParentClass()) {
                 $traits = $this->traits($reflection->getParentClass(), $traits);
             }
@@ -2068,15 +2064,14 @@ namespace F3 {
         //! Bootstrap
         function __construct() {
             // Managed directives
-            ini_set('default_charset',$charset='UTF-8');
-            if (extension_loaded('mbstring'))
-                mb_internal_encoding($charset);
-            ini_set('display_errors',0);
+            \ini_set('default_charset',$charset='UTF-8');
+            if (\extension_loaded('mbstring'))
+                \mb_internal_encoding($charset);
+            \ini_set('display_errors',0);
             // Intercept errors/exceptions; PHP5.3-compatible
-            $check=error_reporting((E_ALL|E_STRICT)&~(E_NOTICE|E_USER_NOTICE));
-            set_exception_handler(
-                function($obj) {
-                    /** @var Exception $obj */
+            $check=\error_reporting((E_ALL|E_STRICT)&~(E_NOTICE|E_USER_NOTICE));
+            \set_exception_handler(
+                function(\Throwable $obj) {
                     $this->EXCEPTION=$obj;
                     $this->error(500,
                         $obj->getmessage().' '.
@@ -2084,17 +2079,17 @@ namespace F3 {
                         $obj->gettrace());
                 }
             );
-            set_error_handler(
+            \set_error_handler(
                 function($level,$text,$file,$line) {
-                    if ($level & error_reporting()) {
+                    if ($level & \error_reporting()) {
                         $trace=$this->trace(null, false);
-                        array_unshift($trace,['file'=>$file,'line'=>$line]);
+                        \array_unshift($trace,['file'=>$file,'line'=>$line]);
                         $this->error(500,$text,$trace,$level);
                     }
                 }
             );
             if (!isset($_SERVER['SERVER_NAME']) || $_SERVER['SERVER_NAME']==='')
-                $_SERVER['SERVER_NAME']=gethostname();
+                $_SERVER['SERVER_NAME']=\gethostname();
             $headers=[];
             if ($cli=(PHP_SAPI=='cli')) {
                 // Emulate HTTP request
@@ -2104,17 +2099,17 @@ namespace F3 {
                     $_SERVER['argv'][1]='/';
                 }
                 $req=$query='';
-                if (str_starts_with($_SERVER['argv'][1],'/')) {
+                if (\str_starts_with($_SERVER['argv'][1],'/')) {
                     $req=$_SERVER['argv'][1];
                     $query=parse_url($req,PHP_URL_QUERY);
                 } else {
                     foreach($_SERVER['argv'] as $i=>$arg) {
                         if (!$i) continue;
-                        if (preg_match('/^\-(\-)?(\w+)(?:\=(.*))?$/',$arg,$m)) {
-                            foreach($m[1]?[$m[2]]:str_split($m[2]) as $k)
-                                $query.=($query?'&':'').urlencode($k).'=';
+                        if (\preg_match('/^\-(\-)?(\w+)(?:\=(.*))?$/',$arg,$m)) {
+                            foreach($m[1]?[$m[2]]:\str_split($m[2]) as $k)
+                                $query.=($query?'&':'').\urlencode($k).'=';
                             if (isset($m[3]))
-                                $query.=urlencode($m[3]);
+                                $query.=\urlencode($m[3]);
                         } else
                             $req.='/'.$arg;
                     }
@@ -2124,11 +2119,11 @@ namespace F3 {
                         $req.='?'.$query;
                 }
                 $_SERVER['REQUEST_URI']=$req;
-                parse_str($query?:'',$GLOBALS['_GET']);
+                \parse_str($query?:'',$GLOBALS['_GET']);
             }
-            else foreach (getallheaders() as $key=>$val) {
-                $tmp=strtoupper(strtr($key,'-','_'));
-                $key=ucwords(strtolower($key), '-');
+            else foreach (\getallheaders() as $key=>$val) {
+                $tmp=\strtoupper(\strtr($key,'-','_'));
+                $key=\ucwords(\strtolower($key), '-');
                 $headers[$key]=$val;
                 if (isset($_SERVER['HTTP_'.$tmp]))
                     $headers[$key]=$_SERVER['HTTP_'.$tmp];
@@ -2136,33 +2131,33 @@ namespace F3 {
             if (isset($headers['X-Http-Method-Override']))
                 $_SERVER['REQUEST_METHOD']=$headers['X-Http-Method-Override'];
             elseif ($_SERVER['REQUEST_METHOD']=='POST' && isset($_POST['_method']))
-                $_SERVER['REQUEST_METHOD']=strtoupper($_POST['_method']);
+                $_SERVER['REQUEST_METHOD']=\strtoupper($_POST['_method']);
             $scheme=isset($_SERVER['HTTPS']) && $_SERVER['HTTPS']=='on' ||
                 isset($headers['X-Forwarded-Proto']) &&
                 $headers['X-Forwarded-Proto']=='https'?'https':'http';
-            if (function_exists('apache_setenv')) {
+            if (\function_exists('apache_setenv')) {
                 // Work around Apache pre-2.4 VirtualDocumentRoot bug
                 $_SERVER['DOCUMENT_ROOT']=str_replace($_SERVER['SCRIPT_NAME'],'',
                     $_SERVER['SCRIPT_FILENAME']);
                 apache_setenv("DOCUMENT_ROOT",$_SERVER['DOCUMENT_ROOT']);
             }
-            $_SERVER['DOCUMENT_ROOT']=realpath($_SERVER['DOCUMENT_ROOT']);
+            $_SERVER['DOCUMENT_ROOT']=\realpath($_SERVER['DOCUMENT_ROOT']);
             $base='';
             if (!$cli)
-                $base=rtrim($this->fixslashes(
-                    dirname($_SERVER['SCRIPT_NAME'])),'/');
-            $uri=parse_url((preg_match('/^\w+:\/\//',$_SERVER['REQUEST_URI'])?'':
+                $base=\rtrim($this->fixslashes(
+                    \dirname($_SERVER['SCRIPT_NAME'])),'/');
+            $uri=\parse_url((\preg_match('/^\w+:\/\//',$_SERVER['REQUEST_URI'])?'':
                     $scheme.'://'.$_SERVER['SERVER_NAME']).$_SERVER['REQUEST_URI']);
             $_SERVER['REQUEST_URI']=$uri['path'].
                 (isset($uri['query'])?'?'.$uri['query']:'').
                 (isset($uri['fragment'])?'#'.$uri['fragment']:'');
-            $path=preg_replace('/^'.preg_quote($base,'/').'/','',$uri['path']);
+            $path=\preg_replace('/^'.\preg_quote($base,'/').'/','',$uri['path']);
             $jar=[
                 'expire'=>0,
                 'lifetime'=>0,
                 'path'=>$base?:'/',
-                'domain'=>is_int(strpos($_SERVER['SERVER_NAME'],'.')) &&
-                    !filter_var($_SERVER['SERVER_NAME'],FILTER_VALIDATE_IP)?
+                'domain'=>\str_contains($_SERVER['SERVER_NAME'],'.') &&
+                    !\filter_var($_SERVER['SERVER_NAME'],FILTER_VALIDATE_IP)?
                     $_SERVER['SERVER_NAME']:'',
                 'secure'=>($scheme=='https'),
                 'httponly'=>TRUE,
@@ -2187,55 +2182,55 @@ namespace F3 {
                 'LANGUAGE'=>isset($headers['Accept-Language'])?
                     $this->language($headers['Accept-Language']):
                     $this->FALLBACK,
-                'MB'=>extension_loaded('mbstring'),
+                'MB'=>\extension_loaded('mbstring'),
                 'PACKAGE'=>self::PACKAGE,
                 'PATH'=>$path,
                 'PLUGINS'=>$this->fixslashes(__DIR__).'/../',
                 'PORT'=>$port,
                 'QUERY'=> $uri['query'] ?? '',
                 'REALM'=>$scheme.'://'.$_SERVER['SERVER_NAME'].
-                    (!in_array($port,[80,443])?(':'.$port):'').
+                    (!\in_array($port,[80,443])?(':'.$port):'').
                     $_SERVER['REQUEST_URI'],
                 'ROOT'=>$_SERVER['DOCUMENT_ROOT'],
                 'SCHEME'=>$scheme,
                 'SEED'=>$this->hash($_SERVER['SERVER_NAME'].$base),
-                'SERIALIZER'=>extension_loaded($ext='igbinary')?$ext:'php',
+                'SERIALIZER'=>\extension_loaded($ext='igbinary')?$ext:'php',
                 'TIME'=>&$_SERVER['REQUEST_TIME_FLOAT'],
-                'TZ'=>@date_default_timezone_get(),
+                'TZ'=>@\date_default_timezone_get(),
                 'URI'=>&$_SERVER['REQUEST_URI'],
                 'VERB'=>&$_SERVER['REQUEST_METHOD'],
                 'VERSION'=>self::VERSION,
             ];
             // Create hive
             parent::__construct(new BaseHive(), $init);
-            if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE) {
+            if (!\headers_sent() && \session_status()!=PHP_SESSION_ACTIVE) {
                 unset($jar['expire']);
-                session_cache_limiter('');
-                session_set_cookie_params($jar);
+                \session_cache_limiter('');
+                \session_set_cookie_params($jar);
             }
             if (PHP_SAPI=='cli-server' &&
-                preg_match('/^'.preg_quote($base,'/').'$/',$this->URI))
+                \preg_match('/^'.\preg_quote($base,'/').'$/',$this->URI))
                 $this->reroute('/');
-            if (ini_get('auto_globals_jit')) {
+            if (\ini_get('auto_globals_jit')) {
                 // Override setting
                 $GLOBALS['_ENV']=$_ENV;
                 $GLOBALS['_REQUEST']=$_REQUEST;
             }
             // Sync PHP globals with corresponding hive keys
-            foreach (explode('|',Base::GLOBALS) as $global) {
+            foreach (\explode('|',Base::GLOBALS) as $global) {
                 $sync=$this->sync($global);
-                if (preg_match('/SERVER|ENV/',$global))
+                if (\preg_match('/SERVER|ENV/',$global))
                     $this->_hive_states['init'][0]->{$global} = $sync;
             }
-            if ($check && $error=error_get_last())
+            if ($check && $error=\error_get_last())
                 // Error detected
                 $this->error(500,
-                    sprintf(self::E_Fatal,$error['message']),[$error]);
-            date_default_timezone_set($this->TZ);
+                    \sprintf(self::E_Fatal,$error['message']),[$error]);
+            \date_default_timezone_set($this->TZ);
             // Register framework autoloader
-            spl_autoload_register([$this,'autoload']);
+            \spl_autoload_register([$this,'autoload']);
             // Register shutdown handler
-            register_shutdown_function([$this,'unload'],getcwd());
+            \register_shutdown_function([$this,'unload'],\getcwd());
         }
 
     }
