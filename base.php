@@ -915,7 +915,7 @@ final class Base extends Prefab implements ArrayAccess {
 		return $this->recursive($arg,
 			function($val) use($tags) {
 				if ($tags!='*')
-					$val=trim(strip_tags($val,
+					$val=trim(strip_tags($val??'',
 						'<'.implode('><',$this->split($tags)).'>'));
 				return trim(preg_replace(
 					'/[\x00-\x08\x0B\x0C\x0E-\x1F]/','',$val));
