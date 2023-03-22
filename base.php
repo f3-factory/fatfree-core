@@ -1063,11 +1063,12 @@ final class Base extends Prefab implements ArrayAccess {
 							if ($php81) {
 								$lang = $this->split($this->LANGUAGE);
 								// requires intl extension
-								$formatter = new IntlDateFormatter($lang[0],
-									(empty($mod) || $mod=='short')
-										? IntlDateFormatter::SHORT :
-										($mod=='full' ? IntlDateFormatter::LONG : IntlDateFormatter::MEDIUM),
-									IntlDateFormatter::NONE);
+								$dateType=(empty($mod) || $mod=='short') ? IntlDateFormatter::SHORT :
+									($mod=='full' ? IntlDateFormatter::FULL : IntlDateFormatter::LONG);
+								$pattern = $dateType === IntlDateFormatter::SHORT
+									? IntlDatePatternGenerator::create($lang[0])?->getBestPattern('YYYYMMdd') : null;
+								$formatter = new IntlDateFormatter($lang[0],$dateType,
+									IntlDateFormatter::NONE, pattern: $pattern);
 								return $formatter->format($args[$pos]);
 							} else {
 								if (empty($mod) || $mod=='short')
