@@ -545,8 +545,9 @@ class SQL {
 		if (isset($parts[0]) && strstr($parts[0],':',TRUE)=='mysql')
 			$options+=[\PDO::MYSQL_ATTR_INIT_COMMAND=>'SET NAMES '.
 				strtolower(str_replace('-','',$fw->ENCODING)).';'];
+		if (isset($parts[0]) && strstr($parts[0], ':', TRUE) == 'dblib')
+            $options+=[\PDO::ATTR_TIMEOUT=>3600];
 		$this->pdo=new \PDO($dsn,$user,$pw,$options);
-        $this->pdo->setattribute(\PDO::ATTR_TIMEOUT, 3600); //10 min timeout
         $this->engine=$this->pdo->getattribute(\PDO::ATTR_DRIVER_NAME);
 	}
 
