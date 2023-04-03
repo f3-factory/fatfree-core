@@ -3112,6 +3112,7 @@ class Preview extends View {
 	*	@param $escape bool
 	**/
 	function resolve($node,array $hive=NULL,$ttl=0,$persist=FALSE,$escape=NULL) {
+		$hash=null;
 		$fw=$this->fw;
 		$cache=Cache::instance();
 		if ($escape!==NULL) {
