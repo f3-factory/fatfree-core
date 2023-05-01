@@ -413,9 +413,9 @@ class SQL {
 							if (preg_match('/'.$regex.'/i',$row[$val[2]]))
 								break;
 						if (
-							in_array($this->engine, array('sqlsrv', 'dblib'), true)
-							|| !isset($rows[$row[$val[1]]])
-						) // handle duplicate rows in MSSQL + PgSQL
+							in_array($this->engine, array('sqlsrv', 'dblib'), true) // handle duplicate rows in MSSQL
+							|| !isset($rows[$row[$val[1]]]) // handle duplicate rows in PgSQL
+						)
 							$rows[$row[$val[1]]]=[
 								'type'=>$row[$val[2]],
 								'pdo_type'=>$type,
