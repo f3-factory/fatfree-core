@@ -42,7 +42,7 @@ namespace F3 {
         }
 
         // Prohibit cloning
-        private function __clone() {}
+//        private function __clone() {}
 
     }
 
@@ -53,41 +53,23 @@ namespace F3 {
         /** @var array dynamic hive properties */
         protected array $_hive_data = [];
 
-        /** @var array state storage */
-        protected array $_hive_states = [];
+        const OWN_KEYS = ['_hive_data'];
 
-        const OWN_KEYS = ['_hive','_hive_data','_hive_states'];
-
-        protected static ?\Closure $isShadow = NULL;
-
-        function __construct(
-            /** shadow for typed hive properties */
-            protected ?Hive $_hive=NULL,
-            array $data=[]
-        ) {
-            // if Hive object is given, use it as shadow hive instead
-            if ($_hive)
-                $this->_hive = $_hive->_hive;
-            // proxy for uninitialized Hive
-            if (!$this->_hive) {
-                $this->_hive = clone $this;
-                foreach ($this::OWN_KEYS as $key) {
-                    unset($this->_hive->{$key});
+        function __construct(array $data=[])
+        {
+            // hydrate property data
+            foreach ($data as $key => $value) {
+                if (property_exists($this, $key)) {
+                    $this->$key = $value;
+                    unset($data[$key]);
                 }
             }
-            // enable proxy pattern
-            \array_map(function($prop) {
-                unset($this->{$prop->getName()});
-            },(new \ReflectionClass($this))
-                ->getProperties(\ReflectionProperty::IS_PUBLIC));
             // copy fluent hive data
             foreach ($data as $key => $value) {
-                $this->_hive->{$key} = $value;
-            }
-            $this->state('init');
-            if (!self::$isShadow) {
-                $ref = new \ReflectionProperty(self::class, '_hive');
-                self::$isShadow = fn($obj) => !$ref->isInitialized($obj);
+                // only set plain data here, because using the setter is too expensive
+                // we'll configure at a later point
+                $this->_hive_data[$key] = $value; // only set plain data, setter is too expensive
+//                $this->{$key} = $value; // too slow
             }
         }
 
@@ -104,38 +86,39 @@ namespace F3 {
          * array elements, and object properties by default. Use $var to specify
          * a different hive, array or object to work with.
          */
-        public function &ref(array|string $key, bool $add=TRUE, mixed &$var=NULL, mixed $val=NULL): mixed
+        public function &ref(array|string $key, bool $add=TRUE, mixed &$src=NULL, mixed $val=NULL): mixed
         {
             $null=NULL;
-            $eager=NULL;
+            $rootKey=NULL;
             $parts=\is_array($key) ? $key : $this->cut($key);
             // use base hive as default value store when none was given
-            if (\is_null($var)) {
+            if (\is_null($src)) {
                 // when _hive is available, it's a call from the wrapper, otherwise from within the shadow hive
-                $hive = (self::$isShadow)($this) ? $this : $this->_hive;
+                $hive = $this;
                 // select origin of value storage (property or fluent data)
                 if (\property_exists($hive,$parts[0])
                     && !\in_array($parts[0],Hive::OWN_KEYS)) {
+                    // TODO: when we initialize all by default, we don't need the reflection
                     if ((new \ReflectionProperty(static::class, $parts[0]))
                         ->isInitialized($hive)) {
-                        $var=&$hive->{$parts[0]};
+                        $src=&$hive->{$parts[0]};
                         \array_shift($parts);
                     } else {
                         // eagerly initialize property for reference
-                        $eager=$parts[0];
-                        $var=$null;
-                        if (\count($parts) === 1) {
-                            $hive->{$eager} = $val;
-                            $var=&$hive->{$eager};
+                        $rootKey=$parts[0];
+                        $src=$null;
+                        if (\count($parts) === 1) { //TODO: really needed?
+                            $hive->{$rootKey} = $val;
+                            $src=&$hive->{$rootKey};
                             \array_shift($parts);
                         }
                     }
                 } elseif ($add)
-                    $var=&$this->_hive_data;
+                    $src=&$this->_hive_data;
                 else
-                    $var=$this->_hive_data;
+                    $src=$this->_hive_data;
             }
-            $obj=\is_object($var);
+            $obj=\is_object($src);
             // assemble nested value access
             foreach ($parts as $part) {
                 if ($part=='->') {
@@ -143,41 +126,43 @@ namespace F3 {
                     continue;
                 } elseif ($obj) {
                     $obj=FALSE;
-                    if (!\is_object($var))
-                        $var=new \stdClass;
-                    if ($add || \property_exists($var,$part))
-                        $var=&$var->$part;
+                    if (!\is_object($src))
+                        $src=new \stdClass;
+                    if ($add || \property_exists($src,$part))
+                        $src=&$src->$part;
                     else {
-                        $var=&$null;
+                        $src=&$null;
                         break;
                     }
                 }
                 else {
-                    if (!\is_array($var))
-                        $var=[];
-                    if ($add || \array_key_exists($part,$var))
-                        $var=&$var[$part];
+                    if (!\is_array($src))
+                        $src=[];
+                    if ($add || \array_key_exists($part,$src))
+                        $src=&$src[$part];
                     else {
-                        $var=&$null;
+                        $src=&$null;
                         break;
                     }
                 }
-                if ($eager && isset($hive)) {
+                if ($rootKey && isset($hive)) {
                     // eager initialize for nested depth access
-                    $hive->{$parts[0]} = $var;
-                    $var=&$hive->{$parts[0]};
-                    $eager=NULL;
+                    $hive->{$parts[0]} = $src;
+                    $src=&$hive->{$parts[0]};
+                    $rootKey=NULL;
                 }
             }
-            return $var;
+            return $src;
         }
 
         /**
          * export hive to array
          */
-        function toArray(): array {
+        function toArray(): array
+        {
+//            return \array_map($this->get(...), array_keys($this->_hive_data));
             $out = [];
-            foreach (\array_diff(\array_keys(\get_object_vars($this->_hive) + $this->_hive_data),
+            foreach (\array_diff(\array_keys((\get_object_vars($this)) + $this->_hive_data),
                 self::OWN_KEYS) as $key) {
                 $out[$key] = $this->get($key);
             }
@@ -187,28 +172,54 @@ namespace F3 {
         /**
          * Convenience method for removing hive key
          **/
-        function clear(string $key): void {
+        function clear(string $key): void
+        {
             $parts = $this->cut($key);
-            // proxy call handler
-            if ((self::$isShadow)($this)) {
-                eval('unset('.$this->compile('@this->'.$key,FALSE).');');
-            }
-            // fluent data
-            elseif (\array_key_exists($parts[0],$this->_hive_data)) {
+            if (\array_key_exists($parts[0],$this->_hive_data)) {
+                // fluent data
                 eval('unset('.$this->compile('@this->_hive_data.'.$key, FALSE).');');
-            }
-            // typed properties
-            elseif (isset($this->_hive_states['init'])
-                && \property_exists($initState = $this->_hive_states['init'][0],$parts[0])) {
-                /** @var static $initState */
-                if ($initState->exists($key, $val)) {
-                    // Reset default value (cannot remove property and reuse it afterwards)
-                    $this->set($key, $val);
-                } else {
-                    // forward call to proxy
-                    $this->_hive->clear($key);
+            } elseif (property_exists($this, $parts[0])) {
+                $null=false;
+                if (isset($parts[1])) {
+                    // do no unset class properties
+                    $tmp = $parts;
+                    array_pop($tmp);
+                    if (end($tmp) === '->') {
+                        array_pop($tmp);
+                        $null = !(($ref=$this->ref($tmp)) instanceof \stdClass);
+                    }
+                    if (!$null)
+                        eval('unset('.$this->compile('@this->'.$key,FALSE).');');
+                }
+                if ($null || !isset($parts[1])) {
+                    $rp = new \ReflectionProperty($ref ?? $this, end($parts));
+                    $ref=&$this->ref($key);
+                    $type=$rp->getType();
+                    if ($rp->hasDefaultValue()) {
+                        $ref = $rp->getDefaultValue();
+                    } elseif ($type->allowsNull()) {
+                        $ref=null;
+                    } elseif ($type->getName() === 'array') {
+                        $ref=[];
+                    }
                 }
             }
+        }
+
+        /**
+         * Return TRUE if a hive key is accessible and typed property is initialized
+         */
+        public function accessible(string $key): bool
+        {
+            if (\array_key_exists($key, $this->_hive_data)) {
+                return true;
+            }
+            if (\property_exists($this,$key)
+                && !\in_array($key,Hive::OWN_KEYS)) {
+                return (new \ReflectionProperty(static::class, $key))
+                    ->isInitialized($this);
+            }
+            return false;
         }
 
         /**
@@ -281,6 +292,7 @@ namespace F3 {
          * Bind value to hive key
          */
         function set(string $key, mixed $val, ?int $ttl=null): mixed {
+
             $ref=&$this->ref($key, val: $val);
             $ref=$val;
             return $ref;
@@ -301,25 +313,11 @@ namespace F3 {
         }
 
         /**
-         * Return TRUE if a hive key is accessible and typed property is initialized
-         */
-        public function accessible(string $key): bool
-        {
-            $hive = (self::$isShadow)($this) ? $this : $this->_hive;
-            $init=TRUE;
-            if (\property_exists($hive,$key)
-                && !\in_array($key,Hive::OWN_KEYS)) {
-                $init = (new \ReflectionProperty(static::class, $key))
-                    ->isInitialized($hive);
-            }
-            return $init;
-        }
-
-        /**
          * Return TRUE if hive key is set
          * (or return timestamp and TTL if cached)
          */
-        function exists(string $key, mixed &$val=NULL): bool {
+        function exists(string $key, mixed &$val=NULL): bool|array
+        {
             $parts = $this->cut($key);
             if (!$this->accessible($parts[0]))
                 return false;
@@ -330,45 +328,13 @@ namespace F3 {
         /**
          * Return TRUE if hive key is empty and not cached
          **/
-        function devoid(string $key, mixed &$val=NULL): bool {
+        function devoid(string $key, mixed &$val=NULL): bool
+        {
             $parts = $this->cut($key);
             if (!$this->accessible($parts[0]))
                 return true;
             $val=$this->ref($key,FALSE);
             return empty($val);
-        }
-
-        /**
-         * deep clone object with its public properties
-         */
-        public function clone(mixed $item): mixed {
-            if (\is_object($item)) {
-                if (!(new \ReflectionObject($item))->isCloneable())
-                    return $item;
-                $new = clone $item;
-                foreach (\get_object_vars($item) as $key => $var)
-                    $new->{$key} = $this->clone($var);
-            } elseif (\is_array($item)) {
-                $new = [];
-                foreach ($item as $key => $var)
-                    $new[$key] = $this->clone($var);
-            }
-            return $new ?? $item;
-        }
-
-        /**
-         * Memorize current hive state
-         */
-        function state(string $name): void {
-            $this->_hive_states[$name] = $this->clone([$this->_hive, $this->_hive_data]);
-        }
-
-        /**
-         * Restore previous hive state
-         */
-        function restore(string $state): void {
-            $this->_hive = $this->clone($this->_hive_states[$state][0]);
-            $this->_hive_data = $this->clone($this->_hive_states[$state][1]);
         }
 
         /**
@@ -432,45 +398,26 @@ namespace F3 {
 
     }
 
-    class BaseHive extends Hive {
+    // TODO:  only for testing
+    class ShadowedHive extends Hive {
 
-        public string $AGENT = '';
-        public bool $AJAX = FALSE;
-        public ?string $ALIAS = NULL;
-        public array $ALIASES = [];
-        public string|array $AUTOLOAD = './';
-        public string $BASE = '';
-        public int $BITMASK = ENT_COMPAT|ENT_SUBSTITUTE;
-        public ?string $BODY = NULL;
-        public string|bool $CACHE = FALSE;
-        public bool $CASELESS = FALSE;
-        public bool $CLI = FALSE;
-        public array $CORS = [
-            'headers'=>'',
-            'origin'=>FALSE,
-            'credentials'=>FALSE,
-            'expose'=>FALSE,
-            'ttl'=>0
+        const ProxyProps = [
+            'CACHE',
+            'ENCODING',
+            'FALLBACK',
+            'LANGUAGE',
+            'LOCALES',
+            'TZ',
+            'JAR',
         ];
-        public ?object $CONTAINER = NULL;
-        public int $DEBUG = 2;
-        public array $DIACRITICS = [];
-        public string $DNSBL = '';
-        public array $EMOJI = [];
-        public string $ENCODING = 'UTF-8';
-        public ?array $ERROR = NULL;
-        public bool $ESCAPE = TRUE;
-        public ?\Throwable $EXCEPTION = NULL;
-        public string|array|null $EXEMPT = NULL;
-        public string $FALLBACK = 'en';
-        public array $FORMATS = [];
-        //	public string $FRAGMENT = '';
-        public bool $HALT = TRUE;
-        public array $HEADERS = [];
-        public bool $HIGHLIGHT = FALSE;
-        public string $HOST = '';
-        public string $IP = '';
-        public array $JAR = [
+
+        const OWN_KEYS = ['_hive','_hive_data'];
+
+        // testing
+        public string|bool $CACHE = FALSE; // proxy
+        public string $ENCODING = 'UTF-8'; // proxy
+        public string $FALLBACK = 'en'; // proxy
+        public array $JAR = [ // proxy
             'expire'=>0,
             'lifetime'=>0,
             'path'=>'/',
@@ -479,62 +426,175 @@ namespace F3 {
             'httponly'=>TRUE,
             'samesite'=>'Lax',
         ];
-        public string $LANGUAGE = '';
-        public string $LOCALES = './';
-        public int $LOCK = LOCK_EX;
-        public string $LOGGABLE = '*';
-        public string $LOGS = './';
-        public bool $MB = FALSE;
-        public mixed $ONERROR = NULL;
-        public mixed $ONREROUTE = NULL;
-        public string $PACKAGE = '';
-        public array $PARAMS = [];
-        public string $PATH = '';
-        public ?string $PATTERN = NULL;
-        public string $PLUGINS = 'lib/';
-        public int $PORT = 80;
-        public ?string $PREFIX = NULL;
-        public string $PREMAP = '';
-        public string $QUERY = '';
-        public bool $QUIET = FALSE;
-        public bool $RAW = FALSE;
-        public string $REALM = '';
-        public string|object $RESPONSE = '';
-        public string $ROOT = '';
-        public array $ROUTES = [];
-        public string $SCHEME = 'http';
-        public string $SEED = '';
-        public string $SERIALIZER = 'php';
-        public string $TEMP = 'tmp/';
-        public float $TIME = 0;
-        public string $TZ = '';
-        public string $UI = './';
-        public mixed $UNLOAD = NULL;
-        public string $UPLOADS = './';
-        public string $URI = '';
-        public string $VERB = '';
-        public string $VERSION = '';
-        public string $XFRAME = 'SAMEORIGIN';
+        public string $LANGUAGE = ''; // proxy
+        public string $LOCALES = './'; // proxy
+        public string $TZ = ''; // proxy
 
-        public ?array $GET = [];
-        public ?array $POST = [];
-        public ?array $COOKIE = [];
-        public ?array $REQUEST = [];
-        public ?array $SESSION = [];
-        public ?array $FILES = [];
-        public ?array $SERVER = [];
-        public ?array $ENV = [];
+        function __construct(
+            array $data=[],
+            /** shadow for typed hive properties */
+            protected ?Hive $_hive=NULL,
+        ) {
+            // proxy for uninitialized Hive
+            if (!$this->_hive && static::ProxyProps) {
+                $this->_hive = clone $this;
+                unset($this->_hive->{'_hive_data'});
+            }
+            // enable proxy pattern
+            if (static::ProxyProps) {
+//                $x=(new \ReflectionClass($this))
+//                    ->getProperties(\ReflectionProperty::IS_PUBLIC);
+//            $c = \Closure::bind(fn($obj) => get_object_vars($obj),null,null);
+//            $x= array_keys($c($this));
+//                $x = array_diff($x, static::ProxyProps);
+                \array_map(function($prop) {
+//                    unset($this->_hive->{$prop->getName()});
+//                    unset($this->_hive->{$prop});
+                    unset($this->{$prop});
+                },static::ProxyProps);
+            }
+            // copy fluent hive data
+            foreach ($data as $key => $value) {
+                if (in_array($key, static::ProxyProps)) {
+                    $this->_hive->{$key} = $value;
+//                    $this->{$key} = $value; // this is very slow. why?
+                    unset($data[$key]);
+                }
+            }
+            parent::__construct($data);
+        }
+
+        public function &ref(array|string $key, bool $add=TRUE, mixed &$src=NULL, mixed $val=NULL): mixed
+        {
+            $null=NULL;
+            $eager=NULL;
+            $parts=\is_array($key) ? $key : $this->cut($key);
+            // use base hive as default value store when none was given
+            if (\is_null($src)) {
+                // when _hive is available, it's a call from the wrapper, otherwise from within the shadow hive
+                $hive = !in_array($parts[0], static::ProxyProps) ? $this : $this->_hive;
+                // select origin of value storage (property or fluent data)
+                if (\property_exists($hive,$parts[0])
+                    && !\in_array($parts[0],Hive::OWN_KEYS)) {
+                    // TODO: when we initialize all by default, we don't need the reflection
+                    if ((new \ReflectionProperty(static::class, $parts[0]))
+                        ->isInitialized($hive)) {
+                        $src=&$hive->{$parts[0]};
+                        \array_shift($parts);
+                    } else {
+                        // eagerly initialize property for reference
+                        $eager=$parts[0];
+                        $src=$null;
+                        if (\count($parts) === 1) { //TODO: really needed?
+                            $hive->{$eager} = $val;
+                            $src=&$hive->{$eager};
+                            \array_shift($parts);
+                        }
+                    }
+                } elseif ($add)
+                    $src=&$this->_hive_data;
+                else
+                    $src=$this->_hive_data;
+            }
+            $obj=\is_object($src);
+            // assemble nested value access
+            foreach ($parts as $part) {
+                if ($part=='->') {
+                    $obj=TRUE;
+                    continue;
+                } elseif ($obj) {
+                    $obj=FALSE;
+                    if (!\is_object($src))
+                        $src=new \stdClass;
+                    if ($add || \property_exists($src,$part))
+                        $src=&$src->$part;
+                    else {
+                        $src=&$null;
+                        break;
+                    }
+                }
+                else {
+                    if (!\is_array($src))
+                        $src=[];
+                    if ($add || \array_key_exists($part,$src))
+                        $src=&$src[$part];
+                    else {
+                        $src=&$null;
+                        break;
+                    }
+                }
+                if ($eager && isset($hive)) {
+                    // eager initialize for nested depth access
+                    $hive->{$parts[0]} = $src;
+                    $src=&$hive->{$parts[0]};
+                    $eager=NULL;
+                }
+            }
+            return $src;
+        }
+
+        function clear(string $key): void {
+            $parts = $this->cut($key);
+            // proxy call handler
+            if ($this->_hive === NULL) {
+                eval('unset('.$this->compile('@this->'.$key,FALSE).');');
+            }
+            // fluent data
+            elseif (\array_key_exists($parts[0],$this->_hive_data)) {
+                eval('unset('.$this->compile('@this->_hive_data.'.$key, FALSE).');');
+            }
+            // typed properties
+//            else {
+                // forward call to proxy
+//                $this->_hive->clear($key);
+
+//            elseif (isset($this->init)
+//                && \property_exists($this->init,$parts[0])) {
+//                /** @var static $initState */
+//                if (array_key_exists($key, $this->init)) {
+//                    // Reset default value (cannot remove property and reuse it afterwards)
+//                    $this->set($key, $this->init[$key]);
+//                } else {
+//                    // forward call to proxy
+//                    $this->_hive->clear($key);
+//                }
+//            }
+        }
+
+        /**
+         * export hive to array
+         */
+        function toArray(): array {
+            $out = [];
+            foreach (\array_diff(\array_keys(($this->_hive ? \get_object_vars($this->_hive) : []) + $this->_hive_data),
+                self::OWN_KEYS) as $key) {
+                $out[$key] = $this->get($key);
+            }
+            return $out;
+        }
+
     }
 
     //! Base structure
-    final class Base extends BaseHive {
+
+    /**
+     * @property ?array $GET
+     * @property ?array $POST
+     * @property ?array $REQUEST
+     * @property ?array $COOKIE
+     * @property ?array $SESSION
+     * @property ?array $FILES
+     * @property ?array $SERVER
+     * @property ?array $ENV
+     */
+    final class Base extends ShadowedHive {
 
         use Prefab, Router;
 
         //@{ Framework details
         const
             PACKAGE='Fat-Free Framework',
-            VERSION='4.0.0-dev.1';
+            VERSION='4.0.0-dev.2';
         //@}
 
         const
@@ -571,19 +631,115 @@ namespace F3 {
         //! Mutex locks
         private array $locks=[];
 
+        //! Default fallback language
+        private string $fallback='en';
+
+
+        public string $AGENT = '';
+        public bool $AJAX = FALSE;
+        public ?string $ALIAS = NULL;
+        public array $ALIASES = [];
+        public string|array $AUTOLOAD = './';
+        public string $BASE = '';
+        public int $BITMASK = ENT_COMPAT|ENT_SUBSTITUTE;
+        public ?string $BODY = NULL;
+//        public string|bool $CACHE = FALSE; // proxy
+        public bool $CASELESS = FALSE;
+        public bool $CLI = FALSE;
+        public array $CORS = [
+            'headers'=>'',
+            'origin'=>FALSE,
+            'credentials'=>FALSE,
+            'expose'=>FALSE,
+            'ttl'=>0
+        ];
+        public ?object $CONTAINER = NULL;
+        public int $DEBUG = 2;
+        public array $DIACRITICS = [];
+        public string $DNSBL = '';
+        public array $EMOJI = [];
+//        public string $ENCODING = 'UTF-8'; // proxy
+        public ?array $ERROR = NULL;
+        public bool $ESCAPE = TRUE;
+        public ?\Throwable $EXCEPTION = NULL;
+        public string|array|null $EXEMPT = NULL;
+//        public string $FALLBACK = 'en'; // proxy
+        public array $FORMATS = [];
+        //	public string $FRAGMENT = ''; // proxy
+        public bool $HALT = TRUE;
+        public array $HEADERS = [];
+        public bool $HIGHLIGHT = FALSE;
+        public string $HOST = '';
+        public string $IP = '';
+//        public array $JAR = [ // proxy
+//            'expire'=>0,
+//            'lifetime'=>0,
+//            'path'=>'/',
+//            'domain'=>'',
+//            'secure'=>TRUE,
+//            'httponly'=>TRUE,
+//            'samesite'=>'Lax',
+//        ];
+//        public string $LANGUAGE = ''; // proxy
+//        public string $LOCALES = './'; // proxy
+        public int $LOCK = LOCK_EX;
+        public string $LOGGABLE = '*';
+        public string $LOGS = './';
+        public bool $MB = FALSE;
+        public mixed $ONERROR = NULL;
+        public mixed $ONREROUTE = NULL;
+        public string $PACKAGE = self::PACKAGE;
+        public array $PARAMS = [];
+        public string $PATH = '';
+        public ?string $PATTERN = NULL;
+        public string $PLUGINS = 'lib/';
+        public int $PORT = 80;
+        public ?string $PREFIX = NULL;
+        public string $PREMAP = '';
+        public string $QUERY = '';
+        public bool $QUIET = FALSE;
+        public bool $RAW = FALSE;
+        public string $REALM = '';
+        public string|object $RESPONSE = '';
+        public string $ROOT = '';
+        public array $ROUTES = [];
+        public string $SCHEME = 'http';
+        public string $SEED = '';
+        public string $SERIALIZER = 'php';
+        public string $TEMP = 'tmp/';
+        public float $TIME = 0;
+//        public string $TZ = ''; // proxy
+        public string $UI = './';
+        public mixed $UNLOAD = NULL;
+        public string $UPLOADS = './';
+        public string $URI = '';
+        public string $VERB = '';
+        public string $VERSION = self::VERSION;
+        public string $XFRAME = 'SAMEORIGIN';
+
+//        public ?array $GET = [];
+//        public ?array $POST = [];
+//        public ?array $COOKIE = [];
+//        public ?array $REQUEST = [];
+//        public ?array $SESSION = [];
+//        public ?array $FILES = [];
+//        public ?array $SERVER = [];
+//        public ?array $ENV = [];
+
         /**
          * Sync PHP global with corresponding hive key
          */
         function sync(string $key): ?array {
-            return $GLOBALS['_'.$key] = &$this->_hive->{$key};
+            return $GLOBALS['_'.$key] = &$this->_hive_data[$key];
         }
 
         /**
          * drop sync of PHP global with corresponding hive key
          */
         function desync(string $key): array {
-            unset($this->_hive->{$key});
-            return $this->_hive->{$key}=$GLOBALS['_'.$key] ?? [];
+            $data = $this->{$key};
+            unset($GLOBALS['_'.$key]);
+            return $this->{$key}=$GLOBALS['_'.$key] = $data ?? [];
         }
 
         /**
@@ -657,7 +813,7 @@ namespace F3 {
         /**
          * handle core-specific hive features
          */
-        public function &ref(array|string $key, bool $add=TRUE, mixed &$var=NULL, mixed $val=NULL): mixed
+        public function &ref(array|string $key, bool $add=TRUE, mixed &$src=NULL, mixed $val=NULL): mixed
         {
             $parts=$this->cut($key);
             if ($parts[0]=='SESSION') {
@@ -668,17 +824,17 @@ namespace F3 {
             } elseif (!\preg_match('/^\w+$/',$parts[0]))
                 \user_error(\sprintf(self::E_Hive,$this->stringify($key)),
                     E_USER_ERROR);
-            $val = &parent::ref($parts,$add,$var, $val);
+            $val = &parent::ref($parts,$add,$src, $val);
             return $val;
         }
 
-        // TODO: disable cache query
-        function exists(string $key, mixed &$val=NULL): bool {
+        // TODO: disable cache query?
+        function exists(string $key, mixed &$val=NULL): bool|array {
             $exists=parent::exists($key,$val);
-            return $exists || !!Cache::instance()->exists($this->hash($key).'.var',$val);
+            return $exists ? true : Cache::instance()->exists($this->hash($key).'.var',$val);
         }
 
-        // TODO: disable cache query
+        // TODO: disable cache query?
         function devoid(string $key, mixed &$val=NULL): bool {
             $devoid=parent::devoid($key,$val);
             return $devoid &&
@@ -686,7 +842,7 @@ namespace F3 {
                     !$val);
         }
 
-        function set(string $key,mixed $val, ?int $ttl=null): mixed {
+        function set(string $key, mixed $val, ?int $ttl=null): mixed {
             $time=$this->TIME;
             if (preg_match('/^(GET|POST|COOKIE)\b(.+)/',$key,$expr)) {
                 $this->set('REQUEST'.$expr[2],$val);
@@ -714,11 +870,13 @@ namespace F3 {
                         mb_internal_encoding($val);
                     break;
                 case 'FALLBACK':
+                    $this->fallback=$val;
                     $lang=$this->language($this->LANGUAGE);
                 case 'LANGUAGE':
                     if (!isset($lang))
                         $val=$this->language($val);
-                    $lex=$this->lexicon($this->LOCALES,$ttl);
+                    if (!empty($this->LOCALES))
+                        $lex=$this->lexicon($this->LOCALES,$ttl);
                 case 'LOCALES':
                     if (isset($lex) || $lex=$this->lexicon($val,$ttl))
                         foreach ($lex as $dt=>$dd) {
@@ -781,7 +939,7 @@ namespace F3 {
                     session_start();
                 if (empty($parts[1])) {
                     // End session
-                    parent::clear('SESSION');
+                    $this->set('SESSION', null);
                     session_unset();
                     session_destroy();
                     $this->clear('COOKIE.'.session_name());
@@ -789,6 +947,8 @@ namespace F3 {
                     parent::clear($key);
                     session_commit();
                 }
+            } elseif(in_array($key, $this->split(Base::GLOBALS))) {
+                $this->set($key, []);
             } else {
                 parent::clear($key);
                 if ($cache->exists($hash=$this->hash($key).'.var'))
@@ -831,7 +991,7 @@ namespace F3 {
         *	@return array
         **/
         function hive(): array {
-            return (array) $this->_hive + $this->_hive_data;
+            return (array) $this + (array) $this->_hive + $this->_hive_data;
         }
 
         /**
@@ -968,32 +1128,32 @@ namespace F3 {
             }
         }
 
-        /**
-         * Memorize current hive state
-         */
-        function state(string $name): void {
-            $globals = \explode('|',Base::GLOBALS);
-            \array_map( [$this,'desync'], $globals);
-            parent::state($name);
-            \array_map( [$this,'sync'], $globals);
-        }
-
-        /**
-         * Restore previous hive state
-         */
-        function restore(string $state, bool $sync=TRUE): void {
-            parent::restore($state);
-            if ($sync) {
-                \array_map( [$this,'sync'], \explode('|',Base::GLOBALS));
-                if (function_exists('getallheaders'))
-                    foreach (\getallheaders()??[] as $key=>$val) {
-                        $tmp=\strtoupper(\strtr($key,'-','_'));
-                        $key=\ucwords(\strtolower($key), '-');
-                        if (isset($_SERVER['HTTP_'.$tmp]))
-                            $_SERVER['HTTP_'.$tmp] = &$this->HEADERS[$key];
-                    }
-            }
-        }
+//        /**
+//         * Memorize current hive state
+//         */
+//        function state(string $name): void {
+//            $globals = \explode('|',Base::GLOBALS);
+//            \array_map([$this,'desync'], $globals);
+//            parent::state($name);
+//            \array_map([$this,'sync'], $globals);
+//        }
+//
+//        /**
+//         * Restore previous hive state
+//         */
+//        function restore(string $state, bool $sync=TRUE): void {
+//            parent::restore($state);
+//            if ($sync) {
+//                \array_map( [$this,'sync'], \explode('|',Base::GLOBALS));
+//                if (function_exists('getallheaders'))
+//                    foreach (\getallheaders()??[] as $key=>$val) {
+//                        $tmp=\strtoupper(\strtr($key,'-','_'));
+//                        $key=\ucwords(\strtolower($key), '-');
+//                        if (isset($_SERVER['HTTP_'.$tmp]))
+//                            $_SERVER['HTTP_'.$tmp] = &$this->HEADERS[$key];
+//                    }
+//            }
+//        }
 
         /**
          * Flatten array values and return as CSV string
@@ -1304,7 +1464,7 @@ namespace F3 {
          */
         function language(string $code): string {
             $code=\preg_replace('/\h+|;q=[0-9.]+/','',$code?:'');
-            $code.=($code?',':'').$this->FALLBACK;
+            $code.=($code?',':'').$this->fallback;
             $this->languages=[];
             foreach (\array_reverse(\explode(',',$code)) as $lang)
                 if (\preg_match('/^(\w{2})(?:-(\w{2}))?\b/i',$lang,$parts)) {
@@ -1335,7 +1495,7 @@ namespace F3 {
                 $locales[]=$locale;
             }
             \setlocale(LC_ALL,$locales);
-            return $this->LANGUAGE=\implode(',',$this->languages);
+            return $this->_hive_data['LANGUAGE']=\implode(',',$this->languages);
         }
 
         /**
@@ -2068,7 +2228,7 @@ namespace F3 {
             if (\extension_loaded('mbstring'))
                 \mb_internal_encoding($charset);
             \ini_set('display_errors',0);
-            // Intercept errors/exceptions; PHP5.3-compatible
+            // Intercept errors/exceptions
             $check=\error_reporting((E_ALL|E_STRICT)&~(E_NOTICE|E_USER_NOTICE));
             \set_exception_handler(
                 function(\Throwable $obj) {
@@ -2169,6 +2329,7 @@ namespace F3 {
             elseif (!empty($_SERVER['SERVER_PORT']))
                 $port=$_SERVER['SERVER_PORT'];
             // Default configuration
+            $fallback='en';
             $init = [
                 'AGENT'=>$this->agent($headers),
                 'AJAX'=>$this->ajax($headers),
@@ -2181,9 +2342,10 @@ namespace F3 {
                 'JAR'=>$jar,
                 'LANGUAGE'=>isset($headers['Accept-Language'])?
                     $this->language($headers['Accept-Language']):
-                    $this->FALLBACK,
+                    $fallback,
+                'FALLBACK' => $fallback,
+                'LOCALES' => './',
                 'MB'=>\extension_loaded('mbstring'),
-                'PACKAGE'=>self::PACKAGE,
                 'PATH'=>$path,
                 'PLUGINS'=>$this->fixslashes(__DIR__).'/../',
                 'PORT'=>$port,
@@ -2199,10 +2361,9 @@ namespace F3 {
                 'TZ'=>@\date_default_timezone_get(),
                 'URI'=>&$_SERVER['REQUEST_URI'],
                 'VERB'=>&$_SERVER['REQUEST_METHOD'],
-                'VERSION'=>self::VERSION,
             ];
             // Create hive
-            parent::__construct(new BaseHive(), $init);
+            parent::__construct(data: $init);
             if (!\headers_sent() && \session_status()!=PHP_SESSION_ACTIVE) {
                 unset($jar['expire']);
                 \session_cache_limiter('');
@@ -2218,9 +2379,10 @@ namespace F3 {
             }
             // Sync PHP globals with corresponding hive keys
             foreach (\explode('|',Base::GLOBALS) as $global) {
-                $sync=$this->sync($global);
-                if (\preg_match('/SERVER|ENV/',$global))
-                    $this->_hive_states['init'][0]->{$global} = $sync;
+                $this->_hive_data[$global] = $GLOBALS['_'.$global] ?? [];
+//                $sync = $this->sync($global);
+//                if (\preg_match('/SERVER|ENV/',$global))
+//                    $this->init[$global] = $sync;
             }
             if ($check && $error=\error_get_last())
                 // Error detected
@@ -2356,12 +2518,10 @@ namespace F3 {
                         $this->ref->del($key);
                     return TRUE;
                 case 'memcache':
-                    foreach (memcache_get_extended_stats(
-                        $this->ref,'slabs') as $slabs)
+                    foreach (memcache_get_extended_stats($this->ref,'slabs') as $slabs)
                         foreach (array_filter(array_keys($slabs),'is_numeric')
                             as $id)
-                            foreach (memcache_get_extended_stats(
-                                $this->ref,'cachedump',$id) as $data)
+                            foreach (memcache_get_extended_stats($this->ref,'cachedump',$id) as $data)
                                 if (is_array($data))
                                     foreach (array_keys($data) as $key)
                                         if (preg_match($regex,$key))
@@ -3407,7 +3567,7 @@ namespace F3\Http {
             }
             $obj=is_array($func);
             // Execute pre-route hook if any
-            if ($obj & in_array($hook='beforeroute',$hooks) &&
+            if ($obj & in_array($hook='beforeRoute',$hooks) &&
                 method_exists($func[0],$hook) &&
                 $this->call([$func[0],$hook],$args)===FALSE)
                 return FALSE;
@@ -3415,7 +3575,7 @@ namespace F3\Http {
             if (($out=$this->call($func,$args))===FALSE)
                 return FALSE;
             // Execute post-route hook if any
-            if ($obj & in_array($hook='afterroute',$hooks) &&
+            if ($obj & in_array($hook='afterRoute',$hooks) &&
                 method_exists($func[0],$hook) &&
                 $this->call([$func[0],$hook],$args)===FALSE)
                 return FALSE;
@@ -3538,7 +3698,7 @@ namespace F3\Http {
                             'f3' => $this,
                             'params' => $args,
                             'handler' => $handler
-                        ], ['beforeroute','afterroute']);
+                        ], ['beforeRoute','afterRoute']);
                         $body=ob_get_clean();
                         if ($isPsr = is_object($response)
                             && is_a($response, 'Psr\Http\Message\ResponseInterface')) {
