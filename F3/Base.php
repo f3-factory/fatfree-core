@@ -1,24 +1,23 @@
 <?php
 
-/*
-
-	Copyright (c) 2022 F3::Factory, All rights reserved.
-
-	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
-
-	This is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or later.
-
-	Fat-Free Framework is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-	General Public License for more details.
-
-	You should have received a copy of the GNU General Public License along
-	with Fat-Free Framework. If not, see <http://www.gnu.org/licenses/>.
-
-*/
+/**
+ *
+ * Copyright (c) 2023 F3::Factory, All rights reserved.
+ *
+ * This file is part of the Fat-Free Framework (http://fatfreeframework.com).
+ *
+ * This is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or later.
+ *
+ * Fat-Free Framework is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with Fat-Free Framework. If not, see <http://www.gnu.org/licenses/>.
+ */
 
 namespace F3 {
 
@@ -27,7 +26,6 @@ namespace F3 {
 
     /**
      * Mixin for single-instance classes
-     * @package F3
      */
     trait Prefab {
 
@@ -46,38 +44,82 @@ namespace F3 {
 
     }
 
-    class Hive implements \ArrayAccess {
+
+    /**
+     * Hive, Key-Value store
+     */
+    class Hive {
 
         const E_Hive='Invalid hive key %s';
 
-        /** @var array dynamic hive properties */
+        /** @var array dynamic key-value store */
         protected array $_hive_data = [];
 
-        const OWN_KEYS = ['_hive_data'];
+        /** proxy for typed property overloading */
+        protected ?Hive $_hive=NULL;
+
+        /** list of properties to skip for overload access */
+        protected const OWN_PROPS = ['_hive','_hive_data'];
+
+        /** list of public properties to bypass access with accessor proxy */
+        static protected array $AccessorProps = [];
 
         function __construct(array $data=[])
         {
-            // hydrate property data
-            foreach ($data as $key => $value) {
-                if (property_exists($this, $key)) {
-                    $this->$key = $value;
-                    unset($data[$key]);
+            if (!$this->_hive) {
+                if (!static::$AccessorProps && defined(static::class.'::OVERLOAD_PROPS')) {
+                    // get all public props for overloading
+                    static::$AccessorProps = $public = $this->public(static::class);
+                }
+                if (static::$AccessorProps) {
+                    // create and cache accessor proxy blueprint
+                    if (Registry::exists($rkey='**'.static::class))
+                        $this->_hive = clone Registry::get($rkey);
+                    else {
+                        $this->_hive = clone $this;
+                        // clean-up non-proxy properties
+                        \array_map(function($prop) {
+                            unset($this->_hive->{$prop});
+                        },\array_diff($public ?? $this->public(static::class),
+                            static::$AccessorProps));
+                        Registry::set($rkey, clone $this->_hive);
+                    }
+                    // enable local proxy pattern
+                    \array_map(function($prop) {
+                        unset($this->{$prop});
+                    },static::$AccessorProps);
                 }
             }
-            // copy fluent hive data
+            // set initial data without using setters
             foreach ($data as $key => $value) {
-                // only set plain data here, because using the setter is too expensive
-                // we'll configure at a later point
-                $this->_hive_data[$key] = $value; // only set plain data, setter is too expensive
-//                $this->{$key} = $value; // too slow
+                // proxy property
+                if ($this->_hive && \in_array($key, static::$AccessorProps))
+                    $this->_hive->$key = $value;
+                // local typed property
+                else
+                    if (\property_exists($this, $key))
+                        $this->$key = $value;
+                // fluent hive data
+                else
+                    $this->_hive_data[$key] = $value;
             }
+        }
+
+        /**
+         * return public class properties
+         * @return string[]
+         */
+        protected function public(string $className): array
+        {
+            return \Closure::bind(fn($a) => array_keys(get_class_vars($a)),null,null)($className);
         }
 
         /**
          * Return the parts of specified hive key
          */
-        protected function cut(string $key): array {
-            return \preg_split('/\[\h*[\'"]?(.+?)[\'"]?\h*\]|(->)|\./',
+        protected function cut(string $key): array
+        {
+            return \preg_split('/\[[\'"]?(.+?)[\'"]?\]|(->)|\./',
                 $key,-1,PREG_SPLIT_NO_EMPTY|PREG_SPLIT_DELIM_CAPTURE);
         }
 
@@ -93,24 +135,29 @@ namespace F3 {
             $parts=\is_array($key) ? $key : $this->cut($key);
             // use base hive as default value store when none was given
             if (\is_null($src)) {
-                // when _hive is available, it's a call from the wrapper, otherwise from within the shadow hive
-                $hive = $this;
-                // select origin of value storage (property or fluent data)
+                // when _hive is available, it's a call from the wrapper, otherwise from within the proxy
+                $hive = \in_array($parts[0], static::$AccessorProps) ? $this->_hive : $this;
+                // select origin of value storage (property or dynamic data)
                 if (\property_exists($hive,$parts[0])
-                    && !\in_array($parts[0],Hive::OWN_KEYS)) {
-                    // TODO: when we initialize all by default, we don't need the reflection
-                    if ((new \ReflectionProperty(static::class, $parts[0]))
-                        ->isInitialized($hive)) {
+                    && !\in_array($parts[0],static::OWN_PROPS)) {
+                    // shortcut
+                    if (\count($parts) === 1 && $val !== NULL) {
+                        $hive->{$parts[0]} = $val;
+                        $ref=&$hive->{$parts[0]};
+                        return $ref;
+                    } elseif ($val===null // this ensures that uninitialized properties can be set
+                        || (new \ReflectionProperty(static::class, $parts[0]))->isInitialized($hive))
+                    {
                         $src=&$hive->{$parts[0]};
                         \array_shift($parts);
                     } else {
                         // eagerly initialize property for reference
                         $rootKey=$parts[0];
                         $src=$null;
-                        if (\count($parts) === 1) { //TODO: really needed?
+                        if (\count($parts) === 1) {
                             $hive->{$rootKey} = $val;
                             $src=&$hive->{$rootKey};
-                            \array_shift($parts);
+                            return $src;
                         }
                     }
                 } elseif ($add)
@@ -160,10 +207,14 @@ namespace F3 {
          */
         function toArray(): array
         {
-//            return \array_map($this->get(...), array_keys($this->_hive_data));
-            $out = [];
-            foreach (\array_diff(\array_keys((\get_object_vars($this)) + $this->_hive_data),
-                self::OWN_KEYS) as $key) {
+            $src = [
+                ...\array_keys(\get_object_vars($this)),
+                ...\array_keys($this->_hive_data),
+            ];
+            if ($this->_hive)
+                $src = [...$src, ...\array_keys(\get_object_vars($this->_hive))];
+            $out=[];
+            foreach (\array_diff(array_unique($src),static::OWN_PROPS) as $key) {
                 $out[$key] = $this->get($key);
             }
             return $out;
@@ -178,21 +229,26 @@ namespace F3 {
             if (\array_key_exists($parts[0],$this->_hive_data)) {
                 // fluent data
                 eval('unset('.$this->compile('@this->_hive_data.'.$key, FALSE).');');
-            } elseif (property_exists($this, $parts[0])) {
+            } elseif (\property_exists($this, $parts[0])) {
                 $null=false;
                 if (isset($parts[1])) {
-                    // do no unset class properties
+                    // do no unset class properties except of stdClass
                     $tmp = $parts;
-                    array_pop($tmp);
-                    if (end($tmp) === '->') {
-                        array_pop($tmp);
+                    \array_pop($tmp);
+                    if (\end($tmp) === '->') {
+                        \array_pop($tmp);
                         $null = !(($ref=$this->ref($tmp)) instanceof \stdClass);
                     }
-                    if (!$null)
-                        eval('unset('.$this->compile('@this->'.$key,FALSE).');');
+                    if (!$null) {
+                        if ($this->_hive && \in_array($parts[0], static::$AccessorProps)) {
+                            eval('unset('.$this->compile('@this->_hive->'.$key,FALSE).');');
+                        } else {
+                            eval('unset('.$this->compile('@this->'.$key,FALSE).');');
+                        }
+                    }
                 }
                 if ($null || !isset($parts[1])) {
-                    $rp = new \ReflectionProperty($ref ?? $this, end($parts));
+                    $rp = new \ReflectionProperty($ref ?? $this, \end($parts));
                     $ref=&$this->ref($key);
                     $type=$rp->getType();
                     if ($rp->hasDefaultValue()) {
@@ -214,10 +270,11 @@ namespace F3 {
             if (\array_key_exists($key, $this->_hive_data)) {
                 return true;
             }
-            if (\property_exists($this,$key)
-                && !\in_array($key,Hive::OWN_KEYS)) {
+            if ((\property_exists($this,$key)
+                    || ($isWrap = (\in_array($key, static::$AccessorProps) && $this->_hive)))
+                && !\in_array($key,static::OWN_PROPS)) {
                 return (new \ReflectionProperty(static::class, $key))
-                    ->isInitialized($this);
+                    ->isInitialized(isset($isWrap) && $isWrap ? $this->_hive : $this);
             }
             return false;
         }
@@ -291,8 +348,8 @@ namespace F3 {
         /**
          * Bind value to hive key
          */
-        function set(string $key, mixed $val, ?int $ttl=null): mixed {
-
+        function set(string $key, mixed $val, ?int $ttl=null): mixed
+        {
             $ref=&$this->ref($key, val: $val);
             $ref=$val;
             return $ref;
@@ -337,247 +394,28 @@ namespace F3 {
             return empty($val);
         }
 
-        /**
-         * Convenience method for checking hive key
-         */
-        function offsetExists($key): bool {
-            return $this->exists($key);
-        }
-
-        /**
-         * Convenience method for assigning hive value
-         */
-        function offsetSet(mixed $key, mixed $val): void {
-            $this->set($key,$val);
-        }
-
-        /**
-         * Convenience method for retrieving hive value
-         */
-        function &offsetGet($key): mixed {
-            $val=&$this->ref($key);
-            return $val;
-        }
-
-        /**
-         * Convenience method for removing hive key
-         * @param $key string
-         **/
-        function offsetUnset($key): void {
-            $this->clear($key);
-        }
-
-        /**
-         * Alias for offsetexists()
-         */
         function __isset(string $key): bool {
             return $this->exists($key);
         }
 
-        /**
-         * Alias for offsetset()
-         */
         function __set(string $key,mixed $val): void {
             $this->set($key,$val);
         }
 
-        /**
-         * Alias for offsetget()
-         */
         function &__get(string $key): mixed {
             $val=&$this->ref($key);
             return $val;
         }
 
-        /**
-         * Alias for offsetunset()
-         */
         function __unset(string $key): void {
             $this->clear($key);
         }
 
     }
 
-    // TODO:  only for testing
-    class ShadowedHive extends Hive {
-
-        const ProxyProps = [
-            'CACHE',
-            'ENCODING',
-            'FALLBACK',
-            'LANGUAGE',
-            'LOCALES',
-            'TZ',
-            'JAR',
-        ];
-
-        const OWN_KEYS = ['_hive','_hive_data'];
-
-        // testing
-        public string|bool $CACHE = FALSE; // proxy
-        public string $ENCODING = 'UTF-8'; // proxy
-        public string $FALLBACK = 'en'; // proxy
-        public array $JAR = [ // proxy
-            'expire'=>0,
-            'lifetime'=>0,
-            'path'=>'/',
-            'domain'=>'',
-            'secure'=>TRUE,
-            'httponly'=>TRUE,
-            'samesite'=>'Lax',
-        ];
-        public string $LANGUAGE = ''; // proxy
-        public string $LOCALES = './'; // proxy
-        public string $TZ = ''; // proxy
-
-        function __construct(
-            array $data=[],
-            /** shadow for typed hive properties */
-            protected ?Hive $_hive=NULL,
-        ) {
-            // proxy for uninitialized Hive
-            if (!$this->_hive && static::ProxyProps) {
-                $this->_hive = clone $this;
-                unset($this->_hive->{'_hive_data'});
-            }
-            // enable proxy pattern
-            if (static::ProxyProps) {
-//                $x=(new \ReflectionClass($this))
-//                    ->getProperties(\ReflectionProperty::IS_PUBLIC);
-//            $c = \Closure::bind(fn($obj) => get_object_vars($obj),null,null);
-//            $x= array_keys($c($this));
-//                $x = array_diff($x, static::ProxyProps);
-                \array_map(function($prop) {
-//                    unset($this->_hive->{$prop->getName()});
-//                    unset($this->_hive->{$prop});
-                    unset($this->{$prop});
-                },static::ProxyProps);
-            }
-            // copy fluent hive data
-            foreach ($data as $key => $value) {
-                if (in_array($key, static::ProxyProps)) {
-                    $this->_hive->{$key} = $value;
-//                    $this->{$key} = $value; // this is very slow. why?
-                    unset($data[$key]);
-                }
-            }
-            parent::__construct($data);
-        }
-
-        public function &ref(array|string $key, bool $add=TRUE, mixed &$src=NULL, mixed $val=NULL): mixed
-        {
-            $null=NULL;
-            $eager=NULL;
-            $parts=\is_array($key) ? $key : $this->cut($key);
-            // use base hive as default value store when none was given
-            if (\is_null($src)) {
-                // when _hive is available, it's a call from the wrapper, otherwise from within the shadow hive
-                $hive = !in_array($parts[0], static::ProxyProps) ? $this : $this->_hive;
-                // select origin of value storage (property or fluent data)
-                if (\property_exists($hive,$parts[0])
-                    && !\in_array($parts[0],Hive::OWN_KEYS)) {
-                    // TODO: when we initialize all by default, we don't need the reflection
-                    if ((new \ReflectionProperty(static::class, $parts[0]))
-                        ->isInitialized($hive)) {
-                        $src=&$hive->{$parts[0]};
-                        \array_shift($parts);
-                    } else {
-                        // eagerly initialize property for reference
-                        $eager=$parts[0];
-                        $src=$null;
-                        if (\count($parts) === 1) { //TODO: really needed?
-                            $hive->{$eager} = $val;
-                            $src=&$hive->{$eager};
-                            \array_shift($parts);
-                        }
-                    }
-                } elseif ($add)
-                    $src=&$this->_hive_data;
-                else
-                    $src=$this->_hive_data;
-            }
-            $obj=\is_object($src);
-            // assemble nested value access
-            foreach ($parts as $part) {
-                if ($part=='->') {
-                    $obj=TRUE;
-                    continue;
-                } elseif ($obj) {
-                    $obj=FALSE;
-                    if (!\is_object($src))
-                        $src=new \stdClass;
-                    if ($add || \property_exists($src,$part))
-                        $src=&$src->$part;
-                    else {
-                        $src=&$null;
-                        break;
-                    }
-                }
-                else {
-                    if (!\is_array($src))
-                        $src=[];
-                    if ($add || \array_key_exists($part,$src))
-                        $src=&$src[$part];
-                    else {
-                        $src=&$null;
-                        break;
-                    }
-                }
-                if ($eager && isset($hive)) {
-                    // eager initialize for nested depth access
-                    $hive->{$parts[0]} = $src;
-                    $src=&$hive->{$parts[0]};
-                    $eager=NULL;
-                }
-            }
-            return $src;
-        }
-
-        function clear(string $key): void {
-            $parts = $this->cut($key);
-            // proxy call handler
-            if ($this->_hive === NULL) {
-                eval('unset('.$this->compile('@this->'.$key,FALSE).');');
-            }
-            // fluent data
-            elseif (\array_key_exists($parts[0],$this->_hive_data)) {
-                eval('unset('.$this->compile('@this->_hive_data.'.$key, FALSE).');');
-            }
-            // typed properties
-//            else {
-                // forward call to proxy
-//                $this->_hive->clear($key);
-
-//            elseif (isset($this->init)
-//                && \property_exists($this->init,$parts[0])) {
-//                /** @var static $initState */
-//                if (array_key_exists($key, $this->init)) {
-//                    // Reset default value (cannot remove property and reuse it afterwards)
-//                    $this->set($key, $this->init[$key]);
-//                } else {
-//                    // forward call to proxy
-//                    $this->_hive->clear($key);
-//                }
-//            }
-        }
-
-        /**
-         * export hive to array
-         */
-        function toArray(): array {
-            $out = [];
-            foreach (\array_diff(\array_keys(($this->_hive ? \get_object_vars($this->_hive) : []) + $this->_hive_data),
-                self::OWN_KEYS) as $key) {
-                $out[$key] = $this->get($key);
-            }
-            return $out;
-        }
-
-    }
-
-    //! Base structure
-
     /**
+     * Shared Base Kernel
+     *
      * @property ?array $GET
      * @property ?array $POST
      * @property ?array $REQUEST
@@ -587,30 +425,21 @@ namespace F3 {
      * @property ?array $SERVER
      * @property ?array $ENV
      */
-    final class Base extends ShadowedHive {
+    final class Base extends Hive {
 
         use Prefab, Router;
 
-        //@{ Framework details
         const
             PACKAGE='Fat-Free Framework',
-            VERSION='4.0.0-dev.2';
-        //@}
+            VERSION='4.0.0-dev.3';
 
         const
-            //! Mapped PHP globals
+            // Mapped PHP globals
             GLOBALS='GET|POST|COOKIE|REQUEST|SESSION|FILES|SERVER|ENV',
-            //! Default directory permissions
+            // Default directory permissions
             MODE=0755,
-            //! Syntax highlighting stylesheet
+            // Syntax highlighting stylesheet
             CSS='code.css';
-
-        //@{ Request types
-        const
-            REQ_SYNC=1,
-            REQ_AJAX=2,
-            REQ_CLI=4;
-        //@}
 
         //@{ Error messages
         const
@@ -626,14 +455,23 @@ namespace F3 {
         //@}
 
         //! Language lookup sequence
-        private array $languages;
+        protected array $languages;
 
         //! Mutex locks
-        private array $locks=[];
+        protected array $locks=[];
 
         //! Default fallback language
-        private string $fallback='en';
+        protected string $fallback='en';
 
+        static protected array $AccessorProps = [
+            'CACHE',
+            'ENCODING',
+            'FALLBACK',
+            'LANGUAGE',
+            'LOCALES',
+            'TZ',
+            'JAR',
+        ];
 
         public string $AGENT = '';
         public bool $AJAX = FALSE;
@@ -643,7 +481,7 @@ namespace F3 {
         public string $BASE = '';
         public int $BITMASK = ENT_COMPAT|ENT_SUBSTITUTE;
         public ?string $BODY = NULL;
-//        public string|bool $CACHE = FALSE; // proxy
+        public string|bool $CACHE = FALSE;
         public bool $CASELESS = FALSE;
         public bool $CLI = FALSE;
         public array $CORS = [
@@ -658,32 +496,31 @@ namespace F3 {
         public array $DIACRITICS = [];
         public string $DNSBL = '';
         public array $EMOJI = [];
-//        public string $ENCODING = 'UTF-8'; // proxy
+        public string $ENCODING = 'UTF-8';
         public ?array $ERROR = NULL;
         public bool $ESCAPE = TRUE;
         public ?\Throwable $EXCEPTION = NULL;
         public string|array|null $EXEMPT = NULL;
-//        public string $FALLBACK = 'en'; // proxy
+        public string $FALLBACK = 'en';
         public array $FORMATS = [];
-        //	public string $FRAGMENT = ''; // proxy
         public bool $HALT = TRUE;
         public array $HEADERS = [];
         public bool $HIGHLIGHT = FALSE;
         public string $HOST = '';
         public string $IP = '';
-//        public array $JAR = [ // proxy
-//            'expire'=>0,
-//            'lifetime'=>0,
-//            'path'=>'/',
-//            'domain'=>'',
-//            'secure'=>TRUE,
-//            'httponly'=>TRUE,
-//            'samesite'=>'Lax',
-//        ];
-//        public string $LANGUAGE = ''; // proxy
-//        public string $LOCALES = './'; // proxy
+        public array $JAR = [
+            'expire'=>0,
+            'lifetime'=>0,
+            'path'=>'/',
+            'domain'=>'',
+            'secure'=>TRUE,
+            'httponly'=>TRUE,
+            'samesite'=>'Lax',
+        ];
+        public string $LANGUAGE = '';
+        public string $LOCALES = './';
         public int $LOCK = LOCK_EX;
-        public string $LOGGABLE = '*';
+        public string|array $LOGGABLE = '*';
         public string $LOGS = './';
         public bool $MB = FALSE;
         public mixed $ONERROR = NULL;
@@ -708,7 +545,7 @@ namespace F3 {
         public string $SERIALIZER = 'php';
         public string $TEMP = 'tmp/';
         public float $TIME = 0;
-//        public string $TZ = ''; // proxy
+        public string $TZ = '';
         public string $UI = './';
         public mixed $UNLOAD = NULL;
         public string $UPLOADS = './';
@@ -716,15 +553,6 @@ namespace F3 {
         public string $VERB = '';
         public string $VERSION = self::VERSION;
         public string $XFRAME = 'SAMEORIGIN';
-
-//        public ?array $GET = [];
-//        public ?array $POST = [];
-//        public ?array $COOKIE = [];
-//        public ?array $REQUEST = [];
-//        public ?array $SESSION = [];
-//        public ?array $FILES = [];
-//        public ?array $SERVER = [];
-//        public ?array $ENV = [];
 
         /**
          * Sync PHP global with corresponding hive key
@@ -842,10 +670,10 @@ namespace F3 {
                     !$val);
         }
 
-        function set(string $key, mixed $val, ?int $ttl=null): mixed {
+        function set(string $key, mixed $val, ?int $ttl=null): mixed
+        {
             $time=$this->TIME;
             if (preg_match('/^(GET|POST|COOKIE)\b(.+)/',$key,$expr)) {
-                $this->set('REQUEST'.$expr[2],$val);
                 if ($expr[1]=='COOKIE') {
                     $parts=$this->cut($key);
                     $jar=$this->unserialize($this->serialize($this->JAR));
@@ -858,6 +686,8 @@ namespace F3 {
                     setcookie($parts[1],$val?:'',$jar);
                     $_COOKIE[$parts[1]]=$val;
                     return $val;
+                } else {
+                    $this->set('REQUEST'.$expr[2],$val);
                 }
             }
             else switch ($key) {
@@ -865,18 +695,17 @@ namespace F3 {
                     $val=Cache::instance()->load($val);
                     break;
                 case 'ENCODING':
-                    ini_set('default_charset',$val);
-                    if (extension_loaded('mbstring'))
-                        mb_internal_encoding($val);
+                    \ini_set('default_charset',$val);
+                    \mb_internal_encoding($val);
                     break;
+                // TODO: merge these 3 options into language function
                 case 'FALLBACK':
                     $this->fallback=$val;
                     $lang=$this->language($this->LANGUAGE);
                 case 'LANGUAGE':
                     if (!isset($lang))
                         $val=$this->language($val);
-                    if (!empty($this->LOCALES))
-                        $lex=$this->lexicon($this->LOCALES,$ttl);
+                    $lex=$this->lexicon($this->LOCALES,$ttl);
                 case 'LOCALES':
                     if (isset($lex) || $lex=$this->lexicon($val,$ttl))
                         foreach ($lex as $dt=>$dd) {
@@ -969,7 +798,7 @@ namespace F3 {
          * Return TRUE if property has public visibility
          */
         function visible(object $obj, string $key): bool {
-            if (property_exists($obj,$key)) {
+            if (\property_exists($obj,$key)) {
                 $ref=new \ReflectionProperty(get_class($obj),$key);
                 $out=$ref->ispublic();
                 unset($ref);
@@ -1091,8 +920,8 @@ namespace F3 {
          * Split comma-, semi-colon, or pipe-separated string
          */
         function split(?string $str, bool $noempty=TRUE): array {
-            return array_map('trim',
-                preg_split('/[,;|]/',$str?:'',0,$noempty?PREG_SPLIT_NO_EMPTY:0));
+            return \array_map('trim',
+                \preg_split('/[,;|]/',$str?:'',0,$noempty?PREG_SPLIT_NO_EMPTY:0));
         }
 
         /**
@@ -1106,10 +935,10 @@ namespace F3 {
             }
             else
                 $stack=[];
-            switch (gettype($arg)) {
+            switch (\gettype($arg)) {
                 case 'object':
                     $str='';
-                    foreach (get_object_vars($arg) as $key=>$val)
+                    foreach (\get_object_vars($arg) as $key=>$val)
                         $str.=($str?',':'').
                             $this->export($key).'=>'.
                             $this->stringify($val,[...$stack,$arg]);
@@ -1117,7 +946,7 @@ namespace F3 {
                 case 'array':
                     $str='';
                     $num=isset($arg[0]) &&
-                        ctype_digit(implode('',array_keys($arg)));
+                        \ctype_digit(\implode('',\array_keys($arg)));
                     foreach ($arg as $key=>$val)
                         $str.=($str?',':'').
                             ($num?'':($this->export($key).'=>')).
@@ -1226,7 +1055,7 @@ namespace F3 {
          * Convert special characters to HTML entities
          */
         function encode(string $str): string {
-            return htmlspecialchars($str,$this->BITMASK,
+            return \htmlspecialchars($str,$this->BITMASK,
                 $this->ENCODING)?:$this->scrub($str);
         }
 
@@ -1246,13 +1075,13 @@ namespace F3 {
                     if ($arg===$node)
                         return $arg;
             }
-            switch (gettype($arg)) {
+            switch (\gettype($arg)) {
                 case 'object':
                     $ref=new \ReflectionClass($arg);
                     if ($ref->iscloneable()) {
                         $arg=clone($arg);
-                        $cast=($it=is_a($arg,'IteratorAggregate'))?
-                            iterator_to_array($arg):get_object_vars($arg);
+                        $cast=($it=\is_a($arg,'IteratorAggregate'))?
+                            \iterator_to_array($arg):\get_object_vars($arg);
                         foreach ($cast as $key=>$val) {
                             // skip inaccessible properties #350
                             if (!$it && !isset($arg->$key))
@@ -1278,9 +1107,9 @@ namespace F3 {
             return $this->recursive($arg,
                 function($val) use($tags) {
                     if ($tags!='*')
-                        $val=trim(strip_tags($val,
-                            '<'.implode('><',$this->split($tags)).'>'));
-                    return trim(preg_replace(
+                        $val=\trim(\strip_tags($val,
+                            '<'.\implode('><',$this->split($tags)).'>'));
+                    return \trim(\preg_replace(
                         '/[\x00-\x08\x0B\x0C\x0E-\x1F]/','',$val));
                 }
             );
@@ -1569,11 +1398,11 @@ namespace F3 {
         function status(int $code, ?string $reason = NULL): string
         {
             if ($reason === NULL) {
-                $reason = defined($name = Status::class.'::HTTP_'.$code)
-                    ? constant($name)->value : '';
+                $reason = \defined($name = Status::class.'::HTTP_'.$code)
+                    ? \constant($name)->value : '';
             }
-            if (!$this->CLI && !headers_sent())
-                header($_SERVER['SERVER_PROTOCOL'].' '.$code.' '.$reason);
+            if (!$this->CLI && !\headers_sent())
+                \header($_SERVER['SERVER_PROTOCOL'].' '.$code.' '.$reason);
             return $reason;
         }
 
@@ -1581,24 +1410,24 @@ namespace F3 {
          * Send cache metadata to HTTP client
          */
         function expire(int $secs=0): void {
-            if (!$this->CLI && !headers_sent()) {
+            if (!$this->CLI && !\headers_sent()) {
                 if ($this->PACKAGE)
-                    header('X-Powered-By: '.$this->PACKAGE);
+                    \header('X-Powered-By: '.$this->PACKAGE);
                 if ($this->XFRAME)
-                    header('X-Frame-Options: '.$this->XFRAME);
-                header('X-XSS-Protection: 1; mode=block');
-                header('X-Content-Type-Options: nosniff');
+                    \header('X-Frame-Options: '.$this->XFRAME);
+                \header('X-XSS-Protection: 1; mode=block');
+                \header('X-Content-Type-Options: nosniff');
                 if ($this->VERB=='GET' && $secs) {
                     $time=microtime(TRUE);
-                    header_remove('Pragma');
-                    header('Cache-Control: max-age='.$secs);
-                    header('Expires: '.gmdate('r',round($time+$secs)));
-                    header('Last-Modified: '.gmdate('r'));
+                    \header_remove('Pragma');
+                    \header('Cache-Control: max-age='.$secs);
+                    \header('Expires: '.\gmdate('r',\round($time+$secs)));
+                    \header('Last-Modified: '.\gmdate('r'));
                 }
                 else {
-                    header('Pragma: no-cache');
-                    header('Cache-Control: no-cache, no-store, must-revalidate');
-                    header('Expires: '.gmdate('r',0));
+                    \header('Pragma: no-cache');
+                    \header('Cache-Control: no-cache, no-store, must-revalidate');
+                    \header('Expires: '.\gmdate('r',0));
                 }
             }
         }
@@ -1688,19 +1517,19 @@ namespace F3 {
                 $text='HTTP '.$code.' ('.$req.')';
             $trace=$this->trace($trace);
             $loggable=$this->LOGGABLE;
-            if (!is_array($loggable))
+            if (!\is_array($loggable))
                 $loggable=$this->split($loggable);
             foreach ($loggable as $status)
                 if ($status=='*' ||
-                    preg_match('/^'.preg_replace('/\D/','\d',$status).'$/',(string) $code)) {
-                    error_log($text);
-                    foreach (explode("\n",$trace) as $nexus)
+                    \preg_match('/^'.\preg_replace('/\D/','\d',$status).'$/',(string) $code)) {
+                    \error_log($text);
+                    foreach (\explode("\n",$trace) as $nexus)
                         if ($nexus)
-                            error_log($nexus);
+                            \error_log($nexus);
                     break;
                 }
             if ($highlight=(!$this->CLI && !$this->AJAX &&
-                $this->HIGHLIGHT && is_file($css=__DIR__.'/'.self::CSS)))
+                $this->HIGHLIGHT && \is_file($css=__DIR__.'/'.self::CSS)))
                 $trace=$this->highlight($trace);
             $this->ERROR=[
                 'status'=>$header,
@@ -1714,10 +1543,10 @@ namespace F3 {
             $this->ONERROR=NULL;
             $eol="\n";
             if ((!$handler ||
-                $this->call($handler,[$this,$this->PARAMS],
-                    'beforeroute,afterroute')===FALSE) &&
+                $this->callRoute($handler,[$this,$this->PARAMS],
+                    ['beforeroute','afterroute'])===FALSE) &&
                 !$prior && !$this->QUIET) {
-                $error=array_diff_key(
+                $error=\array_diff_key(
                     $this->ERROR,
                     $this->DEBUG?
                         []:
@@ -1729,7 +1558,7 @@ namespace F3 {
                         $error['text'].PHP_EOL.PHP_EOL.($error['trace'] ?? '');
                 else
                     echo $this->AJAX?
-                        json_encode($error):
+                        \json_encode($error):
                         ('<!DOCTYPE html>'.$eol.
                         '<html>'.$eol.
                         '<head>'.
@@ -1807,19 +1636,20 @@ namespace F3 {
         /**
          * Return TRUE if IPv4 address exists in DNSBL
          */
-        function blacklisted(string $ip): bool {
+        function blacklisted(string $ip): bool
+        {
             if ($this->DNSBL &&
-                !in_array($ip,
-                    is_array($this->EXEMPT)?
+                !\in_array($ip,
+                    \is_array($this->EXEMPT)?
                         $this->EXEMPT:
                         $this->split($this->EXEMPT))) {
                 // Reverse IPv4 dotted quad
-                $rev=implode('.',array_reverse(explode('.',$ip)));
-                foreach (is_array($this->DNSBL)?
+                $rev=\implode('.',\array_reverse(\explode('.',$ip)));
+                foreach (\is_array($this->DNSBL)?
                     $this->DNSBL:
                     $this->split($this->DNSBL) as $server)
                     // DNSBL lookup
-                    if (checkdnsrr($rev.'.'.$server,'A'))
+                    if (\checkdnsrr($rev.'.'.$server,'A'))
                         return TRUE;
             }
             return FALSE;
@@ -1830,7 +1660,8 @@ namespace F3 {
          */
         function traits(object|string $class, array $traits = []): array
         {
-            $reflection = !($class instanceof \ReflectionClass) ? new \ReflectionClass( $class) : $class;
+            $reflection = ($class instanceof \ReflectionClass)
+                ? $class : new \ReflectionClass( $class);
             if ($reflection->getParentClass()) {
                 $traits = $this->traits($reflection->getParentClass(), $traits);
             }
@@ -1902,14 +1733,14 @@ namespace F3 {
          * Grab the callable behind a string or array callable expression
          */
         function grab(string|array $func, ?array $args=NULL): string|array {
-            if (is_array($func)) {
+            if (\is_array($func)) {
                 $func[0] = $this->make($func[0], $args ?? []);
                 return $func;
             }
-            if (preg_match('/(.+)\h*(->|::)\h*(.+)/s',$func,$parts)) {
+            if (\preg_match('/(.+)\h*(->|::)\h*(.+)/s',$func,$parts)) {
                 // Convert string to executable PHP callback
-                if (!class_exists($parts[1]))
-                    user_error(sprintf(self::E_Class,$parts[1]),E_USER_ERROR);
+                if (!\class_exists($parts[1]))
+                    \user_error(\sprintf(self::E_Class,$parts[1]),E_USER_ERROR);
                 if ($parts[2]=='->') {
                     $parts[1] = $this->make($parts[1], $args ?? []);
                 }
@@ -1927,20 +1758,20 @@ namespace F3 {
         public function make(string $class, array $args=[]): mixed {
             if ($this->CONTAINER) {
                 $container=$this->CONTAINER;
-                if (is_object($container) && is_callable([$container,'has'])
+                if (\is_object($container) && \is_callable([$container,'has'])
                     && $container->has($class)) // PSR11
                     return $container->get($class);
-                elseif (is_callable($container))
-                    return call_user_func($container,$class,$args);
+                elseif (\is_callable($container))
+                    return \call_user_func($container,$class,$args);
                 else
-                    user_error(sprintf(self::E_Class,
+                    \user_error(\sprintf(self::E_Class,
                         $this->stringify($class)),
                         E_USER_ERROR);
-            } elseif (in_array(Prefab::class, $this->traits($class))) {
+            } elseif (\in_array(Prefab::class, $this->traits($class))) {
                 return $class::instance();
             }
             $ref = new \ReflectionClass($class);
-            return method_exists($class,'__construct') && $args
+            return $ref->hasMethod('__construct') && $args
                 ? $ref->newInstanceArgs([$this, $args])
                 : $ref->newInstance();
         }
@@ -1951,22 +1782,31 @@ namespace F3 {
         public function call(callable|string|array $func, array $args=[]): mixed
         {
             // Grab the real handler behind the string representation
-            if (!is_callable($func) && !is_callable($func=$this->grab($func,$args)))
-                user_error(sprintf(self::E_Method,
-                    is_string($func)?$func:$this->stringify($func)),
+            if ((!\is_callable($func) || \is_string($func))
+                && !\is_callable($func=$this->grab($func,$args)))
+                \user_error(\sprintf(self::E_Method,
+                    \is_string($func)?$func:$this->stringify($func)),
                     E_USER_ERROR);
             if ($this->CONTAINER) {
-                $service = Service::instance();
-                $ref = is_array($func)
-                    ? new \ReflectionMethod(...$func)
-                    : new \ReflectionFunction($func);
-                $out = [];
-                foreach ($ref->getParameters() as $p)
-                    $out[$pn=$p->getName()] = $args[$pn] ?? $service->resolveParam($p);
-                $args = $out;
+                if ((\is_array($func) && !\method_exists(...$func))
+                    || \is_string($func) && \function_exists($func)) {
+                    $args = \array_values($args);
+                } else {
+                    $service = Service::instance();
+                    $ref = \is_array($func)
+                        ? new \ReflectionMethod(...$func)
+                        : new \ReflectionFunction($func);
+                    $out = [];
+                    $i=0;
+                    foreach ($ref->getParameters() as $p) {
+                        // TODO: write test
+                        $out[$pn=$p->getName()] = $args[$pn] ?? $service->resolveParam($p) ?? $args[$i++];
+                    }
+                    $args = $out;
+                }
             } else
-                $args = array_values($args);
-            return call_user_func_array($func,$args);
+                $args = \array_values($args);
+            return \call_user_func_array($func,$args);
         }
 
         /**
@@ -1976,7 +1816,7 @@ namespace F3 {
         function chain(array|string $funcs, mixed $args=NULL, bool $halt=false): array|false
         {
             $out=[];
-            foreach (is_array($funcs)?$funcs:$this->split($funcs) as $func) {
+            foreach (\is_array($funcs)?$funcs:$this->split($funcs) as $func) {
                 $out[] = $r = $this->call($func,$args);
                 if ($halt && $r === FALSE)
                     break;
@@ -1990,12 +1830,12 @@ namespace F3 {
          */
         function relay(array|string $funcs, mixed $args=NULL, bool $halt=false): mixed
         {
-            foreach (is_array($funcs)?$funcs:$this->split($funcs) as $func) {
+            foreach (\is_array($funcs)?$funcs:$this->split($funcs) as $func) {
                 $args=[$out = $this->call($func,$args)];
                 if ($halt && $out === FALSE)
                     break;
             }
-            return array_shift($args);
+            return \array_shift($args);
         }
 
         /**
@@ -2100,20 +1940,20 @@ namespace F3 {
          * Create mutex, invoke callback then drop ownership when done
          */
         function mutex(string $id, callable|string $func, mixed $args=NULL): mixed {
-            if (!is_dir($tmp=$this->TEMP))
-                mkdir($tmp,self::MODE,TRUE);
+            if (!\is_dir($tmp=$this->TEMP))
+                \mkdir($tmp,self::MODE,TRUE);
             // Use filesystem lock
-            if (is_file($lock=$tmp.
+            if (\is_file($lock=$tmp.
                 $this->SEED.'.'.$this->hash($id).'.lock') &&
-                filemtime($lock)+ini_get('max_execution_time')<microtime(TRUE))
+                \filemtime($lock)+\ini_get('max_execution_time')<\microtime(TRUE))
                 // Stale lock
-                @unlink($lock);
-            while (!($handle=@fopen($lock,'x')) && !connection_aborted())
-                usleep(mt_rand(0,100));
+                @\unlink($lock);
+            while (!($handle=@\fopen($lock,'x')) && !\connection_aborted())
+                \usleep(\mt_rand(0,100));
             $this->locks[$id]=$lock;
             $out=$this->call($func,$args);
-            fclose($handle);
-            @unlink($lock);
+            \fclose($handle);
+            @\unlink($lock);
             unset($this->locks[$id]);
             return $out;
         }
@@ -2122,15 +1962,15 @@ namespace F3 {
          * Read file (with option to apply Unix LF as standard line ending)
          */
         function read(string $file, bool $lf=FALSE): string {
-            $out=@file_get_contents($file);
-            return $lf?preg_replace('/\r\n|\r/',"\n",$out):$out;
+            $out=@\file_get_contents($file);
+            return $lf?\preg_replace('/\r\n|\r/',"\n",$out):$out;
         }
 
         /**
          * Exclusive file write
          */
         function write(string $file, mixed $data, bool $append=FALSE): int|false {
-            return file_put_contents($file,$data,$this->LOCK|($append?FILE_APPEND:0));
+            return \file_put_contents($file,$data,$this->LOCK|($append?FILE_APPEND:0));
         }
 
         /**
@@ -2139,19 +1979,19 @@ namespace F3 {
         function highlight(string $text): string {
             $out='';
             $pre=FALSE;
-            $text=trim($text);
-            if ($text && !preg_match('/^<\?php/',$text)) {
+            $text=\trim($text);
+            if ($text && !\preg_match('/^<\?php/',$text)) {
                 $text='<?php '.$text;
                 $pre=TRUE;
             }
-            foreach (token_get_all($text) as $token)
+            foreach (\token_get_all($text) as $token)
                 if ($pre)
                     $pre=FALSE;
                 else
                     $out.='<span'.
-                        (is_array($token)?
+                        (\is_array($token)?
                             (' class="'.
-                                substr(strtolower(token_name($token[0])),2).'">'.
+                                \substr(\strtolower(\token_name($token[0])),2).'">'.
                                 $this->encode($token[1]).''):
                             ('>'.$this->encode($token))).
                         '</span>';
@@ -2170,8 +2010,8 @@ namespace F3 {
          * Return path (and query parameters) relative to the base directory
          */
         function rel(string $url): string {
-            return preg_replace('/^(?:https?:\/\/)?'.
-                preg_quote($this->BASE,'/').'(\/.*|$)/','\1',$url);
+            return \preg_replace('/^(?:https?:\/\/)?'.
+                \preg_quote($this->BASE,'/').'(\/.*|$)/','\1',$url);
         }
 
         /**
@@ -2196,19 +2036,19 @@ namespace F3 {
          * Execute framework/application shutdown sequence
          */
         function unload(string $cwd) {
-            chdir($cwd);
-            if (!($error=error_get_last()) &&
-                session_status()==PHP_SESSION_ACTIVE)
-                session_commit();
+            \chdir($cwd);
+            if (!($error=\error_get_last()) &&
+                \session_status()==PHP_SESSION_ACTIVE)
+                \session_commit();
             foreach ($this->locks as $lock)
-                @unlink($lock);
+                @\unlink($lock);
             $handler=$this->UNLOAD;
             if ((!$handler || $this->call($handler,$this)===FALSE) &&
-                $error && in_array($error['type'],
+                $error && \in_array($error['type'],
                 [E_ERROR,E_PARSE,E_CORE_ERROR,E_COMPILE_ERROR]))
                 // Fatal error detected
                 $this->error(500,
-                    sprintf(self::E_Fatal,$error['message']),[$error]);
+                    \sprintf(self::E_Fatal,$error['message']),[$error]);
         }
 
         /**
@@ -2216,8 +2056,8 @@ namespace F3 {
          */
         function __call(string $key, array $args): mixed {
             if ($this->exists($key,$val))
-                return call_user_func_array($val,$args);
-            user_error(sprintf(self::E_Method,$key),E_USER_ERROR);
+                return \call_user_func_array($val,$args);
+            \user_error(\sprintf(self::E_Method,$key),E_USER_ERROR);
             return null;
         }
 
@@ -2225,8 +2065,7 @@ namespace F3 {
         function __construct() {
             // Managed directives
             \ini_set('default_charset',$charset='UTF-8');
-            if (\extension_loaded('mbstring'))
-                \mb_internal_encoding($charset);
+            \mb_internal_encoding($charset);
             \ini_set('display_errors',0);
             // Intercept errors/exceptions
             $check=\error_reporting((E_ALL|E_STRICT)&~(E_NOTICE|E_USER_NOTICE));
@@ -2261,7 +2100,7 @@ namespace F3 {
                 $req=$query='';
                 if (\str_starts_with($_SERVER['argv'][1],'/')) {
                     $req=$_SERVER['argv'][1];
-                    $query=parse_url($req,PHP_URL_QUERY);
+                    $query=\parse_url($req,PHP_URL_QUERY);
                 } else {
                     foreach($_SERVER['argv'] as $i=>$arg) {
                         if (!$i) continue;
@@ -2297,9 +2136,9 @@ namespace F3 {
                 $headers['X-Forwarded-Proto']=='https'?'https':'http';
             if (\function_exists('apache_setenv')) {
                 // Work around Apache pre-2.4 VirtualDocumentRoot bug
-                $_SERVER['DOCUMENT_ROOT']=str_replace($_SERVER['SCRIPT_NAME'],'',
+                $_SERVER['DOCUMENT_ROOT']=\str_replace($_SERVER['SCRIPT_NAME'],'',
                     $_SERVER['SCRIPT_FILENAME']);
-                apache_setenv("DOCUMENT_ROOT",$_SERVER['DOCUMENT_ROOT']);
+                \apache_setenv("DOCUMENT_ROOT",$_SERVER['DOCUMENT_ROOT']);
             }
             $_SERVER['DOCUMENT_ROOT']=\realpath($_SERVER['DOCUMENT_ROOT']);
             $base='';
@@ -2345,7 +2184,6 @@ namespace F3 {
                     $fallback,
                 'FALLBACK' => $fallback,
                 'LOCALES' => './',
-                'MB'=>\extension_loaded('mbstring'),
                 'PATH'=>$path,
                 'PLUGINS'=>$this->fixslashes(__DIR__).'/../',
                 'PORT'=>$port,
@@ -2380,15 +2218,11 @@ namespace F3 {
             // Sync PHP globals with corresponding hive keys
             foreach (\explode('|',Base::GLOBALS) as $global) {
                 $this->_hive_data[$global] = $GLOBALS['_'.$global] ?? [];
-//                $sync = $this->sync($global);
-//                if (\preg_match('/SERVER|ENV/',$global))
-//                    $this->init[$global] = $sync;
             }
             if ($check && $error=\error_get_last())
                 // Error detected
                 $this->error(500,
                     \sprintf(self::E_Fatal,$error['message']),[$error]);
-            \date_default_timezone_set($this->TZ);
             // Register framework autoloader
             \spl_autoload_register([$this,'autoload']);
             // Register shutdown handler
@@ -3331,6 +3165,17 @@ namespace F3 {
 }
 
 
+namespace F3\Hive {
+
+    /**
+     * Enable accessor proxy for all typed public properties by default
+     */
+    trait OverloadProps {
+        const OVERLOAD_PROPS = TRUE;
+    }
+
+}
+
 namespace F3\Http {
 
     use F3\Base;
@@ -3351,7 +3196,7 @@ namespace F3\Http {
         case PATCH;
 
         public static function names(): array {
-            return array_map(fn ($e) => $e->name,self::cases());
+            return \array_map(fn ($e) => $e->name,self::cases());
         }
     }
 
@@ -3413,36 +3258,43 @@ namespace F3\Http {
 
     trait Router {
 
+        /** Request types */
+        const
+            REQ_SYNC=1,
+            REQ_AJAX=2,
+            REQ_CLI=4;
+
         /**
          * Bind handler to route pattern
          */
-        function route(string|array $pattern, callable|array|string $handler, int $ttl=0, int $kbps=0): void {
+        function route(string|array $pattern, callable|array|string $handler, int $ttl=0, int $kbps=0): void
+        {
             $types=['sync','ajax','cli'];
             $alias=null;
-            if (is_array($pattern)) {
+            if (\is_array($pattern)) {
                 foreach ($pattern as $item)
                     $this->route($item,$handler,$ttl,$kbps);
                 return;
             }
-            preg_match('/([\|\w]+)\h+(?:(?:@?(.+?)\h*:\h*)?(@(\w+)|[^\h]+))'.
-                '(?:\h+\[('.implode('|',$types).')\])?/u',$pattern,$parts);
+            \preg_match('/([\|\w]+)\h+(?:(?:@?(.+?)\h*:\h*)?(@(\w+)|[^\h]+))'.
+                '(?:\h+\[('.\implode('|',$types).')\])?/u',$pattern,$parts);
             if (isset($parts[2]) && $parts[2]) {
-                if (!preg_match('/^\w+$/',$parts[2]))
-                    user_error(sprintf(self::E_Alias,$parts[2]),E_USER_ERROR);
+                if (!\preg_match('/^\w+$/',$parts[2]))
+                    \user_error(\sprintf(self::E_Alias,$parts[2]),E_USER_ERROR);
                 $this->ALIASES[$alias=$parts[2]]=$parts[3];
             }
             elseif (!empty($parts[4])) {
                 if (empty($this->ALIASES[$parts[4]]))
-                    user_error(sprintf(self::E_Named,$parts[4]),E_USER_ERROR);
+                    \user_error(\sprintf(self::E_Named,$parts[4]),E_USER_ERROR);
                 $parts[3]=$this->ALIASES[$alias=$parts[4]];
             }
             if (empty($parts[3]))
-                user_error(sprintf(self::E_Pattern,$pattern),E_USER_ERROR);
-            $type=empty($parts[5])?0:constant('self::REQ_'.strtoupper($parts[5]));
+                \user_error(\sprintf(self::E_Pattern,$pattern),E_USER_ERROR);
+            $type=empty($parts[5])?0:\constant('self::REQ_'.\strtoupper($parts[5]));
             foreach ($this->split($parts[1]) as $verb) {
-                if (!constant(Verb::class.'::'.$verb))
+                if (!\constant(Verb::class.'::'.$verb))
                     $this->error(501,$verb.' '.$this->URI);
-                $this->ROUTES[$parts[3]][$type][strtoupper($verb)]=
+                $this->ROUTES[$parts[3]][$type][\strtoupper($verb)]=
                     [$handler,$ttl,$kbps,$alias];
             }
         }
@@ -3451,15 +3303,15 @@ namespace F3\Http {
          * Provide ReST interface by mapping HTTP verb to class method
          */
         function map(string $url, string|object $class, int $ttl=0, int $kbps=0): void {
-            if (is_array($url)) {
+            if (\is_array($url)) {
                 foreach ($url as $item)
                     $this->map($item,$class,$ttl,$kbps);
                 return;
             }
             foreach (Verb::names() as $method)
-                $this->route($method.' '.$url,is_string($class)?
-                    $class.'->'.$this->PREMAP.strtolower($method):
-                    [$class,$this->PREMAP.strtolower($method)],
+                $this->route($method.' '.$url,\is_string($class)?
+                    $class.'->'.$this->PREMAP.\strtolower($method):
+                    [$class,$this->PREMAP.\strtolower($method)],
                     $ttl,$kbps);
         }
 
@@ -3473,7 +3325,7 @@ namespace F3\Http {
                 return;
             }
             $this->route($pattern,fn(Base $fw) =>
-            $fw->reroute($url,$permanent)
+                $fw->reroute($url,$permanent)
             );
         }
 
@@ -3483,9 +3335,9 @@ namespace F3\Http {
         function reroute(array|string $url=NULL, bool $permanent=FALSE, bool $die=TRUE): void {
             if (!$url)
                 $url=$this->REALM;
-            if (is_array($url))
-                $url=call_user_func_array([$this,'alias'],$url);
-            elseif (preg_match('/^(?:@([^\/()?#]+)(?:\((.+?)\))*(\?[^#]+)*(#.+)*)/',
+            if (\is_array($url))
+                $url=\call_user_func_array([$this,'alias'],$url);
+            elseif (\preg_match('/^(?:@([^\/()?#]+)(?:\((.+?)\))*(\?[^#]+)*(#.+)*)/',
                     $url,$parts) && isset($this->ALIASES[$parts[1]]))
                 $url=$this->build($this->ALIASES[$parts[1]],
                         isset($parts[2])?$this->parse($parts[2]):[]).
@@ -3495,18 +3347,18 @@ namespace F3\Http {
             if (($handler=$this->ONREROUTE) &&
                 $this->call($handler,[$url,$permanent,$die])!==FALSE)
                 return;
-            if ($url[0]!='/' && !preg_match('/^\w+:\/\//i',$url))
+            if ($url[0]!='/' && !\preg_match('/^\w+:\/\//i',$url))
                 $url='/'.$url;
             if ($url[0]=='/' && (empty($url[1]) || $url[1]!='/')) {
                 $port=$this->PORT;
-                $port=in_array($port,[80,443])?'':(':'.$port);
+                $port=\in_array($port,[80,443])?'':(':'.$port);
                 $url=$this->SCHEME.'://'.
                     $this->HOST.$port.$this->BASE.$url;
             }
             if ($this->CLI)
                 $this->mock('GET '.$url.' [cli]');
             else {
-                header('Location: '.$url);
+                \header('Location: '.$url);
                 $this->status($permanent?301:302);
                 if ($die)
                     die;
@@ -3520,29 +3372,29 @@ namespace F3\Http {
             if (!$url)
                 $url=$this->rel($this->URI);
             $case=$this->CASELESS?'i':'';
-            $wild=preg_quote($pattern,'/');
+            $wild=\preg_quote($pattern,'/');
             $i=0;
-            while (is_int($pos=strpos($wild,'\*'))) {
-                $wild=substr_replace($wild,'(?P<_'.$i.'>[^\?]*)',$pos,2);
+            while (\is_int($pos=\strpos($wild,'\*'))) {
+                $wild=\substr_replace($wild,'(?P<_'.$i.'>[^\?]*)',$pos,2);
                 ++$i;
             }
-            preg_match('/^'.
-                preg_replace(
+            \preg_match('/^'.
+                \preg_replace(
                     '/((\\\{)?@(\w+\b)(?(2)\\\}))/',
                     '(?P<\3>[^\/\?]+)',
                     $wild).'\/?$/'.$case.'um',$url,$args);
-            foreach (array_keys($args) as $key) {
-                if (preg_match('/^_\d+$/',$key)) {
+            foreach (\array_keys($args) as $key) {
+                if (\preg_match('/^_\d+$/',$key)) {
                     if (empty($args['*']))
                         $args['*']=$args[$key];
                     else {
-                        if (is_string($args['*']))
+                        if (\is_string($args['*']))
                             $args['*']=[$args['*']];
                         $args['*'][] = $args[$key];
                     }
                     unset($args[$key]);
                 }
-                elseif (is_numeric($key) && $key)
+                elseif (\is_numeric($key) && $key)
                     unset($args[$key]);
             }
             return $args;
@@ -3554,29 +3406,29 @@ namespace F3\Http {
         public function callRoute(callable|string|array $func, array $args=[], array $hooks=[]): mixed
         {
             // Grab the real handler behind the string representation
-            if (!is_callable($func) && !is_callable($func=$this->grab($func,$args))) {
+            if (!\is_callable($func) && !\is_callable($func=$this->grab($func,$args))) {
                 // No route handler found
                 $allowed=[];
-                if (is_array($func))
-                    $allowed=array_intersect(
-                        array_map('strtoupper',get_class_methods($func[0])),
+                if (\is_array($func))
+                    $allowed=\array_intersect(
+                        \array_map('strtoupper',\get_class_methods($func[0])),
                         Verb::names()
                     );
-                header('Allow: '.implode(',',$allowed));
+                \header('Allow: '.\implode(',',$allowed));
                 $this->error(405);
             }
-            $obj=is_array($func);
+            $obj=\is_array($func);
             // Execute pre-route hook if any
-            if ($obj & in_array($hook='beforeRoute',$hooks) &&
-                method_exists($func[0],$hook) &&
+            if ($obj & \in_array($hook='beforeRoute',$hooks) &&
+                \method_exists($func[0],$hook) &&
                 $this->call([$func[0],$hook],$args)===FALSE)
                 return FALSE;
             // Execute route handler
             if (($out=$this->call($func,$args))===FALSE)
                 return FALSE;
             // Execute post-route hook if any
-            if ($obj & in_array($hook='afterRoute',$hooks) &&
-                method_exists($func[0],$hook) &&
+            if ($obj & \in_array($hook='afterRoute',$hooks) &&
+                \method_exists($func[0],$hook) &&
                 $this->call([$func[0],$hook],$args)===FALSE)
                 return FALSE;
             return $out;
@@ -3585,32 +3437,33 @@ namespace F3\Http {
         /**
          * Match routes against incoming URI
          */
-        function run(): mixed {
+        function run(): mixed
+        {
             if ($this->blacklisted($this->IP))
                 // Spammer detected
                 $this->error(403);
             if (!$this->ROUTES)
                 // No routes defined
-                user_error(self::E_Routes,E_USER_ERROR);
+                \user_error(self::E_Routes,E_USER_ERROR);
             // Match specific routes first
             $paths=[];
-            foreach ($keys=array_keys($this->ROUTES) as $key) {
-                $path=preg_replace('/@\w+/','*@',$key);
-                if (!str_ends_with($path,'*'))
+            foreach ($keys=\array_keys($this->ROUTES) as $key) {
+                $path=\preg_replace('/@\w+/','*@',$key);
+                if (!\str_ends_with($path,'*'))
                     $path.='+';
                 $paths[]=$path;
             }
-            $vals=array_values($this->ROUTES);
-            array_multisort($paths,SORT_DESC,$keys,$vals);
-            $this->ROUTES=array_combine($keys,$vals);
+            $vals=\array_values($this->ROUTES);
+            \array_multisort($paths,SORT_DESC,$keys,$vals);
+            $this->ROUTES=\array_combine($keys,$vals);
             // Convert to BASE-relative URL
-            $req=urldecode($this->PATH);
+            $req=\urldecode($this->PATH);
             $preflight=FALSE;
             if ($cors=(isset($this->HEADERS['Origin']) &&
                 $this->CORS['origin'])) {
                 $cors=$this->CORS;
-                header('Access-Control-Allow-Origin: '.$cors['origin']);
-                header('Access-Control-Allow-Credentials: '.
+                \header('Access-Control-Allow-Origin: '.$cors['origin']);
+                \header('Access-Control-Allow-Credentials: '.
                     $this->export($cors['credentials']));
                 $preflight=
                     isset($this->HEADERS['Access-Control-Request-Method']);
@@ -3619,7 +3472,7 @@ namespace F3\Http {
             foreach ($this->ROUTES as $pattern=>$routes) {
                 if (!$args=$this->mask($pattern,$req))
                     continue;
-                ksort($args);
+                \ksort($args);
                 $route=NULL;
                 $ptr=$this->CLI?self::REQ_CLI:$this->AJAX+1;
                 if (isset($routes[$ptr][$this->VERB]) ||
@@ -3630,8 +3483,8 @@ namespace F3\Http {
                     continue;
                 if (isset($route[$this->VERB]) && !$preflight) {
                     if ($this->VERB=='GET' &&
-                        preg_match('/.+\/$/',$this->PATH))
-                        $this->reroute(substr($this->PATH,0,-1).
+                        \preg_match('/.+\/$/',$this->PATH))
+                        $this->reroute(\substr($this->PATH,0,-1).
                             ($this->QUERY?('?'.$this->QUERY):''));
                     list($handler,$ttl,$kbps,$alias)=$route[$this->VERB];
                     // Capture values of route pattern tokens
@@ -3640,28 +3493,28 @@ namespace F3\Http {
                     $this->ALIAS=$alias;
                     $this->PATTERN=$pattern;
                     if ($cors && $cors['expose'])
-                        header('Access-Control-Expose-Headers: '.
-                            (is_array($cors['expose'])?
-                                implode(',',$cors['expose']):$cors['expose']));
-                    if (is_string($handler)) {
+                        \header('Access-Control-Expose-Headers: '.
+                            (\is_array($cors['expose'])?
+                                \implode(',',$cors['expose']):$cors['expose']));
+                    if (\is_string($handler)) {
                         // Replace route pattern tokens in handler if any
-                        $handler=preg_replace_callback('/({)?@(\w+\b)(?(1)})/',
+                        $handler=\preg_replace_callback('/({)?@(\w+\b)(?(1)})/',
                             function($id) use($args) {
-                                $pid=count($id)>2?2:1;
+                                $pid=\count($id)>2?2:1;
                                 return $args[$id[$pid]] ?? $id[0];
                             },
                             $handler
                         );
-                        if (preg_match('/(.+)\h*(?:->|::)/',$handler,$match) &&
-                            !class_exists($match[1]))
+                        if (\preg_match('/(.+)\h*(?:->|::)/',$handler,$match) &&
+                            !\class_exists($match[1]))
                             $this->error(404);
                     }
                     // Process request
                     $response=$stream=NULL;
                     $body='';
                     $isPsr=FALSE;
-                    $now=microtime(TRUE);
-                    if (preg_match('/GET|HEAD/',$this->VERB) && $ttl) {
+                    $now=\microtime(TRUE);
+                    if (\preg_match('/GET|HEAD/',$this->VERB) && $ttl) {
                         // Only GET and HEAD requests are cacheable
                         $headers=$this->HEADERS;
                         $cache=Cache::instance();
@@ -3670,7 +3523,7 @@ namespace F3\Http {
                                     $this->URI).'.url',$data);
                         if ($cached) {
                             if (isset($headers['If-Modified-Since']) &&
-                                strtotime($headers['If-Modified-Since'])+
+                                \strtotime($headers['If-Modified-Since'])+
                                 $ttl>$now) {
                                 $this->status(304);
                                 die();
@@ -3678,7 +3531,7 @@ namespace F3\Http {
                             // Retrieve from cache backend
                             [$headers,$body,$response]=$data;
                             if (!$this->CLI)
-                                array_walk($headers,'header');
+                                \array_walk($headers,'header');
                             $this->expire((int) ($cached[0]+$ttl-$now));
                         }
                         else
@@ -3687,41 +3540,41 @@ namespace F3\Http {
                     }
                     else
                         $this->expire(0);
-                    if (!strlen($body)) {
+                    if (!\strlen($body)) {
                         // get input data from requests PUT,PATCH and POST (as json) etc.
                         if (!$this->RAW && !$this->BODY)
-                            $this->BODY=file_get_contents('php://input');
-                        ob_start();
+                            $this->BODY=\file_get_contents('php://input');
+                        \ob_start();
                         // Call route handler
-//                        $response=$this->call($handler,[$this,$args,$handler],
                         $response=$this->callRoute($handler,[
                             'f3' => $this,
                             'params' => $args,
+                            'args' => $args, // alias to params
                             'handler' => $handler
                         ], ['beforeRoute','afterRoute']);
-                        $body=ob_get_clean();
-                        if ($isPsr = is_object($response)
-                            && is_a($response, 'Psr\Http\Message\ResponseInterface')) {
+                        $body=\ob_get_clean();
+                        if ($isPsr = \is_object($response)
+                            && \is_a($response, 'Psr\Http\Message\ResponseInterface')) {
                             if ($stream = $response->getBody())
                                 $stream->rewind();
                             if (!$this->CLI) {
-                                header(sprintf('HTTP/%s %d %s',
+                                \header(\sprintf('HTTP/%s %d %s',
                                     $response->getProtocolVersion(),
                                     $response->getStatusCode(),
                                     $response->getReasonPhrase()));
                                 foreach ($response->getHeaders() as $name => $values) {
-                                    header($name.": ".implode(", ", $values));
+                                    \header($name.": ".\implode(", ", $values));
                                 }
                             }
                         }
-                        if (isset($cache) && $this->CACHE && !error_get_last()) {
+                        if (isset($cache) && $this->CACHE && !\error_get_last()) {
                             // prepare headers for cache item
-                            $headers=headers_list();
+                            $headers=\headers_list();
                             if ($isPsr) {
                                 $body = $stream ? $stream->getContents() : '';
                                 $headers = [
                                     // status header is not returned by headers_list()
-                                    sprintf('HTTP/%s %d %s',
+                                    \sprintf('HTTP/%s %d %s',
                                         $response->getProtocolVersion(),
                                         $response->getStatusCode(),
                                         $response->getReasonPhrase()),
@@ -3731,7 +3584,7 @@ namespace F3\Http {
                             // Save to cache backend
                             $cache->set($hash,[
                                 // Remove cookies
-                                preg_grep('/Set-Cookie\:/',$headers,
+                                \preg_grep('/Set-Cookie\:/',$headers,
                                     PREG_GREP_INVERT),$body,$isPsr ? NULL : $response],$ttl);
                         }
                     }
@@ -3741,15 +3594,15 @@ namespace F3\Http {
                         if ($kbps) {
                             $ctr=$i=0;
                             if (!$stream)
-                                $max=count($chunks = str_split($body,1024));
+                                $max=\count($chunks = \str_split($body,1024));
                             while ($stream
                                 ? ($bytes = $stream->read(1024)) !== ''
                                 : $i < $max) {
                                 // Throttle output
                                 ++$ctr;
-                                if ($ctr/$kbps>($elapsed=microtime(TRUE)-$now) &&
-                                    !connection_aborted())
-                                    usleep(round(1e6*($ctr/$kbps-$elapsed)));
+                                if ($ctr/$kbps>($elapsed=\microtime(TRUE)-$now) &&
+                                    !\connection_aborted())
+                                    \usleep(\round(1e6*($ctr/$kbps-$elapsed)));
                                 echo $stream ? $bytes : $chunks[$i++];
                             }
                         }
@@ -3759,27 +3612,27 @@ namespace F3\Http {
                     if ($response || $this->VERB!='OPTIONS')
                         return $response;
                 }
-                $allowed=array_merge($allowed,array_keys($route));
+                $allowed=\array_merge($allowed,\array_keys($route));
             }
             if (!$allowed)
                 // URL doesn't match any route
                 $this->error(404);
             elseif (!$this->CLI) {
-                if (!preg_grep('/Allow:/',$headers_send=headers_list()))
+                if (!\preg_grep('/Allow:/',$headers_send=\headers_list()))
                     // Unhandled HTTP method
-                    header('Allow: '.implode(',',array_unique($allowed)));
+                    \header('Allow: '.\implode(',',\array_unique($allowed)));
                 if ($cors) {
-                    if (!preg_grep('/Access-Control-Allow-Methods:/',$headers_send))
-                        header('Access-Control-Allow-Methods: OPTIONS,'.
-                            implode(',',$allowed));
+                    if (!\preg_grep('/Access-Control-Allow-Methods:/',$headers_send))
+                        \header('Access-Control-Allow-Methods: OPTIONS,'.
+                            \implode(',',$allowed));
                     if ($cors['headers'] &&
-                        !preg_grep('/Access-Control-Allow-Headers:/',$headers_send))
-                        header('Access-Control-Allow-Headers: '.
-                            (is_array($cors['headers'])?
-                                implode(',',$cors['headers']):
+                        !\preg_grep('/Access-Control-Allow-Headers:/',$headers_send))
+                        \header('Access-Control-Allow-Headers: '.
+                            (\is_array($cors['headers'])?
+                                \implode(',',$cors['headers']):
                                 $cors['headers']));
                     if ($cors['ttl']>0)
-                        header('Access-Control-Max-Age: '.$cors['ttl']);
+                        \header('Access-Control-Max-Age: '.$cors['ttl']);
                 }
                 if ($this->VERB!='OPTIONS')
                     $this->error(405);
