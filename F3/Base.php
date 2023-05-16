@@ -1597,17 +1597,18 @@ namespace F3 {
             if (empty($parts[4]))
                 user_error(sprintf(self::E_Pattern,$pattern),E_USER_ERROR);
             $url=parse_url($parts[4]);
-            parse_str($url['query'] ?? '',$GLOBALS['_GET']);
+            parse_str($url['query'] ?? '',$this->GET);
             if (preg_match('/GET|HEAD/',$verb))
-                $GLOBALS['_GET']=array_merge($GLOBALS['_GET'],$args);
-            $GLOBALS['_POST']=$verb=='POST'?$args:[];
-            $GLOBALS['_REQUEST']=array_merge($GLOBALS['_GET'],$GLOBALS['_POST']);
+                $this->GET = array_merge($this->GET, $args);
+            $this->POST = $verb === 'POST' ? $args : [];
+            $this->REQUEST = array_merge($this->GET, $this->POST);
+            $this->HEADERS = $headers ?? [];
             foreach ($headers?:[] as $key=>$val)
-                $_SERVER['HTTP_'.strtr(strtoupper($key),'-','_')]=$val;
+                $this->SERVER['HTTP_'.strtr(strtoupper($key),'-','_')]=$val;
             $this->VERB=$verb;
             $this->PATH=$url['path'];
             $this->URI=$this->BASE.$url['path'];
-            if ($GLOBALS['_GET'])
+            if ($this->GET)
                 $this->URI.='?'.http_build_query($GLOBALS['_GET']);
             $this->BODY='';
             if (!preg_match('/GET|HEAD/',$verb))
