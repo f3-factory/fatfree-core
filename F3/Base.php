@@ -1603,7 +1603,7 @@ namespace F3 {
         /**
          * Mock HTTP request
          */
-        function mock(string $pattern, array $args=NULL, array $headers=NULL, string $body=NULL): mixed
+        function mock(string $pattern, array $args=NULL, array $headers=NULL, string $body=NULL, bool $sandbox=FALSE): mixed
         {
             if (!$args)
                 $args = [];
@@ -1622,26 +1622,27 @@ namespace F3 {
                 user_error(sprintf(self::E_Pattern,$pattern),E_USER_ERROR);
             $url = parse_url($parts[4]);
             parse_str($url['query'] ?? '',$this->GET);
+            $fw = $sandbox ? clone $this : $this;
             if (preg_match('/GET|HEAD/',$verb))
-                $this->GET = array_merge($this->GET, $args);
-            $this->POST = $verb === 'POST' ? $args : [];
-            $this->REQUEST = array_merge($this->GET, $this->POST);
-            $this->HEADERS = $headers ?? [];
+                $fw->GET = array_merge($this->GET, $args);
+            $fw->POST = $verb === 'POST' ? $args : [];
+            $fw->REQUEST = array_merge($this->GET, $this->POST);
+            $fw->HEADERS = $headers ?? [];
             foreach ($headers ?: [] as $key => $val)
-                $this->SERVER['HTTP_'.strtr(strtoupper($key),'-','_')] = $val;
-            $this->VERB = $verb;
-            $this->PATH = $url['path'];
-            $this->URI = $this->BASE.$url['path'];
-            if ($this->GET)
-                $this->URI .= '?'.http_build_query($GLOBALS['_GET']);
-            $this->BODY = '';
+                $fw->SERVER['HTTP_'.strtr(strtoupper($key),'-','_')] = $val;
+            $fw->VERB = $verb;
+            $fw->PATH = $url['path'];
+            $fw->URI = $this->BASE.$url['path'];
+            if ($fw->GET)
+                $fw->URI .= '?'.http_build_query($GLOBALS['_GET']);
+            $fw->BODY = '';
             if (!preg_match('/GET|HEAD/',$verb))
-                $this->BODY = $body?:http_build_query($args);
-            $this->AJAX = isset($parts[5]) &&
+                $fw->BODY = $body?:http_build_query($args);
+            $fw->AJAX = isset($parts[5]) &&
                 preg_match('/ajax/i',$parts[5]);
-            $this->CLI = isset($parts[5]) &&
+            $fw->CLI = isset($parts[5]) &&
                 preg_match('/cli/i',$parts[5]);
-            return $this->run();
+            return $fw->run();
         }
 
         /**
