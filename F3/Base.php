@@ -506,13 +506,13 @@ namespace F3 {
         public ?object $CONTAINER = NULL;
         public int $DEBUG = 2;
         public array $DIACRITICS = [];
-        public string $DNSBL = '';
+        public string|array $DNSBL = [];
         public array $EMOJI = [];
         public string $ENCODING = 'UTF-8';
         public ?array $ERROR = NULL;
         public bool $ESCAPE = TRUE;
         public ?\Throwable $EXCEPTION = NULL;
-        public string|array|null $EXEMPT = NULL;
+        public string|array $EXEMPT = [];
         public string $FALLBACK = 'en';
         public array $FORMATS = [];
         public bool $HALT = TRUE;
