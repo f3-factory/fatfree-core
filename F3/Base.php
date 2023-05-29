@@ -530,7 +530,7 @@ namespace F3 {
             'samesite'=>'Lax',
         ];
         public string $LANGUAGE = '';
-        public string $LOCALES = './';
+        public ?string $LOCALES = null;
         public int $LOCK = LOCK_EX;
         public string|array $LOGGABLE = '*';
         public string $LOGS = './';
@@ -724,7 +724,8 @@ namespace F3 {
                 case 'LANGUAGE':
                     if (!isset($lang))
                         $val = $this->language($val);
-                    $lex = $this->lexicon($this->LOCALES,$ttl);
+                    if ($this->LOCALES)
+                        $lex = $this->lexicon($this->LOCALES,$ttl);
                 case 'LOCALES':
                     if (isset($lex) || $lex = $this->lexicon($val,$ttl))
                         foreach ($lex as $dt => $dd) {
