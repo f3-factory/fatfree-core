@@ -1578,7 +1578,7 @@ namespace F3 {
             $eol = "\n";
             if ((!$handler ||
                 $this->callRoute($handler,[$this,$this->PARAMS],
-                    ['beforeroute','afterroute']) === FALSE) &&
+                    ['beforeRoute','afterRoute']) === FALSE) &&
                 !$prior && !$this->QUIET) {
                 $error=\array_diff_key(
                     $this->ERROR,
