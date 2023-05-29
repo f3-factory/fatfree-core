@@ -1349,7 +1349,7 @@ namespace F3 {
                 $locales[] = $locale;
             }
             \setlocale(LC_ALL,$locales);
-            return $this->_hive_data['LANGUAGE'] = \implode(',',$this->languages);
+            return $this->_hive->LANGUAGE = \implode(',',$this->languages);
         }
 
         /**
@@ -2230,7 +2230,7 @@ namespace F3 {
             elseif (!empty($_SERVER['SERVER_PORT']))
                 $port = $_SERVER['SERVER_PORT'];
             // Default configuration
-            $fallback = 'en';
+            $this->fallback = 'en';
             $init = [
                 'AGENT' => $this->agent($headers),
                 'AJAX' => $this->ajax($headers),
@@ -2241,11 +2241,6 @@ namespace F3 {
                 'HOST' => $_SERVER['SERVER_NAME'],
                 'IP' => $this->ip(),
                 'JAR' => $jar,
-                'LANGUAGE' => isset($headers['Accept-Language'])?
-                    $this->language($headers['Accept-Language']):
-                    $fallback,
-                'FALLBACK' => $fallback,
-                'LOCALES' => './',
                 'PATH' => $path,
                 'PLUGINS' => $this->fixslashes(__DIR__).'/../',
                 'PORT' => $port,
@@ -2264,6 +2259,8 @@ namespace F3 {
             ];
             // Create hive
             parent::__construct(data: $init);
+            // auto-configure language
+            $this->language($headers['Accept-Language'] ?? $this->fallback);
             if (!\headers_sent() && \session_status() != PHP_SESSION_ACTIVE) {
                 unset($jar['expire']);
                 \session_cache_limiter('');
