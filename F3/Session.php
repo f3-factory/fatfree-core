@@ -187,7 +187,6 @@ class Session extends Magic {
 		);
 		register_shutdown_function('session_commit');
 		$fw=Base::instance();
-		$headers=$fw->HEADERS;
 		$this->_csrf=$fw->hash($fw->SEED.
 			extension_loaded('openssl')?
 				implode(unpack('L',openssl_random_pseudo_bytes(4))):
@@ -195,7 +194,7 @@ class Session extends Magic {
 			);
 		if ($key)
 			$fw->$key=$this->_csrf;
-		$this->_agent=isset($headers['User-Agent'])?$headers['User-Agent']:'';
+		$this->_agent = $fw->HEADERS['User-Agent'] ?? '';
 		$this->_ip=$fw->IP;
 	}
 

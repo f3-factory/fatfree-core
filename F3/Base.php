@@ -25,9 +25,9 @@ namespace F3 {
     use F3\Http\Status;
 
     /**
-     * Mixin for single-instance classes
+     * Mixin for singleton instance access
      */
-    trait Prefab {
+    trait Instance {
 
         /**
          * Return class instance
@@ -39,8 +39,17 @@ namespace F3 {
             return Registry::get($class);
         }
 
+    }
+
+    /**
+     * Mixin for single-instance classes
+     */
+    trait Prefab {
+
+        use Instance;
+
         // Prohibit cloning
-//        private function __clone() {}
+        private function __clone() {}
 
     }
 
@@ -430,7 +439,7 @@ namespace F3 {
      */
     final class Base extends Hive {
 
-        use Prefab, Router;
+        use Instance, Router;
 
         const
             PACKAGE='Fat-Free Framework',
@@ -1622,7 +1631,12 @@ namespace F3 {
                 user_error(sprintf(self::E_Pattern,$pattern),E_USER_ERROR);
             $url = parse_url($parts[4]);
             parse_str($url['query'] ?? '', $this->GET);
-            $fw = $sandbox ? clone $this : $this;
+            $fw = $this;
+            if ($sandbox) {
+                $fw = clone $this;
+                $reg_bak = Registry::get($class=static::class);
+                Registry::set($class, $fw);
+            }
             if (preg_match('/GET|HEAD/', $verb))
                 $fw->GET = array_merge($this->GET, $args);
             $fw->POST = $verb === 'POST' ? $args : [];
@@ -1630,9 +1644,11 @@ namespace F3 {
             $fw->HEADERS = $headers ?? [];
             foreach ($headers ?: [] as $key => $val)
                 $fw->SERVER['HTTP_'.strtr(strtoupper($key),'-','_')] = $val;
-            $fw->VERB = $verb;
+            $fw->VERB = $fw->SERVER['REQUEST_METHOD'] = $verb;
             $fw->PATH = $url['path'];
-            $fw->URI = $this->BASE.$url['path'];
+            $fw->URI = $fw->SERVER['REQUEST_URI'] = $this->BASE.$url['path'];
+            $fw->REALM = $fw->SCHEME.'://'.$fw->SERVER['SERVER_NAME'].
+                (!\in_array($fw->PORT,[80,443]) ? (':'.$fw->PORT) : '').$fw->URI;
             if ($fw->GET)
                 $fw->URI .= '?'.http_build_query($fw->GET);
             $fw->BODY = '';
@@ -1642,7 +1658,12 @@ namespace F3 {
                 preg_match('/ajax/i',$parts[5]);
             $fw->CLI = isset($parts[5]) &&
                 preg_match('/cli/i',$parts[5]);
-            return $fw->run();
+            $fw->TIME = $fw->SERVER['REQUEST_TIME_FLOAT'] = microtime(true);
+            $out = $fw->run();
+            if ($sandbox) {
+                Registry::set($class, $reg_bak);
+            }
+            return $out;
         }
 
         /**
@@ -2236,11 +2257,10 @@ namespace F3 {
                 'SCHEME' => $scheme,
                 'SEED' => $this->hash($_SERVER['SERVER_NAME'].$base),
                 'SERIALIZER' => \extension_loaded($ext='igbinary') ? $ext : 'php',
-                // TODO: remove references
-                'TIME' => &$_SERVER['REQUEST_TIME_FLOAT'],
+                'TIME' => $_SERVER['REQUEST_TIME_FLOAT'],
                 'TZ' => @\date_default_timezone_get(),
-                'URI' => &$_SERVER['REQUEST_URI'],
-                'VERB' => &$_SERVER['REQUEST_METHOD'],
+                'URI' => $_SERVER['REQUEST_URI'],
+                'VERB' => $_SERVER['REQUEST_METHOD'],
             ];
             // Create hive
             parent::__construct(data: $init);
@@ -2786,7 +2806,7 @@ namespace F3 {
                         || filemtime($this->file) < filemtime($view)
                     ) {
                         $contents = $fw->read($view);
-                        foreach ($this->trigger['beforerender'] ?? [] as $func)
+                        foreach ($this->trigger['beforeRender'] ?? [] as $func)
                             $contents = $fw->call($func, [$contents, $view]);
                         $text = $this->parse($contents);
                         $fw->write($this->file,$this->build($text));
@@ -2796,7 +2816,7 @@ namespace F3 {
                         session_start();
                     $fw->sync('SESSION');
                     $data = $this->sandbox($hive,$mime);
-                    foreach ($this->trigger['afterrender'] ?? [] as $func)
+                    foreach ($this->trigger['afterRender'] ?? [] as $func)
                         $data = $fw->call($func, [$data, $view]);
                     if ($ttl)
                         $cache->set($hash,$data,$ttl);
