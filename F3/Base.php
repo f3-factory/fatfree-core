@@ -1621,9 +1621,9 @@ namespace F3 {
             if (empty($parts[4]))
                 user_error(sprintf(self::E_Pattern,$pattern),E_USER_ERROR);
             $url = parse_url($parts[4]);
-            parse_str($url['query'] ?? '',$this->GET);
+            parse_str($url['query'] ?? '', $this->GET);
             $fw = $sandbox ? clone $this : $this;
-            if (preg_match('/GET|HEAD/',$verb))
+            if (preg_match('/GET|HEAD/', $verb))
                 $fw->GET = array_merge($this->GET, $args);
             $fw->POST = $verb === 'POST' ? $args : [];
             $fw->REQUEST = array_merge($this->GET, $this->POST);
@@ -1634,10 +1634,10 @@ namespace F3 {
             $fw->PATH = $url['path'];
             $fw->URI = $this->BASE.$url['path'];
             if ($fw->GET)
-                $fw->URI .= '?'.http_build_query($GLOBALS['_GET']);
+                $fw->URI .= '?'.http_build_query($fw->GET);
             $fw->BODY = '';
             if (!preg_match('/GET|HEAD/',$verb))
-                $fw->BODY = $body?:http_build_query($args);
+                $fw->BODY = $body ?: http_build_query($args);
             $fw->AJAX = isset($parts[5]) &&
                 preg_match('/ajax/i',$parts[5]);
             $fw->CLI = isset($parts[5]) &&
