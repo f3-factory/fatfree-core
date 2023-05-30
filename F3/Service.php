@@ -11,6 +11,7 @@ class Service {
     use Prefab;
 
     private array $factories = [];
+    private array $singletons = [];
 
     protected Base $f3;
 
@@ -25,24 +26,41 @@ class Service {
      * @param class-string<Class> $id
      * @return Class
      */
-    public function get(string $id, $args = []): object {
+    public function get(string $id, $args = []): object
+    {
         if (Registry::exists($id))
             return Registry::get($id);
-        return Registry::set($id, $this->make($id, $args));
+        $out = $this->make($id, $args);
+        if (\in_array(Prefab::class, $this->f3->traits($out))
+            || array_key_exists($id, $this->singletons)) {
+            Registry::set($id, $out);
+        }
+        return $out;
     }
 
     /**
      * check if object or factory is known
      */
-    public function has(string $id): bool {
+    public function has(string $id): bool
+    {
         return isset($this->factories[$id]) || \class_exists($id);
     }
 
     /**
      * set object or object factory
      */
-    public function set(string $id, object|string|null $obj = null): void {
+    public function set(string $id, object|string|null $obj = null): void
+    {
         $this->factories[$id] = $obj ?? $id;
+    }
+
+    /**
+     * set object or object factory
+     */
+    public function singleton(string $id, object|string|null $obj = null): void
+    {
+        $this->set($id, $obj);
+        $this->singletons[$id] = true;
     }
 
     /**
@@ -51,7 +69,8 @@ class Service {
      * @param class-string<Class> $id
      * @return Class
      */
-    public function make(string $id, $args = []): object {
+    public function make(string $id, $args = []): object
+    {
         if (!isset($this->factories[$id])) {
             $this->set($id);
         }

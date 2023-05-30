@@ -1716,7 +1716,7 @@ namespace F3 {
             }
             foreach ($reflection->getTraits() as $trait_key => $trait) {
                 $traits[$trait_key] = $trait->getName();
-                $traits = $this->traits( $trait, $traits);
+                $traits = $this->traits($trait, $traits);
             }
             return $traits;
         }
