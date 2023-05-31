@@ -769,20 +769,22 @@ namespace F3 {
             if ($key == 'CACHE')
                 // Clear cache contents
                 $cache->reset();
-            elseif (preg_match('/^(GET|POST|COOKIE)\b(.+)/',$key,$expr)) {
-                if ($expr[1] == 'COOKIE') {
-                    $parts = $this->cut($key);
-                    $jar = $this->JAR;
-                    unset($jar['lifetime']);
-                    $jar['expire'] = 0;
-                    $jar['expires'] = $jar['expire'];
-                    unset($jar['expire']);
-                    setcookie($parts[1], '', $jar);
-                    // TODO: make test with $f3->COOKIE
-                    unset($_COOKIE[$parts[1]]);
-                    return;
-                } else
-                    parent::clear('REQUEST'.$expr[2]);
+            elseif ($parts[0] == 'COOKIE') {
+                $jar = $this->JAR;
+                unset($jar['lifetime']);
+                $jar['expire'] = 0;
+                $jar['expires'] = $jar['expire'];
+                unset($jar['expire']);
+                foreach (isset($parts[1]) ? [$parts[1]] : array_keys($this->COOKIE) as $cKey) {
+                    setcookie($cKey, '', $jar);
+                    unset($_COOKIE[$cKey]);
+                }
+                (isset($parts[1]))
+                    ? parent::clear($key)
+                    : $this->set($key, []);
+            }
+            elseif (preg_match('/^(GET|POST)\b(.+)/',$key,$expr)) {
+                parent::clear('REQUEST'.$expr[2]);
                 parent::clear($key);
             }
             elseif ($parts[0] == 'SESSION') {
