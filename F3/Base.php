@@ -55,7 +55,7 @@ namespace F3 {
 
 
     /**
-     * Hive, Key-Value store
+     * Key-Value store
      */
     class Hive {
 
@@ -257,15 +257,16 @@ namespace F3 {
                     }
                 }
                 if ($null || !isset($parts[1])) {
+                    // for properties, set a default or other reasonable value
                     $rp = new \ReflectionProperty($ref ?? $this, \end($parts));
-                    $ref=&$this->ref($key);
-                    $type=$rp->getType();
+                    $ref = &$this->ref($key);
+                    $type = $rp->getType();
                     if ($rp->hasDefaultValue()) {
                         $ref = $rp->getDefaultValue();
                     } elseif ($type->allowsNull()) {
-                        $ref=null;
+                        $ref = null;
                     } elseif ($type->getName() === 'array') {
-                        $ref=[];
+                        $ref = [];
                     }
                 }
             }
@@ -379,7 +380,6 @@ namespace F3 {
 
         /**
          * Return TRUE if hive key is set
-         * (or return timestamp and TTL if cached)
          */
         function exists(string $key, mixed &$val=NULL): bool|array
         {
@@ -391,7 +391,7 @@ namespace F3 {
         }
 
         /**
-         * Return TRUE if hive key is empty and not cached
+         * Return TRUE if hive key is empty
          **/
         function devoid(string $key, mixed &$val=NULL): bool
         {
@@ -443,7 +443,7 @@ namespace F3 {
 
         const
             PACKAGE='Fat-Free Framework',
-            VERSION='4.0.0-dev.3';
+            VERSION='4.0.0-dev.4';
 
         const
             // Mapped PHP globals
@@ -673,14 +673,19 @@ namespace F3 {
             return $val;
         }
 
-        // TODO: disable cache query?
+        /**
+         * Return TRUE if hive key is set
+         * (or return timestamp and TTL if cached)
+         */
         function exists(string $key, mixed &$val=NULL): bool|array
         {
             $exists = parent::exists($key,$val);
             return $exists ? true : Cache::instance()->exists($this->hash($key).'.var',$val);
         }
 
-        // TODO: disable cache query?
+        /**
+         * Return TRUE if hive key is empty and not cached
+         **/
         function devoid(string $key, mixed &$val=NULL): bool
         {
             $devoid = parent::devoid($key,$val);
@@ -689,7 +694,10 @@ namespace F3 {
                     !$val);
         }
 
-        function set(string $key, mixed $val, ?int $ttl=null): mixed
+        /**
+         * Bind value to hive key, configure framework, set value to cache
+         */
+        function set(string $key, mixed $val, ?int $ttl=0): mixed
         {
             $time = $this->TIME;
             if (preg_match('/^(GET|POST|COOKIE)\b(.+)/',$key,$expr)) {
@@ -711,13 +719,12 @@ namespace F3 {
             }
             else switch ($key) {
                 case 'CACHE':
-                    $val=Cache::instance()->load($val);
+                    $val = Cache::instance()->load($val);
                     break;
                 case 'ENCODING':
-                    \ini_set('default_charset',$val);
+                    \ini_set('default_charset', $val);
                     \mb_internal_encoding($val);
                     break;
-                // TODO: merge these 3 options into one language function
                 case 'FALLBACK':
                     $this->fallback = $val;
                     $lang = $this->language($this->LANGUAGE);
@@ -725,9 +732,9 @@ namespace F3 {
                     if (!isset($lang))
                         $val = $this->language($val);
                     if ($this->LOCALES)
-                        $lex = $this->lexicon($this->LOCALES,$ttl);
+                        $lex = $this->lexicon($this->LOCALES, $ttl);
                 case 'LOCALES':
-                    if (isset($lex) || $lex = $this->lexicon($val,$ttl))
+                    if (isset($lex) || $lex = $this->lexicon($val, $ttl))
                         foreach ($lex as $dt => $dd) {
                             $ref = &$this->ref($this->PREFIX.$dt);
                             $ref = $dd;
@@ -738,15 +745,15 @@ namespace F3 {
                     date_default_timezone_set($val);
                     break;
             }
-            $ref = parent::set($key,$val);
-            if (preg_match('/^JAR\b/',$key)) {
+            $ref = parent::set($key, $val);
+            if (preg_match('/^JAR\b/', $key)) {
                 if ($key == 'JAR.lifetime')
-                    $this->set('JAR.expire',$val==0 ? 0 :
+                    $this->set('JAR.expire',$val == 0 ? 0 :
                         (is_int($val) ? $time + $val : strtotime($val)));
                 else {
                     if ($key=='JAR.expire')
                         $this->JAR['lifetime'] = max(0,$val - $time);
-                    $jar=$this->unserialize($this->serialize($this->JAR));
+                    $jar = $this->unserialize($this->serialize($this->JAR));
                     unset($jar['expire']);
                     if (!headers_sent() && session_status() != PHP_SESSION_ACTIVE)
                         session_set_cookie_params($jar);
@@ -754,7 +761,7 @@ namespace F3 {
             }
             if ($ttl)
                 // Persist the key-value pair
-                Cache::instance()->set($this->hash($key).'.var',$val,$ttl);
+                Cache::instance()->set($this->hash($key).'.var', $val, $ttl);
             return $ref;
         }
 
@@ -1318,8 +1325,10 @@ namespace F3 {
         /**
          * Assign/auto-detect language
          */
-        function language(string $code): string
+        function language(string $code, ?string $lexiconPath = null, ?int $ttl=0, ?string $fallback = null): string
         {
+            if ($fallback)
+                $this->fallback = $fallback;
             $code = \preg_replace('/\h+|;q=[0-9.]+/','',$code ?: '');
             $code.= ($code ? ',' : '').$this->fallback;
             $this->languages = [];
@@ -1352,7 +1361,10 @@ namespace F3 {
                 $locales[] = $locale;
             }
             \setlocale(LC_ALL,$locales);
-            return $this->_hive->LANGUAGE = \implode(',',$this->languages);
+            $out = $this->_hive->LANGUAGE = \implode(',',$this->languages);
+            if ($lexiconPath)
+                $this->set('LOCALES', $lexiconPath, $ttl);
+            return $out;
         }
 
         /**
