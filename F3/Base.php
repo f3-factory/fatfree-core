@@ -216,14 +216,13 @@ namespace F3 {
          */
         function toArray(): array
         {
-            $src = [
-                ...\array_keys(\get_object_vars($this)),
-                ...\array_keys($this->_hive_data),
-            ];
+            $out = \array_diff_key(\get_object_vars($this), array_flip(static::OWN_PROPS));
+            $src = \array_keys($this->_hive_data);
             if ($this->_hive)
-                $src = [...$src, ...\array_keys(\get_object_vars($this->_hive))];
-            $out=[];
-            foreach (\array_diff(array_unique($src),static::OWN_PROPS) as $key) {
+                $src = [
+                    ...$src,
+                    ...\array_diff(\array_keys(\get_object_vars($this->_hive)),static::OWN_PROPS)];
+            foreach ($src as $key) {
                 $out[$key] = $this->get($key);
             }
             return $out;
@@ -235,7 +234,7 @@ namespace F3 {
         function clear(string $key): void
         {
             $parts = $this->cut($key);
-            if (\array_key_exists($parts[0],$this->_hive_data)) {
+            if (\array_key_exists($parts[0], $this->_hive_data)) {
                 // fluent data
                 eval('unset('.$this->compile('@this->_hive_data.'.$key, FALSE).');');
             } elseif (\property_exists($this, $parts[0])) {
@@ -474,6 +473,8 @@ namespace F3 {
 
         //! Default fallback language
         protected string $fallback='en';
+
+        protected const OWN_PROPS = ['_hive','_hive_data', 'languages', 'locks', 'fallback'];
 
         static protected array $AccessorProps = [
             'CACHE',
@@ -854,8 +855,7 @@ namespace F3 {
         **/
         function hive(): array
         {
-            // TODO: align this with ->toArray
-            return (array) $this + (array) $this->_hive + $this->_hive_data;
+            return $this->toArray();
         }
 
         /**
