@@ -1067,7 +1067,7 @@ final class Base extends Prefab implements ArrayAccess {
 									($mod=='full' ? IntlDateFormatter::FULL : IntlDateFormatter::LONG);
 								$pattern = $dateType === IntlDateFormatter::SHORT
 									? (($ptn=IntlDatePatternGenerator::create($lang[0]))
-										? $ptn->getBestPattern('YYYYMMdd') : null) : null;
+										? $ptn->getBestPattern('yyyyMMdd') : null) : null;
 								$formatter = new IntlDateFormatter($lang[0],$dateType,
 									IntlDateFormatter::NONE, null,null, $pattern);
 								return $formatter->format($args[$pos]);
