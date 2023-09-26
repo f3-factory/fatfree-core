@@ -187,7 +187,7 @@ class Session extends Mapper {
 					$tab.$db->quotekey('ip').' VARCHAR(45),'.$eol.
 					$tab.$db->quotekey('agent').' VARCHAR(300),'.$eol.
 					$tab.$db->quotekey('stamp').' INTEGER,'.$eol.
-					$tab.'PRIMARY KEY ('.$db->quotekey($sqlsrv?'id':'session_id').')'.$eol.
+					$tab.'PRIMARY KEY ('.$db->quotekey($sqlsrv?'id':'session_id').($db->driver()=='mysql'?'(20)':'').')'.$eol.
 				($sqlsrv?',CONSTRAINT [UK_session_id] UNIQUE(session_id)':'').
 				');'
 			);
