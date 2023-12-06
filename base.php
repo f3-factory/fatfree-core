@@ -2648,7 +2648,8 @@ class Cache extends Prefab {
 				$raw=xcache_get($ndx);
 				break;
 			case 'folder':
-				$raw=$fw->read($parts[1].$ndx);
+				$raw=$fw->read($parts[1]
+					.str_replace(['/','\\'],'',$ndx));
 				break;
 		}
 		if (!empty($raw)) {
