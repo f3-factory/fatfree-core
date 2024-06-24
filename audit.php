@@ -196,7 +196,7 @@ class Audit extends Prefab {
      **/
     function mac($addr) {
         return (bool)filter_var($addr,FILTER_VALIDATE_MAC)
-            || !preg_match('/^([0-9a-f]{2}:){3}ff:fe(:[0-9a-f]{2}){3}$/i', $addr);
+            || preg_match('/^([0-9a-f]{2}:){3}ff:fe(:[0-9a-f]{2}){3}$/i', $addr);
     }
 
 }
