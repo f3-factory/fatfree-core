@@ -189,4 +189,14 @@ class Audit extends Prefab {
 				'/[A-Z].*?[0-9[:punct:]]|[0-9[:punct:]].*?[A-Z]/',$str));
 	}
 
+    /**
+     *	Return TRUE if string is a valid MAC address including EUI-64 format
+     *	@return bool
+     *	@param $addr string
+     **/
+    function mac($addr) {
+        return (bool)filter_var($addr,FILTER_VALIDATE_MAC)
+            || !preg_match('/^([0-9a-f]{2}:){3}ff:fe(:[0-9a-f]{2}){3}$/i', $addr);
+    }
+
 }
