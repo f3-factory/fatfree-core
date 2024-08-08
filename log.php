@@ -23,9 +23,14 @@
 //! Custom logger
 class Log {
 
+	// default format string
+	const DEFAULT_FORMAT = 'r';
+
 	protected
 		//! File name
-		$file;
+		$file,
+		//! format string
+		$format;
 
 	/**
 	*	Write specified text to log file
@@ -33,12 +38,13 @@ class Log {
 	*	@param $text string
 	*	@param $format string
 	**/
-	function write($text,$format='r') {
+	function write($text,$format=FALSE) {
 		$fw=Base::instance();
+		$current_format = (!$format) ? $this->format : $format;
 		foreach (preg_split('/\r?\n|\r/',trim($text)) as $line)
 			$fw->write(
 				$this->file,
-				date($format).
+				date($current_format).
 				(isset($_SERVER['REMOTE_ADDR'])?
 					(' ['.$_SERVER['REMOTE_ADDR'].
 					(($fwd=filter_var($fw->get('HEADERS.X-Forwarded-For'),
@@ -60,12 +66,14 @@ class Log {
 	/**
 	*	Instantiate class
 	*	@param $file string
+	*	@param $format string
 	**/
-	function __construct($file) {
+	function __construct($file,$format=FALSE) {
 		$fw=Base::instance();
 		if (!is_dir($dir=$fw->LOGS))
 			mkdir($dir,Base::MODE,TRUE);
 		$this->file=$dir.$file;
+		$this->format = (!$format) ? self::DEFAULT_FORMAT : $format;
 	}
 
 }
