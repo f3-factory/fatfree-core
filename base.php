@@ -1536,7 +1536,7 @@ final class Base extends Prefab implements ArrayAccess {
 			if (!preg_match('/'.self::VERBS.'/',$verb))
 				$this->error(501,$verb.' '.$this->hive['URI']);
 			$this->hive['ROUTES'][$parts[3]][$type][strtoupper($verb)]=
-				[$handler,$ttl,$kbps,$alias];
+				[is_string($handler) ? trim($handler) : $handler,$ttl,$kbps,$alias];
 		}
 	}
 
