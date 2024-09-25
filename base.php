@@ -1728,7 +1728,7 @@ final class Base extends Prefab implements ArrayAccess {
 			if (!$route)
 				continue;
 			if (isset($route[$this->hive['VERB']]) && !$preflight) {
-				if ($this->hive['PATH_SLASH_CLEAN']===TRUE &&
+				if ($this->hive['REROUTE_TRAILING_SLASH']===TRUE &&
 					$this->hive['VERB']=='GET' &&
 					preg_match('/.+\/$/',$this->hive['PATH']))
 					$this->reroute(substr($this->hive['PATH'],0,-1).
@@ -2531,7 +2531,7 @@ final class Base extends Prefab implements ArrayAccess {
 			'PACKAGE'=>self::PACKAGE,
 			'PARAMS'=>[],
 			'PATH'=>$path,
-			'PATH_SLASH_CLEAN'=>TRUE,
+			'REROUTE_TRAILING_SLASH'=>TRUE,
 			'PATTERN'=>NULL,
 			'PLUGINS'=>$this->fixslashes(__DIR__).'/',
 			'PORT'=>$port,
