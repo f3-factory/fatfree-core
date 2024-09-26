@@ -39,8 +39,11 @@ class Log {
 			$fw->write(
 				$this->file,
 				date($format).
-					(isset($_SERVER['REMOTE_ADDR'])?
-						(' ['.$_SERVER['REMOTE_ADDR'].']'):'').' '.
+				(isset($_SERVER['REMOTE_ADDR'])?
+					(' ['.$_SERVER['REMOTE_ADDR'].
+					(($fwd=filter_var($fw->get('HEADERS.X-Forwarded-For'),
+						FILTER_VALIDATE_IP))?(' ('.$fwd.')'):'')
+					.']'):'').' '.
 				trim($line).PHP_EOL,
 				TRUE
 			);

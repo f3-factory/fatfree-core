@@ -27,7 +27,9 @@ class OAuth2 extends \Magic {
 
 	protected
 		//! Scopes and claims
-		$args=[];
+		$args=[],
+		//! Encoding
+		$enc_type = PHP_QUERY_RFC1738;
 
 	/**
 	*	Return OAuth2 authentication URI
@@ -36,21 +38,22 @@ class OAuth2 extends \Magic {
 	*	@param $query bool
 	**/
 	function uri($endpoint,$query=TRUE) {
-		return $endpoint.($query?('?'.http_build_query($this->args)):'');
+		return $endpoint.($query?('?'.
+				http_build_query($this->args,null,'&',$this->enc_type)):'');
 	}
 
 	/**
 	*	Send request to API/token endpoint
-	*	@return string|FALSE
+	*	@return string|array|FALSE
 	*	@param $uri string
 	*	@param $method string
-	*	@param $token array
+	*	@param $token string
 	**/
 	function request($uri,$method,$token=NULL) {
 		$web=\Web::instance();
 		$options=[
 			'method'=>$method,
-			'content'=>http_build_query($this->args),
+			'content'=>http_build_query($this->args,null,'&',$this->enc_type),
 			'header'=>['Accept: application/json']
 		];
 		if ($token)
@@ -93,6 +96,14 @@ class OAuth2 extends \Magic {
 			),
 			TRUE
 		);
+	}
+
+	/**
+	 * change default url encoding type, i.E. PHP_QUERY_RFC3986
+	 * @param $type
+	 */
+	function setEncoding($type) {
+		$this->enc_type = $type;
 	}
 
 	/**

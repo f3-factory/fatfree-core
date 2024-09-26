@@ -84,13 +84,16 @@ class Jig {
 		$fw=\Base::instance();
 		switch ($this->format) {
 			case self::FORMAT_JSON:
-				$out=json_encode($data,JSON_PRETTY_PRINT);
+				if(version_compare(PHP_VERSION, '7.2.0') >= 0)
+					$out=json_encode($data,JSON_PRETTY_PRINT | JSON_INVALID_UTF8_IGNORE);
+				else
+					$out=json_encode($data,JSON_PRETTY_PRINT | JSON_PARTIAL_OUTPUT_ON_ERROR);
 				break;
 			case self::FORMAT_Serialized:
 				$out=$fw->serialize($data);
 				break;
 		}
-		return $fw->write($this->dir.'/'.$file,$out);
+		return $fw->write($this->dir.$file,$out);
 	}
 
 	/**

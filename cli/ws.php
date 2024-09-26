@@ -70,7 +70,7 @@ class WS {
 		$verb=NULL;
 		$uri=NULL;
 		foreach (explode($EOL,trim($buf)) as $line)
-			if (preg_match('/^(\w+)\s(.+)\sHTTP\/1\.\d$/',
+			if (preg_match('/^(\w+)\s(.+)\sHTTP\/[\d.]{1,3}$/',
 				trim($line),$match)) {
 				$verb=$match[1];
 				$uri=$match[2];
@@ -328,8 +328,7 @@ class Agent {
 		$flag,
 		$verb,
 		$uri,
-		$headers,
-		$events;
+		$headers;
 
 	/**
 	*	Return server instance
@@ -400,8 +399,8 @@ class Agent {
 		if (is_bool($server->write($this->socket,$buf)))
 			return FALSE;
 		if (!in_array($op,[WS::Pong,WS::Close]) &&
-			isset($this->events['send']) &&
-			is_callable($func=$this->events['send']))
+			isset($this->server->events['send']) &&
+			is_callable($func=$this->server->events['send']))
 			$func($this,$op,$data);
 		return $data;
 	}
@@ -425,16 +424,16 @@ class Agent {
 			}
 			else
 			if ($len==0x7f) {
-				for ($i=0,$len=0;$i<8;$i++)
+				for ($i=0,$len=0;$i<8;++$i)
 					$len=$len*256+ord($buf[$i+2]);
 				$pos+=8;
 			}
-			for ($i=0,$mask=[];$i<4;$i++)
+			for ($i=0,$mask=[];$i<4;++$i)
 				$mask[$i]=ord($buf[$pos+$i]);
 			$pos+=4;
 			if (strlen($buf)<$len+$pos)
 				return FALSE;
-			for ($i=0,$data='';$i<$len;$i++)
+			for ($i=0,$data='';$i<$len;++$i)
 				$data.=chr(ord($buf[$pos+$i])^$mask[$i%4]);
 			// Dispatch
 			switch ($op & WS::OpCode) {
@@ -447,8 +446,8 @@ class Agent {
 			case WS::Text:
 				$data=trim($data);
 			case WS::Binary:
-				if (isset($this->events['receive']) &&
-					is_callable($func=$this->events['receive']))
+				if (isset($this->server->events['receive']) &&
+					is_callable($func=$this->server->events['receive']))
 					$func($this,$op,$data);
 				break;
 			}
@@ -460,8 +459,8 @@ class Agent {
 	*	Destroy object
 	**/
 	function __destruct() {
-		if (isset($this->events['disconnect']) &&
-			is_callable($func=$this->events['disconnect']))
+		if (isset($this->server->events['disconnect']) &&
+			is_callable($func=$this->server->events['disconnect']))
 			$func($this);
 	}
 
@@ -479,10 +478,9 @@ class Agent {
 		$this->verb=$verb;
 		$this->uri=$uri;
 		$this->headers=$hdrs;
-		$this->events=$server->events();
 
-		if (isset($this->events['connect']) &&
-			is_callable($func=$this->events['connect']))
+		if (isset($server->events['connect']) &&
+			is_callable($func=$server->events['connect']))
 			$func($this);
 	}
 

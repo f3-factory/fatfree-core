@@ -43,7 +43,7 @@ class Template extends Preview {
 		$out='';
 		foreach ($node['@attrib'] as $key=>$val)
 			$out.='$'.$key.'='.
-				(preg_match('/\{\{(.+?)\}\}/',$val)?
+				(preg_match('/\{\{(.+?)\}\}/',$val?:'')?
 					$this->token($val):
 					Base::instance()->stringify($val)).'; ';
 		return '<?php '.$out.'?>';
@@ -273,23 +273,23 @@ class Template extends Preview {
 		// Build tree structure
 		for ($ptr=0,$w=5,$len=strlen($text),$tree=[],$tmp='';$ptr<$len;)
 			if (preg_match('/^(.{0,'.$w.'}?)<(\/?)(?:F3:)?'.
-				'('.$this->tags.')\b((?:\s+[\w.:@!-]+'.
+				'('.$this->tags.')\b((?:\s+[\w.:@!\-]+'.
 				'(?:\h*=\h*(?:"(?:.*?)"|\'(?:.*?)\'))?|'.
 				'\h*\{\{.+?\}\})*)\h*(\/?)>/is',
 				substr($text,$ptr),$match)) {
-				if (strlen($tmp) || $match[1])
+				if (strlen($tmp) || isset($match[1]))
 					$tree[]=$tmp.$match[1];
 				// Element node
 				if ($match[2]) {
 					// Find matching start tag
 					$stack=[];
-					for($i=count($tree)-1;$i>=0;$i--) {
+					for($i=count($tree)-1;$i>=0;--$i) {
 						$item=$tree[$i];
 						if (is_array($item) &&
-							array_key_exists($match[3],$item) &&
-							!isset($item[$match[3]][0])) {
+							array_key_exists($k=strtolower($match[3]),$item) &&
+							!isset($item[$k][0])) {
 							// Start tag found
-							$tree[$i][$match[3]]+=array_reverse($stack);
+							$tree[$i][$k]+=array_reverse($stack);
 							$tree=array_slice($tree,0,$i+1);
 							break;
 						}
@@ -298,7 +298,7 @@ class Template extends Preview {
 				}
 				else {
 					// Start tag
-					$node=&$tree[][$match[3]];
+					$node=&$tree[][strtolower($match[3])];
 					$node=[];
 					if ($match[4]) {
 						// Process attributes
@@ -326,7 +326,7 @@ class Template extends Preview {
 				$tmp.=substr($text,$ptr,$w);
 				$ptr+=$w;
 				if ($w<50)
-					$w++;
+					++$w;
 			}
 		if (strlen($tmp))
 			// Append trailing text

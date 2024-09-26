@@ -258,12 +258,12 @@ class Image {
 			if ($width/$ratio<=$height) {
 				$cropw=round($origh*$width/$height);
 				imagecopyresampled($tmp,$this->data,
-					0,0,($origw-$cropw)/2,0,$width,$height,$cropw,$origh);
+					0,0,round(($origw-$cropw)/2),0,$width,$height,$cropw,$origh);
 			}
 			else {
 				$croph=round($origw*$height/$width);
 				imagecopyresampled($tmp,$this->data,
-					0,0,0,($origh-$croph)/2,$width,$height,$origw,$croph);
+					0,0,0,round(($origh-$croph)/2),$width,$height,$origw,$croph);
 			}
 		}
 		else
@@ -309,13 +309,13 @@ class Image {
 		if ($align & self::POS_Left)
 			$posx=0;
 		if ($align & self::POS_Center)
-			$posx=($imgw-$ovrw)/2;
+			$posx=round(($imgw-$ovrw)/2);
 		if ($align & self::POS_Right)
 			$posx=$imgw-$ovrw;
 		if ($align & self::POS_Top)
 			$posy=0;
 		if ($align & self::POS_Middle)
-			$posy=($imgh-$ovrh)/2;
+			$posy=round(($imgh-$ovrh)/2);
 		if ($align & self::POS_Bottom)
 			$posy=$imgh-$ovrh;
 		if (empty($posx))
@@ -367,17 +367,21 @@ class Image {
 		imagefill($this->data,0,0,IMG_COLOR_TRANSPARENT);
 		$ctr=count($sprites);
 		$dim=$blocks*floor($size/$blocks)*2/$blocks;
-		for ($j=0,$y=ceil($blocks/2);$j<$y;$j++)
-			for ($i=$j,$x=$blocks-1-$j;$i<$x;$i++) {
+		for ($j=0,$y=ceil($blocks/2);$j<$y;++$j)
+			for ($i=$j,$x=$blocks-1-$j;$i<$x;++$i) {
 				$sprite=imagecreatetruecolor($dim,$dim);
 				imagefill($sprite,0,0,IMG_COLOR_TRANSPARENT);
 				$block=$sprites[hexdec($hash[($j*$blocks+$i)*2])%$ctr];
-				for ($k=0,$pts=count($block);$k<$pts;$k++)
+				for ($k=0,$pts=count($block);$k<$pts;++$k)
 					$block[$k]*=$dim;
-				imagefilledpolygon($sprite,$block,$pts/2,$fg);
-				for ($k=0;$k<4;$k++) {
+				if (version_compare(PHP_VERSION, '8.1.0') >= 0) {
+					imagefilledpolygon($sprite,$block,$fg);
+				} else {
+					imagefilledpolygon($sprite,$block,$pts/2,$fg);
+				}
+				for ($k=0;$k<4;++$k) {
 					imagecopyresampled($this->data,$sprite,
-						$i*$dim/2,$j*$dim/2,0,0,$dim/2,$dim/2,$dim,$dim);
+						round($i*$dim/2),round($j*$dim/2),0,0,round($dim/2),round($dim/2),$dim,$dim);
 					$this->data=imagerotate($this->data,90,
 						imagecolorallocatealpha($this->data,0,0,0,127));
 				}
@@ -410,13 +414,13 @@ class Image {
 		}
 		$fw=Base::instance();
 		foreach ($fw->split($path?:$fw->UI.';./') as $dir)
-			if (is_file($path=$dir.$font)) {
+			if (is_file($path=realpath($dir.$font))) {
 				$seed=strtoupper(substr(
 					$ssl?bin2hex(openssl_random_pseudo_bytes($len)):uniqid(),
 					-$len));
 				$block=$size*3;
 				$tmp=[];
-				for ($i=0,$width=0,$height=0;$i<$len;$i++) {
+				for ($i=0,$width=0,$height=0;$i<$len;++$i) {
 					// Process at 2x magnification
 					$box=imagettfbbox($size*2,0,$path,$seed[$i]);
 					$w=$box[2]-$box[0];
@@ -424,25 +428,25 @@ class Image {
 					$char=imagecreatetruecolor($block,$block);
 					imagefill($char,0,0,$bg);
 					imagettftext($char,$size*2,0,
-						($block-$w)/2,$block-($block-$h)/2,
+						round(($block-$w)/2),round($block-($block-$h)/2),
 						$fg,$path,$seed[$i]);
 					$char=imagerotate($char,mt_rand(-30,30),
 						imagecolorallocatealpha($char,0,0,0,127));
 					// Reduce to normal size
 					$tmp[$i]=imagecreatetruecolor(
-						($w=imagesx($char))/2,($h=imagesy($char))/2);
+						round(($w=imagesx($char))/2),round(($h=imagesy($char))/2));
 					imagefill($tmp[$i],0,0,IMG_COLOR_TRANSPARENT);
 					imagecopyresampled($tmp[$i],
-						$char,0,0,0,0,$w/2,$h/2,$w,$h);
+						$char,0,0,0,0,round($w/2),round($h/2),$w,$h);
 					imagedestroy($char);
 					$width+=$i+1<$len?$block/2:$w/2;
 					$height=max($height,$h/2);
 				}
-				$this->data=imagecreatetruecolor($width,$height);
+				$this->data=imagecreatetruecolor(round($width),round($height));
 				imagefill($this->data,0,0,IMG_COLOR_TRANSPARENT);
-				for ($i=0;$i<$len;$i++) {
+				for ($i=0;$i<$len;++$i) {
 					imagecopy($this->data,$tmp[$i],
-						$i*$block/2,($height-imagesy($tmp[$i]))/2,0,0,
+						round($i*$block/2),round(($height-imagesy($tmp[$i]))/2),0,0,
 						imagesx($tmp[$i]),imagesy($tmp[$i]));
 					imagedestroy($tmp[$i]);
 				}
@@ -520,7 +524,7 @@ class Image {
 		if ($this->flag) {
 			if (!is_dir($dir=$fw->TEMP))
 				mkdir($dir,Base::MODE,TRUE);
-			$this->count++;
+			++$this->count;
 			$fw->write($dir.'/'.$fw->SEED.'.'.
 				$fw->hash($this->file).'-'.$this->count.'.png',
 				$this->dump());

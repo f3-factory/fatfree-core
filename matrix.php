@@ -40,6 +40,32 @@ class Matrix extends Prefab {
 	}
 
 	/**
+	 * select a subset of fields from an input array
+	 * @param string|array $fields splittable string or array
+	 * @param string|array $data hive key or array
+	 * @return array
+	 */
+	function select($fields, $data) {
+		return array_intersect_key(is_array($data) ? $data : \Base::instance()->get($data),
+			array_flip(is_array($fields) ? $fields : \Base::instance()->split($fields)));
+	}
+
+	/**
+	 * walk with a callback function through a subset of fields from an input array
+	 * the callback receives the value, index-key and the full input array as parameters
+	 * set value parameter as reference and you're able to modify the data as well
+	 * @param string|array $fields splittable string or array of fields
+	 * @param string|array $data hive key or input array
+	 * @param callable $callback (mixed &$value, string $key, array $data)
+	 * @return array modified subset data
+	 */
+	function walk($fields, $data, $callback) {
+		$subset=$this->select($fields, $data);
+		array_walk($subset, $callback, $data);
+		return $subset;
+	}
+
+	/**
 	*	Rotate a two-dimensional array variable
 	*	@return NULL
 	*	@param $var array
@@ -104,7 +130,7 @@ class Matrix extends Prefab {
 			$days=cal_days_in_month(CAL_GREGORIAN,$parts['mon'],$parts['year']);
 			$ref=date('w',strtotime(date('Y-m',$parts[0]).'-01'))+(7-$first)%7;
 			$out=[];
-			for ($i=0;$i<$days;$i++)
+			for ($i=0;$i<$days;++$i)
 				$out[floor(($ref+$i)/7)][($ref+$i)%7]=$i+1;
 		}
 		return $out;
