@@ -2082,7 +2082,7 @@ final class Base extends Prefab implements ArrayAccess {
 							array_merge([$match['lval']],
 								str_getcsv($cmd[1]=='config'?
 								$this->cast($match['rval']):
-									$match['rval']))
+									$match['rval'],",",'"', "\\"))
 						);
 					}
 					else {
@@ -2105,7 +2105,7 @@ final class Base extends Prefab implements ArrayAccess {
 							// Mark quoted strings with 0x00 whitespace
 							str_getcsv(preg_replace(
 								'/(?<!\\\\)(")(.*?)\1/',
-								"\\1\x00\\2\\1",trim($rval)))
+								"\\1\x00\\2\\1",trim($rval)),",",'"', "\\")
 						);
 						preg_match('/^(?<section>[^:]+)(?:\:(?<func>.+))?/',
 							$sec,$parts);
@@ -2377,7 +2377,6 @@ final class Base extends Prefab implements ArrayAccess {
 		} else {
 			$check = error_reporting((E_ALL | E_STRICT) & ~(E_NOTICE | E_USER_NOTICE));
 		}
-
 		set_exception_handler(
 			function($obj) {
 				/** @var Exception $obj */
