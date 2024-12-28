@@ -38,7 +38,82 @@ abstract class Prefab {
 	}
 
 }
-
+/**
+ * @property string ALIAS
+ * @property array ALIASES
+ * @property string|array AUTOLOAD
+ * @property bool|string CACHE
+ * @property bool CASELESS
+ * @property callable|\Prefab|\Psr\Container\ContainerInterface CONTAINER
+ * @property string
+ * @property array COOKIE
+ * @property array GET
+ * @property array POST
+ * @property array REQUEST
+ * @property array SESSION
+ * @property array FILES
+ * @property array SERVER
+ * @property array ENV
+ * @property array CORS
+ * @property int DEBUG
+ * @property array DIACRITICS
+ * @property string DNSBL
+ * @property array EMOJI
+ * @property string ENCODING
+ * @property bool ESCAPE
+ * @property string EXEMPT
+ * @property object EXCEPTION
+ * @property string FALLBACK
+ * @property array FORMATS
+ * @property string FRAGMENT
+ * @property bool HALT
+ * @property bool HIGHLIGHT
+ * @property array JAR
+ * @property string LANGUAGE
+ * @property string LOCALES
+ * @property string|array LOGGABLE
+ * @property string LOGS
+ * @property mixed ONERROR
+ * @property mixed ONREROUTE
+ * @property string|null PACKAGE
+ * @property array PARAMS
+ * @property string PLUGINS
+ * @property string PREFIX
+ * @property string PREMAP
+ * @property bool QUIET
+ * @property bool RAW
+ * @property array ROUTES
+ * @property string SEED
+ * @property string SERIALIZER
+ * @property string TEMP
+ * @property float TIME
+ * @property bool REROUTE_TRAILING_SLASH
+ * @property string TZ
+ * @property string UI
+ * @property callback UNLOAD
+ * @property string UPLOADS
+ * @property string URI
+ * @property string VERB
+ * @property string VERSION
+ * @property string|null XFRAME
+ * @property-read string AGENT
+ * @property-read bool AJAX
+ * @property-read string BASE
+ * @property-read string BODY
+ * @property-read bool CLI
+ * @property-read array ERROR
+ * @property-read array HEADERS
+ * @property-read string HOST
+ * @property-read string IP
+ * @property-read string PATH
+ * @property-read string PATTERN
+ * @property-read int PORT
+ * @property-read string QUERY
+ * @property-read string REALM
+ * @property-read string RESPONSE
+ * @property-read string ROOT
+ * @property-read string SCHEME
+ */
 //! Base structure
 final class Base extends Prefab implements ArrayAccess {
 
