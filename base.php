@@ -45,7 +45,6 @@ abstract class Prefab {
  * @property bool|string CACHE
  * @property bool CASELESS
  * @property callable|\Prefab|\Psr\Container\ContainerInterface CONTAINER
- * @property string
  * @property array COOKIE
  * @property array GET
  * @property array POST
