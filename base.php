@@ -1586,6 +1586,8 @@ final class Base extends Prefab implements ArrayAccess {
 	function route($pattern,$handler,$ttl=0,$kbps=0) {
 		$types=['sync','ajax','cli'];
 		$alias=null;
+        if(is_array($handler))
+            $handler=implode('->',$handler);
 		if (is_array($pattern)) {
 			foreach ($pattern as $item)
 				$this->route($item,$handler,$ttl,$kbps);
