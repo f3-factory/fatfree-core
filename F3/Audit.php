@@ -79,10 +79,10 @@ class Audit {
 	*	@return bool
 	*	@param $addr string
 	**/
-	function isprivate($addr) {
-		return !(bool)filter_var($addr,FILTER_VALIDATE_IP,
-			FILTER_FLAG_IPV4|FILTER_FLAG_IPV6|FILTER_FLAG_NO_PRIV_RANGE);
-	}
+    function isprivate($addr) {
+        return (bool) filter_var($addr, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_IPV6)
+            && !(bool) filter_var($addr, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE);
+    }
 
 	/**
 	*	Return TRUE if IP address is within reserved range
