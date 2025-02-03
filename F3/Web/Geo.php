@@ -96,7 +96,6 @@ class Geo {
 	*	@param $key string
 	**/
 	function weather($latitude,$longitude,$key) {
-		$fw=\F3\Base::instance();
 		$web=\F3\Web::instance();
 		$query=[
 			'lat'=>$latitude,

@@ -31,8 +31,8 @@ class Service {
         if (Registry::exists($id))
             return Registry::get($id);
         $out = $this->make($id, $args);
-        if (\in_array(Prefab::class, $this->f3->traits($out))
-            || array_key_exists($id, $this->singletons)) {
+        if (array_key_exists($id, $this->singletons)
+            || \in_array(Prefab::class, $this->f3->traits($out))) {
             Registry::set($id, $out);
         }
         return $out;
@@ -74,7 +74,7 @@ class Service {
         if (!isset($this->factories[$id])) {
             $this->set($id);
         }
-        /** @var class-string $class */
+        /** @var class-string|object $class */
         $class = $this->factories[$id];
         // if referenced by other factory, take that instead
         if (\is_string($class) && isset($this->factories[$class])) {
@@ -82,6 +82,9 @@ class Service {
         }
         if ($class instanceof \Closure) {
             return $class($this, $args);
+        }
+        if (is_object($class)) {
+            return $class;
         }
         $ref = new \ReflectionClass($class);
         if (!$ref->isInstantiable()) {

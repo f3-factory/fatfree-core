@@ -304,7 +304,7 @@ class Web {
 			return $data;
 		};
 		$out=[];
-		foreach ($_FILES as $name=>$item) {
+		foreach ($fw->FILES as $name=>$item) {
 			$files=[];
 			foreach ($item as $k=>$mix)
 				foreach ($fetch($mix) as $i=>$val)

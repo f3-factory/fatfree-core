@@ -2,7 +2,7 @@
 
 /**
  *
- * Copyright (c) 2023 F3::Factory, All rights reserved.
+ * Copyright (c) 2025 F3::Factory, All rights reserved.
  *
  * This file is part of the Fat-Free Framework (http://fatfreeframework.com).
  *
@@ -23,6 +23,10 @@ namespace F3 {
 
     use F3\Http\Router;
     use F3\Http\Status;
+    use Psr\Http\Message\ResponseFactoryInterface;
+    use Psr\Http\Message\ResponseInterface;
+    use Psr\Http\Message\ServerRequestInterface;
+    use Psr\Http\Message\StreamFactoryInterface;
 
     /**
      * Mixin for singleton instance access
@@ -291,7 +295,8 @@ namespace F3 {
         /**
          * Convert JS-style token to PHP expression
          * @param $str string
-         * @param $evaluate bool compile expressions as well or only convert variable access
+         * @param $evaluate bool compile expressions as well or only convert variable
+         *     access
          * @return string
          */
         function compile(string $str, bool $evaluate=TRUE): string
@@ -442,7 +447,7 @@ namespace F3 {
 
         const
             PACKAGE='Fat-Free Framework',
-            VERSION='4.0.0-dev.4';
+            VERSION='4.0.0-dev.5';
 
         const
             // Mapped PHP globals
@@ -497,6 +502,7 @@ namespace F3 {
         public string|bool $CACHE = FALSE;
         public bool $CASELESS = FALSE;
         public bool $CLI = FALSE;
+        public bool $NONBLOCKING = FALSE;
         public array $CORS = [
             'headers'=>'',
             'origin'=>FALSE,
@@ -551,6 +557,7 @@ namespace F3 {
         public bool $RAW = FALSE;
         public string $REALM = '';
         public string|object $RESPONSE = '';
+        public array $RESPONSE_HEADERS = [];
         public string $ROOT = '';
         public array $ROUTES = [];
         public string $SCHEME = 'http';
@@ -570,19 +577,32 @@ namespace F3 {
         /**
          * Sync PHP global with corresponding hive key
          */
-        function sync(string $key): ?array
+        function sync(?string $key = null): ?array
         {
-            return $GLOBALS['_'.$key] = &$this->_hive_data[$key];
+            if (!$key) {
+                foreach (\explode('|',Base::GLOBALS) as $key)
+                    $this->sync($key);
+                return null;
+            }
+            return $this->_hive_data[$key] = &$GLOBALS['_'.$key];
         }
 
         /**
          * drop sync of PHP global with corresponding hive key
          */
-        function desync(string $key): array
+        function desync(?string $key = null): void
         {
+            if (!$key) {
+                foreach (\explode('|',Base::GLOBALS) as $key)
+                    $this->desync($key);
+                return;
+            }
+            // prevent session from being started when none exists yet
+            if ($key === 'SESSION' && \session_status() !== PHP_SESSION_ACTIVE)
+                return;
             $data = $this->{$key};
             unset($GLOBALS['_'.$key]);
-            return $this->{$key}=$GLOBALS['_'.$key] = $data ?? [];
+            $this->{$key} = $GLOBALS['_'.$key] = $data ?? [];
         }
 
         /**
@@ -663,8 +683,10 @@ namespace F3 {
         {
             $parts=$this->cut($key);
             if ($parts[0] === 'SESSION') {
-                if (!\headers_sent() && \session_status() !== PHP_SESSION_ACTIVE) {
-                    \session_start();
+                if (!\headers_sent() && \session_status() !== PHP_SESSION_ACTIVE
+                    && ($add || !empty($this->COOKIE[session_name()])))
+                {
+                    $this->session_start();
                     $this->sync('SESSION');
                 }
             } elseif (!\preg_match('/^\w+$/',$parts[0]))
@@ -700,20 +722,43 @@ namespace F3 {
          */
         function set(string $key, mixed $val, ?int $ttl=0): mixed
         {
-            $time = $this->TIME;
-            if (preg_match('/^(GET|POST|COOKIE)\b(.+)/',$key,$expr)) {
-                if ($expr[1] === 'COOKIE') {
+            $time = \ceil($this->TIME);
+            if (\preg_match('/^(GET|POST|COOKIE|SESSION)\b(.+)/',$key,$expr)) {
+                if ($expr[1] === 'SESSION') {
+                    return parent::set($key, $val);
+                }
+                elseif ($expr[1] === 'COOKIE') {
                     $parts = $this->cut($key);
                     $jar = $this->unserialize($this->serialize($this->JAR));
-                    unset($jar['lifetime']);
-                    unset($jar['expire']);
-                    if (isset($_COOKIE[$parts[1]]))
-                        setcookie($parts[1], '', ['expires' => 0] + $jar);
-                    if ($ttl)
-                        $jar['expires'] = $time + $ttl;
-                    setcookie($parts[1], $val ?: '', $jar);
-                    $_COOKIE[$parts[1]] = $val;
-                    return $val;
+                    if ($this->NONBLOCKING) {
+                        $header='Set-Cookie: %s=%s; '.
+                            'expires=%s; Max-Age=%d; path=%s; domain=%s; '.
+                            ($this->JAR['secure'] ? 'secure; ' : '').
+                            ($this->JAR['httponly'] ? 'HttpOnly; ' : '').
+                            'SameSite=%s';
+                        $args=[
+                            rawurlencode($parts[1]), rawurlencode($val ?: ''),
+                            \gmdate('D, d M Y H:i:s T',$jar['expire'] ?? 1), $jar['lifetime'], $this->JAR['path'],
+                            $this->JAR['domain'], $this->JAR['samesite']
+                        ];
+                        if (parent::exists($key)) {
+                            $cp = $args;
+                            // clear value
+                            $cp[1] = '';
+                            $cp[2] = 0;
+                            $this->header(sprintf($header, ...$cp),FALSE);
+                        }
+                        $this->header(sprintf($header, ...$args), false);
+                    } else {
+                        unset($jar['lifetime']);
+                        unset($jar['expire']);
+                        if ($ttl)
+                            $jar['expires'] = $time + $ttl;
+                        if (parent::exists($key))
+                            \setcookie($parts[1], '', ['expires' => 0] + $jar);
+                        \setcookie($parts[1], $val ?: '', $jar);
+                    }
+                    return parent::set($key, $val);
                 } else {
                     $this->set('REQUEST'.$expr[2], $val);
                 }
@@ -780,35 +825,45 @@ namespace F3 {
             elseif ($parts[0] == 'COOKIE') {
                 $jar = $this->JAR;
                 unset($jar['lifetime']);
-                $jar['expire'] = 0;
+                $jar['expire'] = 1;
                 $jar['expires'] = $jar['expire'];
                 unset($jar['expire']);
-                foreach (isset($parts[1]) ? [$parts[1]] : array_keys($this->COOKIE) as $cKey) {
-                    setcookie($cKey, '', $jar);
+                foreach (isset($parts[1]) ? [$parts[1]] : \array_keys($this->COOKIE) as $cKey) {
+                    if ($this->NONBLOCKING) {
+                        // cannot use setcookie, because headers are not send in cli mode
+                        $this->header_remove(\sprintf('Set-Cookie: %s=', \rawurlencode($cKey)));
+                        $this->header(\sprintf('Set-Cookie: %s=deleted; expires=%s; path=%s; domain=%s; '.
+                            ($this->JAR['secure'] ? 'secure; ' : '').
+                            ($this->JAR['httponly'] ? 'HttpOnly; ' : '').
+                            'SameSite=%s',
+                            \rawurlencode($cKey), \gmdate('D, d M Y H:i:s T', $jar['expires']),
+                            $this->JAR['path'], $this->JAR['domain'], $this->JAR['samesite']), false);
+                    } else
+                        \setcookie($cKey, '', $jar);
                     unset($_COOKIE[$cKey]);
                 }
                 (isset($parts[1]))
                     ? parent::clear($key)
                     : $this->set($key, []);
             }
-            elseif (preg_match('/^(GET|POST)\b(.+)/',$key,$expr)) {
+            elseif (\preg_match('/^(GET|POST)\b(.+)/',$key,$expr)) {
                 parent::clear('REQUEST'.$expr[2]);
                 parent::clear($key);
             }
             elseif ($parts[0] == 'SESSION') {
-                if (!headers_sent() && session_status() != PHP_SESSION_ACTIVE)
-                    session_start();
+                if (!\headers_sent() && \session_status() != PHP_SESSION_ACTIVE)
+                    $this->session_start();
                 if (empty($parts[1])) {
                     // End session
                     $this->set('SESSION', null);
-                    session_unset();
-                    session_destroy();
-                    $this->clear('COOKIE.'.session_name());
+                    \session_unset();
+                    \session_destroy();
+                    $this->clear('COOKIE.'.\session_name());
                 } else {
                     parent::clear($key);
-                    session_commit();
+                    \session_commit();
                 }
-            } elseif (in_array($key, $this->split(Base::GLOBALS))) {
+            } elseif (\in_array($key, $this->split(Base::GLOBALS))) {
                 $this->set($key, []);
             } else {
                 parent::clear($key);
@@ -1441,8 +1496,8 @@ namespace F3 {
                 $reason = \defined($name = Status::class.'::HTTP_'.$code)
                     ? \constant($name)->value : '';
             }
-            if (!$this->CLI && !\headers_sent())
-                \header($_SERVER['SERVER_PROTOCOL'].' '.$code.' '.$reason);
+            if ((!$this->CLI || $this->NONBLOCKING) && !\headers_sent())
+                $this->header($this->SERVER['SERVER_PROTOCOL'].' '.$code.' '.$reason);
             return $reason;
         }
 
@@ -1453,22 +1508,23 @@ namespace F3 {
         {
             if (!$this->CLI && !\headers_sent()) {
                 if ($this->PACKAGE)
-                    \header('X-Powered-By: '.$this->PACKAGE);
+                    $this->header('X-Powered-By: '.$this->PACKAGE);
                 if ($this->XFRAME)
-                    \header('X-Frame-Options: '.$this->XFRAME);
-                \header('X-XSS-Protection: 1; mode=block');
-                \header('X-Content-Type-Options: nosniff');
+                    $this->header('X-Frame-Options: '.$this->XFRAME);
+                $this->header('X-XSS-Protection: 1; mode=block');
+                $this->header('X-Content-Type-Options: nosniff');
                 if ($this->VERB=='GET' && $secs) {
                     $time=microtime(TRUE);
-                    \header_remove('Pragma');
-                    \header('Cache-Control: max-age='.$secs);
-                    \header('Expires: '.\gmdate('r',\round($time + $secs)));
-                    \header('Last-Modified: '.\gmdate('r'));
+                    $this->header_remove('Pragma');
+                    $this->RESPONSE_HEADERS = \preg_grep('/Pragma:/',$this->RESPONSE_HEADERS,PREG_GREP_INVERT);
+                    $this->header('Cache-Control: max-age='.$secs);
+                    $this->header('Expires: '.\gmdate('r',\round($time + $secs)));
+                    $this->header('Last-Modified: '.\gmdate('r'));
                 }
                 else {
-                    \header('Pragma: no-cache');
-                    \header('Cache-Control: no-cache, no-store, must-revalidate');
-                    \header('Expires: '.\gmdate('r',0));
+                    $this->header('Pragma: no-cache');
+                    $this->header('Cache-Control: no-cache, no-store, must-revalidate');
+                    $this->header('Expires: '.\gmdate('r',0));
                 }
             }
         }
@@ -1513,18 +1569,18 @@ namespace F3 {
         function trace(array $trace=NULL, bool $format=TRUE): string|array
         {
             if (!$trace) {
-                $trace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS);
+                $trace = \debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 100);
                 $frame = $trace[0];
                 if (isset($frame['file']) && $frame['file']==__FILE__)
-                    array_shift($trace);
+                    \array_shift($trace);
             }
             $debug = $this->DEBUG;
-            $trace = array_filter(
+            $trace = \array_filter(
                 $trace,fn($frame) => isset($frame['file']) &&
                     ($debug > 1 ||
                     (($frame['file']!=__FILE__ || $debug) &&
                     (empty($frame['function']) ||
-                    !preg_match('/^(?:(?:trigger|user)_error|'.
+                    !\preg_match('/^(?:(?:trigger|user)_error|'.
                         '__call|call_user_func)/',$frame['function']))))
             );
             if (!$format)
@@ -1542,7 +1598,7 @@ namespace F3 {
                             ? $this->csv($frame['args'])
                             : ''
                         ).')';
-                $src = $this->fixslashes(str_replace($_SERVER['DOCUMENT_ROOT'].
+                $src = $this->fixslashes(\str_replace($_SERVER['DOCUMENT_ROOT'].
                     '/','',$frame['file'])).':'.$frame['line'];
                 $out.='['.$src.'] '.$line.$eol;
             }
@@ -1554,9 +1610,11 @@ namespace F3 {
          * default error page (HTML for synchronous requests, JSON string
          * for AJAX requests)
          */
-        function error(int $code, string $text='', array $trace=NULL, int $level=0): void
+        function error(int $code, string $text='', array $trace=NULL, int $level=0, bool $halt=false, bool $throw=true): mixed
         {
             $prior = $this->ERROR;
+            if ($code === 0)
+                $code = 500;
             $header = $this->status($code);
             $req = $this->VERB.' '.$this->PATH;
             if ($this->QUERY)
@@ -1591,9 +1649,9 @@ namespace F3 {
             $this->ONERROR = NULL;
             $eol = "\n";
             if ((!$handler ||
-                $this->callRoute($handler,[$this,$this->PARAMS],
-                    ['beforeRoute','afterRoute']) === FALSE) &&
-                !$prior && !$this->QUIET) {
+                ($handlerOut = $this->callRoute($handler,[$this,$this->PARAMS],
+                    ['beforeRoute','afterRoute'])) === FALSE) &&
+                !$prior) {
                 $error=\array_diff_key(
                     $this->ERROR,
                     $this->DEBUG?
@@ -1601,11 +1659,11 @@ namespace F3 {
                         ['trace'=>1]
                 );
                 if ($this->CLI)
-                    echo PHP_EOL.'==================================='.PHP_EOL.
+                    $out = PHP_EOL.'==================================='.PHP_EOL.
                         'ERROR '.$error['code'].' - '.$error['status'].PHP_EOL.
                         $error['text'].PHP_EOL.PHP_EOL.($error['trace'] ?? '');
                 else
-                    echo $this->AJAX ? \json_encode($error) :
+                    $out = $this->AJAX ? \json_encode($error) :
                         ('<!DOCTYPE html>'.$eol.
                         '<html>'.$eol.
                         '<head>'.
@@ -1619,9 +1677,19 @@ namespace F3 {
                             ($this->DEBUG?('<pre>'.$trace.'</pre>'.$eol):'').
                         '</body>'.$eol.
                         '</html>');
+                $this->RESPONSE = $out;
             }
-            if ($this->HALT)
+            if (isset($handlerOut) && $handlerOut !== FALSE)
+                $this->RESPONSE = $handlerOut;
+            if (!$this->QUIET) {
+                $this->send_headers();
+                echo $this->RESPONSE;
+            }
+            if ($this->NONBLOCKING && $throw)
+                throw new ResponseException();
+            if ($this->HALT || $halt)
                 die(1);
+            return $this->RESPONSE;
         }
 
         /**
@@ -1643,37 +1711,38 @@ namespace F3 {
                     isset($parts[3]) ? $this->parse($parts[3]) : []);
             }
             if (empty($parts[4]))
-                user_error(sprintf(self::E_Pattern,$pattern),E_USER_ERROR);
-            $url = parse_url($parts[4]);
-            parse_str($url['query'] ?? '', $this->GET);
+                \user_error(\sprintf(self::E_Pattern,$pattern),E_USER_ERROR);
+            $url = \parse_url($parts[4]);
+            \parse_str($url['query'] ?? '', $this->GET);
             $fw = $this;
             if ($sandbox) {
                 $fw = clone $this;
                 $reg_bak = Registry::get($class=static::class);
                 Registry::set($class, $fw);
             }
-            if (preg_match('/GET|HEAD/', $verb))
-                $fw->GET = array_merge($this->GET, $args);
+            if (\preg_match('/GET|HEAD/', $verb))
+                $fw->GET = \array_merge($this->GET, $args);
             $fw->POST = $verb === 'POST' ? $args : [];
-            $fw->REQUEST = array_merge($this->GET, $this->POST);
+            $fw->REQUEST = \array_merge($this->GET ?? [], $this->POST ?? []);
             $fw->HEADERS = $headers ?? [];
             foreach ($headers ?: [] as $key => $val)
-                $fw->SERVER['HTTP_'.strtr(strtoupper($key),'-','_')] = $val;
+                $fw->SERVER['HTTP_'.\strtr(\strtoupper($key),'-','_')] = $val;
             $fw->VERB = $fw->SERVER['REQUEST_METHOD'] = $verb;
             $fw->PATH = $url['path'];
             $fw->URI = $fw->SERVER['REQUEST_URI'] = $this->BASE.$url['path'];
-            $fw->REALM = $fw->SCHEME.'://'.$fw->SERVER['SERVER_NAME'].
+            $fw->REALM = $fw->SCHEME.'://'.$fw->HOST.
                 (!\in_array($fw->PORT,[80,443]) ? (':'.$fw->PORT) : '').$fw->URI;
             if ($fw->GET)
-                $fw->URI .= '?'.http_build_query($fw->GET);
+                $fw->URI .= '?'.\http_build_query($fw->GET);
             $fw->BODY = '';
-            if (!preg_match('/GET|HEAD/',$verb))
-                $fw->BODY = $body ?: http_build_query($args);
+            $fw->RESPONSE_HEADERS = [];
+            if (!\preg_match('/GET|HEAD/',$verb))
+                $fw->BODY = $body ?: \http_build_query($args);
             $fw->AJAX = isset($parts[5]) &&
-                preg_match('/ajax/i',$parts[5]);
+                \preg_match('/ajax/i',$parts[5]);
             $fw->CLI = isset($parts[5]) &&
-                preg_match('/cli/i',$parts[5]);
-            $fw->TIME = $fw->SERVER['REQUEST_TIME_FLOAT'] = microtime(true);
+                \preg_match('/cli/i',$parts[5]);
+            $fw->TIME = $fw->SERVER['REQUEST_TIME_FLOAT'] = \microtime(true);
             $out = $fw->run();
             if ($sandbox) {
                 Registry::set($class, $reg_bak);
@@ -1758,7 +1827,7 @@ namespace F3 {
                 !connection_aborted() &&
                 // Restart session
                 !headers_sent() &&
-                (session_status() == PHP_SESSION_ACTIVE || session_start()) &&
+                (session_status() == PHP_SESSION_ACTIVE || $this->session_start()) &&
                 // CAUTION: Callback will kill host if it never becomes truthy!
                 !$out = $this->call($func,$args)
             ) {
@@ -1776,29 +1845,30 @@ namespace F3 {
          * Disconnect HTTP client;
          * Set FcgidOutputBufferSize to zero if server uses mod_fcgid;
          * Disable mod_deflate when rendering text/html output
+         * @deprecated
          */
         function abort()
         {
-            if (!headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
-                session_start();
+            if (!\headers_sent() && \session_status()!=PHP_SESSION_ACTIVE)
+                $this->session_start();
             $out='';
-            while (ob_get_level())
-                $out = ob_get_clean().$out;
-            if (!headers_sent()) {
-                header('Content-Length: '.strlen($out));
-                header('Connection: close');
+            while (\ob_get_level())
+                $out = \ob_get_clean().$out;
+            if (!\headers_sent()) {
+                \header('Content-Length: '.\strlen($out));
+                \header('Connection: close');
             }
-            session_commit();
+            \session_commit();
             echo $out;
-            flush();
-            if (function_exists('fastcgi_finish_request'))
-                fastcgi_finish_request();
+            \flush();
+            if (\function_exists('fastcgi_finish_request'))
+                \fastcgi_finish_request();
         }
 
         /**
          * Grab the callable behind a string or array callable expression
          */
-        function grab(string|array $func, ?array $args=NULL): string|array
+        function grab(string|array $func, ?array $args=NULL): string|array|null
         {
             if (\is_array($func)) {
                 $func[0] = $this->make($func[0], $args ?? []);
@@ -1806,8 +1876,10 @@ namespace F3 {
             }
             if (\preg_match('/(.+)\h*(->|::)\h*(.+)/s',$func,$parts)) {
                 // Convert string to executable PHP callback
-                if (!\class_exists($parts[1]))
+                if (!\class_exists($parts[1])) {
                     \user_error(\sprintf(self::E_Class,$parts[1]),E_USER_ERROR);
+                    return null;
+                }
                 if ($parts[2] == '->') {
                     $parts[1] = $this->make($parts[1], $args ?? []);
                 }
@@ -2085,6 +2157,25 @@ namespace F3 {
         }
 
         /**
+         * delegated session start handler
+         * @return bool
+         */
+        function session_start(): bool
+        {
+            $sessionName = \session_name();
+            if ($this->NONBLOCKING) {
+                if (!$this->exists('COOKIE.'.$sessionName, $sId)) {
+                    $sId = \session_create_id();
+                    $this->set('COOKIE.'.$sessionName, $sId);
+                }
+                \session_id($sId);
+            }
+            $out = \session_start();
+            $this->COOKIE[$sessionName] = \session_id();
+            return $out;
+        }
+
+        /**
          * Namespace-aware class autoloader
          */
         protected function autoload(string $class): void
@@ -2111,8 +2202,10 @@ namespace F3 {
         {
             \chdir($cwd);
             if (!($error = \error_get_last()) &&
-                \session_status() == PHP_SESSION_ACTIVE)
+                \session_status() == PHP_SESSION_ACTIVE) {
                 \session_commit();
+                $this->NONBLOCKING && \session_unset();
+            }
             foreach ($this->locks as $lock)
                 @\unlink($lock);
             $handler = $this->UNLOAD;
@@ -2121,7 +2214,7 @@ namespace F3 {
                 [E_ERROR,E_PARSE,E_CORE_ERROR,E_COMPILE_ERROR]))
                 // Fatal error detected
                 $this->error(500,
-                    \sprintf(self::E_Fatal,$error['message']),[$error]);
+                    \sprintf(self::E_Fatal,$error['message']),[$error], halt: true);
         }
 
         /**
@@ -2211,12 +2304,6 @@ namespace F3 {
             $scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on' ||
                 isset($headers['X-Forwarded-Proto']) &&
                 $headers['X-Forwarded-Proto'] == 'https' ? 'https' : 'http';
-            if (\function_exists('apache_setenv')) {
-                // Work around Apache pre-2.4 VirtualDocumentRoot bug
-                $_SERVER['DOCUMENT_ROOT'] = \str_replace($_SERVER['SCRIPT_NAME'],'',
-                    $_SERVER['SCRIPT_FILENAME']);
-                \apache_setenv("DOCUMENT_ROOT",$_SERVER['DOCUMENT_ROOT']);
-            }
             $_SERVER['DOCUMENT_ROOT'] = \realpath($_SERVER['DOCUMENT_ROOT']);
             $base = '';
             if (!$cli)
@@ -2291,6 +2378,7 @@ namespace F3 {
             }
             // Sync PHP globals with corresponding hive keys
             foreach (\explode('|',Base::GLOBALS) as $global) {
+                // NB: syncing by reference is disabled by default
                 $this->_hive_data[$global] = $GLOBALS['_'.$global] ?? [];
             }
             if ($check && $error=\error_get_last())
@@ -2303,7 +2391,118 @@ namespace F3 {
             \register_shutdown_function([$this,'unload'],\getcwd());
         }
 
+        /**
+         * load PSR-7 Server Request into app instance
+         */
+        public function request(ServerRequestInterface $request): void
+        {
+            $this->RESPONSE = '';
+            // reuse current request instance instead of rebuilding it when used elsewhere
+            $this->CONTAINER->set(ServerRequestInterface::class, $request);
+            $this->SERVER = $request->getServerParams();
+            $this->SERVER['SERVER_PROTOCOL'] = 'HTTP/'.$request->getProtocolVersion();
+            $this->BASE = !$this->CLI && isset($this->SERVER['SCRIPT_NAME'])
+                ? \rtrim($this->fixslashes(\dirname('/'.\ltrim($this->SERVER['SCRIPT_NAME'],'/'))),'/'): '';
+            $headers = [];
+            foreach ($request->getHeaders() as $name => $value) {
+                $headers[\ucwords($name, '-')] = \implode(',', $value);
+            }
+            $this->HEADERS = $headers;
+            $this->AGENT = $this->agent($headers);
+            $this->AJAX = $this->ajax($headers);
+            $this->HOST = \rtrim($headers['X-Forwarded-Host'] ?? $this->SERVER['SERVER_NAME'], '.');
+            $this->IP = $this->ip();
+            $this->set('JAR.domain', \str_contains($this->HOST,'.') &&
+                !\filter_var($this->HOST,FILTER_VALIDATE_IP) ? $this->HOST : '');
+            $uri = $request->getUri();
+            $this->PATH = $uri->getPath();
+            $scheme = isset($this->SERVER['HTTPS']) && $this->SERVER['HTTPS'] == 'on'
+                || isset($headers['X-Forwarded-Proto']) && $headers['X-Forwarded-Proto'] == 'https'
+                ? 'https' : 'http';
+            $this->set('JAR.secure', $scheme=='https');
+            $port = 80;
+            if (!empty($headers['X-Forwarded-Port']))
+                $port = $headers['X-Forwarded-Port'];
+            elseif (!empty($this->SERVER['SERVER_PORT']))
+                $port = $this->SERVER['SERVER_PORT'];
+            $this->PORT = $port;
+            $this->QUERY = $request->getUri()->getQuery();
+            $this->REALM = $scheme.'://'.$this->HOST.
+                (!\in_array($port,[80,443]) ? (':'.$port) : '').
+                $uri->getPath().($this->QUERY ? '?'.$this->QUERY : '');
+            $this->SCHEME = $scheme;
+            $this->SEED = $this->hash($this->HOST.$this->BASE);
+            $this->TIME = $this->SERVER['REQUEST_TIME_FLOAT'];
+            $this->URI = $this->SERVER['REQUEST_URI'] = $uri->getPath();
+            $this->VERB = $request->getMethod();
+            $this->GET = $request->getQueryParams();
+            $this->COOKIE = $request->getCookieParams();
+            $this->POST = $request->getParsedBody();
+            $this->language($headers['Accept-Language'] ?? $this->fallback);
+            $this->BODY = $request->getBody();
+        }
+
+        /**
+         * hande PSR7 request and provide a response
+         * @throws \Throwable
+         */
+        public function handle(ServerRequestInterface $request, ?callable $runHandler = null): ?ResponseInterface
+        {
+            $this->request($request);
+            // the output buffer is only needed when quiet is false,
+            // but it also aids as failsafe for headers, in case output leaks somewhere
+            try {
+                \ob_start();
+                $psr7Response = $runHandler ? $runHandler() : $this->run();
+                $out = \ob_get_clean();
+                if (!empty($out))
+                    throw new \Exception("Irregular output:".PHP_EOL.$out);
+            } catch (ResponseException $e) {
+                $psr7Response = null;
+                // simply continue
+            }
+            return $psr7Response instanceof ResponseInterface
+                ? $psr7Response : $this->respond();
+        }
+
+        /**
+         * build PSR7 response object for current request
+         * @return ResponseInterface
+         */
+        public function respond(): ResponseInterface
+        {
+            $headers = [];
+            $rs = 200;
+            $reason = '';
+            foreach ($this->RESPONSE_HEADERS ?? [] as $value) {
+                if (\preg_match('/HTTP\/\d(?:\.\d)?/', $value)) {
+                    $status = \explode(' ', $value, 3);
+                    $rs = (int) $status[1];
+                    if (isset($status[2]))
+                        $reason = $status[2];
+                } else {
+                    $parts = \explode(':', $value, 2);
+                    if (isset($parts[1])) {
+                        if (!isset($headers[$parts[0]])) {
+                            $headers[$parts[0]] = [];
+                        }
+                        $headers[$parts[0]][] = trim($parts[1]);
+                    }
+                }
+            }
+            $responseBody = $this->RESPONSE instanceof ResponseInterface
+                ? $this->RESPONSE
+                : $this->make(StreamFactoryInterface::class)
+                    ->createStream($this->RESPONSE);
+            return $this->make(ResponseFactoryInterface::class)
+                ->createResponse($rs ?: 500, $reason)
+                ->withHeaders($headers)
+                ->withBody($responseBody);
+        }
+
     }
+
+    class ResponseException extends \Exception { /* throw response handler */ }
 
     //! Cache engine
     class Cache {
@@ -2336,6 +2535,7 @@ namespace F3 {
                 'wincache' => wincache_ucache_get($ndx),
                 'xcache' => xcache_get($ndx),
                 'folder' => $fw->read($parts[1].$ndx),
+                default => throw new \RuntimeException('Cache dsn not found: '.var_export($this->dsn, true)),
             };
             if (!empty($raw)) {
                 list($val,$time,$ttl) = (array) $fw->unserialize($raw);
@@ -2590,7 +2790,7 @@ namespace F3 {
             if ($this->level < 1 || $implicit) {
                 if (!$fw->CLI && $mime && !headers_sent() &&
                     !preg_grep ('/^Content-Type:/',headers_list()))
-                    header('Content-Type: '.$mime.'; '.
+                    $fw->header('Content-Type: '.$mime.'; '.
                         'charset='.$fw->ENCODING);
                 if ($fw->ESCAPE && (!$mime ||
                         preg_match('/^(text\/html|(application|text)\/(.+\+)?xml)$/i',$mime)))
@@ -2619,9 +2819,9 @@ namespace F3 {
                 if ($cache->exists($hash=$this->fw->hash($dir.$file),$data))
                     return $data;
                 if (is_file($this->file = $this->fw->fixslashes($dir.$file))) {
-                    if (isset($_COOKIE[session_name()]) &&
+                    if (isset($this->fw->COOKIE[session_name()]) &&
                         !headers_sent() && session_status()!=PHP_SESSION_ACTIVE)
-                        session_start();
+                        $this->fw->session_start();
                     $this->fw->sync('SESSION');
                     $data = $this->sandbox($hive,$mime);
                     foreach($this->trigger['afterRender'] ?? [] as $func)
@@ -2766,9 +2966,9 @@ namespace F3 {
                     mkdir($tmp,Base::MODE,TRUE);
                 if (!is_file($this->file = ($tmp.$fw->SEED.'.'.$hash.'.php')))
                     $fw->write($this->file,$this->build($node));
-                if (isset($_COOKIE[session_name()]) &&
+                if (isset($this->fw->COOKIE[session_name()]) &&
                     !headers_sent() && session_status() != PHP_SESSION_ACTIVE)
-                    session_start();
+                    $this->fw->session_start();
                 $fw->sync('SESSION');
                 $data = $this->sandbox($hive);
             }
@@ -2823,9 +3023,9 @@ namespace F3 {
                         $text = $this->parse($contents);
                         $fw->write($this->file,$this->build($text));
                     }
-                    if (isset($_COOKIE[session_name()]) &&
+                    if (isset($this->fw->COOKIE[session_name()]) &&
                         !headers_sent() && session_status() != PHP_SESSION_ACTIVE)
-                        session_start();
+                        $this->fw->session_start();
                     $fw->sync('SESSION');
                     $data = $this->sandbox($hive,$mime);
                     foreach ($this->trigger['afterRender'] ?? [] as $func)
@@ -3257,7 +3457,8 @@ namespace F3 {
          */
         static function reset(): void
         {
-            self::$table = [];
+            foreach (array_keys(self::$table) as $key)
+                self::clear($key);
         }
 
         //! Prohibit cloning
@@ -3288,6 +3489,7 @@ namespace F3\Http {
 
     use F3\Base;
     use F3\Cache;
+    use F3\ResponseException;
 
     /**
      * HTTP request methods
@@ -3443,7 +3645,7 @@ namespace F3\Http {
         /**
          * Reroute to specified URI
          */
-        function reroute(array|string $url=NULL, bool $permanent=FALSE, bool $die=TRUE): void
+        function reroute(array|string $url=NULL, bool $permanent=FALSE, bool $exit=TRUE): void
         {
             if (!$url)
                 $url = $this->REALM;
@@ -3457,7 +3659,7 @@ namespace F3\Http {
             else
                 $url = $this->build($url);
             if (($handler = $this->ONREROUTE) &&
-                $this->call($handler,[$url,$permanent,$die]) !== FALSE)
+                $this->call($handler,[$url,$permanent,$exit]) !== FALSE)
                 return;
             if ($url[0] != '/' && !\preg_match('/^\w+:\/\//i',$url))
                 $url = '/'.$url;
@@ -3466,13 +3668,14 @@ namespace F3\Http {
                 $port = \in_array($port,[80,443]) ? '' : (':'.$port);
                 $url = $this->SCHEME.'://'.$this->HOST.$port.$this->BASE.$url;
             }
-            if ($this->CLI)
+            if ($this->CLI && !$this->NONBLOCKING)
                 $this->mock('GET '.$url.' [cli]');
             else {
-                \header('Location: '.$url);
+                $this->header('Location: '.$url);
                 $this->status($permanent ? 301 : 302);
-                if ($die)
-                    die;
+                if ($exit) {
+                    throw new \F3\ResponseException();
+                }
             }
         }
 
@@ -3526,8 +3729,9 @@ namespace F3\Http {
                         \array_map('strtoupper',\get_class_methods($func[0])),
                         Verb::names()
                     );
-                \header('Allow: '.\implode(',',$allowed));
+                $this->header('Allow: '.\implode(',',$allowed));
                 $this->error(405);
+                return FALSE;
             }
             $obj = \is_array($func);
             // Execute pre-route hook if any
@@ -3551,9 +3755,11 @@ namespace F3\Http {
          */
         function run(): mixed
         {
-            if ($this->blacklisted($this->IP))
+            if ($this->blacklisted($this->IP)) {
                 // Spammer detected
-                $this->error(403);
+                $this->error(403, throw: false);
+                return $this->RESPONSE;
+            }
             if (!$this->ROUTES)
                 // No routes defined
                 \user_error(self::E_Routes,E_USER_ERROR);
@@ -3574,8 +3780,8 @@ namespace F3\Http {
             if ($cors = (isset($this->HEADERS['Origin']) &&
                 $this->CORS['origin'])) {
                 $cors = $this->CORS;
-                \header('Access-Control-Allow-Origin: '.$cors['origin']);
-                \header('Access-Control-Allow-Credentials: '.
+                $this->header('Access-Control-Allow-Origin: '.$cors['origin']);
+                $this->header('Access-Control-Allow-Credentials: '.
                     $this->export($cors['credentials']));
                 $preflight=
                     isset($this->HEADERS['Access-Control-Request-Method']);
@@ -3594,116 +3800,141 @@ namespace F3\Http {
                 if (!$route)
                     continue;
                 if (isset($route[$this->VERB]) && !$preflight) {
-                    if ($this->VERB == 'GET' &&
-                        \preg_match('/.+\/$/',$this->PATH))
-                        $this->reroute(\substr($this->PATH,0,-1).
-                            ($this->QUERY ? ('?'.$this->QUERY) : ''));
-                    list($handler,$ttl,$kbps,$alias) = $route[$this->VERB];
-                    // Capture values of route pattern tokens
-                    $this->PARAMS = $args;
-                    // Save matching route
-                    $this->ALIAS = $alias;
-                    $this->PATTERN = $pattern;
-                    if ($cors && $cors['expose'])
-                        \header('Access-Control-Expose-Headers: '.
-                            (\is_array($cors['expose'])?
-                                \implode(',',$cors['expose']):$cors['expose']));
-                    if (\is_string($handler)) {
-                        // Replace route pattern tokens in handler if any
-                        $handler = \preg_replace_callback('/({)?@(\w+\b)(?(1)})/',
-                            function($id) use($args) {
-                                $pid=\count($id) >2 ? 2 : 1;
-                                return $args[$id[$pid]] ?? $id[0];
-                            },
-                            $handler
-                        );
-                        if (\preg_match('/(.+)\h*(?:->|::)/',$handler,$match) &&
-                            !\class_exists($match[1]))
-                            $this->error(404);
-                    }
-                    // Process request
                     $response = $stream = NULL;
-                    $body = '';
-                    $isPsr = FALSE;
-                    $now = \microtime(TRUE);
-                    if (\preg_match('/GET|HEAD/',$this->VERB) && $ttl) {
-                        // Only GET and HEAD requests are cacheable
-                        $headers = $this->HEADERS;
-                        $cache = Cache::instance();
-                        $cached = $cache->exists(
-                            $hash = $this->hash($this->VERB.' '.
-                                    $this->URI).'.url',$data);
-                        if ($cached) {
-                            if (isset($headers['If-Modified-Since']) &&
-                                \strtotime($headers['If-Modified-Since']) +
-                                $ttl > $now) {
-                                $this->status(304);
-                                die();
+                    // capture response exceptions
+                    try {
+                        if ($this->VERB == 'GET' &&
+                            \preg_match('/.+\/$/',$this->PATH))
+                            $this->reroute(\substr($this->PATH,0,-1).
+                                ($this->QUERY ? ('?'.$this->QUERY) : ''));
+                        list($handler,$ttl,$kbps,$alias) = $route[$this->VERB];
+                        // Capture values of route pattern tokens
+                        $this->PARAMS = $args;
+                        // Save matching route
+                        $this->ALIAS = $alias;
+                        $this->PATTERN = $pattern;
+                        if ($cors && $cors['expose'])
+                            $this->header('Access-Control-Expose-Headers: '.
+                                (\is_array($cors['expose'])?
+                                    \implode(',',$cors['expose']):$cors['expose']));
+                        if (\is_string($handler)) {
+                            // Replace route pattern tokens in handler if any
+                            $handler = \preg_replace_callback('/({)?@(\w+\b)(?(1)})/',
+                                function($id) use($args) {
+                                    $pid=\count($id) >2 ? 2 : 1;
+                                    return $args[$id[$pid]] ?? $id[0];
+                                },
+                                $handler
+                            );
+                            if (\preg_match('/(.+)\h*(?:->|::)/',$handler,$match) &&
+                                !\class_exists($match[1])) {
+                                $this->error(404);
+                                return null;
                             }
-                            // Retrieve from cache backend
-                            [$headers,$body,$response] = $data;
-                            if (!$this->CLI)
-                                \array_walk($headers,'header');
-                            $this->expire((int) ($cached[0] + $ttl - $now));
+                        }
+                        // Process request
+                        $body = '';
+                        $isPsr = FALSE;
+                        $now = \microtime(TRUE);
+                        if (\preg_match('/GET|HEAD/',$this->VERB) && $ttl) {
+                            // Only GET and HEAD requests are cacheable
+                            $headers = $this->HEADERS;
+                            $cache = Cache::instance();
+                            $cached = $cache->exists(
+                                $hash = $this->hash($this->VERB.' '.
+                                        $this->URI).'.url',$data);
+                            if ($cached) {
+                                if (isset($headers['If-Modified-Since']) &&
+                                    \strtotime($headers['If-Modified-Since']) +
+                                    $ttl > $now) {
+                                    $this->status(304);
+                                    return null;
+                                }
+                                // Retrieve from cache backend
+                                [$headers,$body,$response] = $data;
+                                if (!$this->CLI)
+                                    \array_walk($headers,'header');
+                                $this->expire((int) ($cached[0] + $ttl - $now));
+                            } else
+                                // Expire HTTP client-cached page
+                                $this->expire($ttl);
                         }
                         else
-                            // Expire HTTP client-cached page
-                            $this->expire($ttl);
-                    }
-                    else
-                        $this->expire(0);
-                    if (!\strlen($body)) {
-                        // get input data from requests PUT,PATCH and POST (as json) etc.
-                        if (!$this->RAW && !$this->BODY)
-                            $this->BODY = \file_get_contents('php://input');
-                        \ob_start();
-                        // Call route handler
-                        $response = $this->callRoute($handler,[
-                            'f3' => $this,
-                            'params' => $args,
-                            'args' => $args, // alias to params
-                            'handler' => $handler
-                        ], ['beforeRoute','afterRoute']);
-                        $body = \ob_get_clean();
-                        if ($isPsr = \is_object($response)
-                            && \is_a($response, 'Psr\Http\Message\ResponseInterface')) {
-                            if ($stream = $response->getBody())
-                                $stream->rewind();
-                            if (!$this->CLI) {
-                                \header(\sprintf('HTTP/%s %d %s',
-                                    $response->getProtocolVersion(),
-                                    $response->getStatusCode(),
-                                    $response->getReasonPhrase()));
-                                foreach ($response->getHeaders() as $name => $values) {
-                                    \header($name.": ".\implode(", ", $values));
-                                }
-                            }
-                        }
-                        if (isset($cache) && $this->CACHE && !\error_get_last()) {
-                            // prepare headers for cache item
-                            $headers = \headers_list();
-                            if ($isPsr) {
-                                $body = $stream ? $stream->getContents() : '';
-                                $headers = [
-                                    // status header is not returned by headers_list()
-                                    \sprintf('HTTP/%s %d %s',
+                            $this->expire(0);
+                        if (!\strlen($body)) {
+                            // get input data from requests PUT,PATCH and POST (as json) etc.
+                            if (!$this->RAW && !$this->BODY)
+                                $this->BODY = \file_get_contents('php://input');
+                            \ob_start();
+                            // Call route handler
+                                $response = $this->callRoute($handler,[
+                                    'f3' => $this,
+                                    'params' => $args,
+                                    'args' => $args, // alias to params
+                                    'handler' => $handler
+                                ], ['beforeRoute','afterRoute']);
+                            $body = \ob_get_clean();
+                            if ($isPsr = \is_object($response)
+                                && \is_a($response, 'Psr\Http\Message\ResponseInterface')) {
+                                if ($stream = $response->getBody())
+                                    $stream->rewind();
+                                // use psr object to service response
+                                if (!$this->CLI && !$this->NONBLOCKING) {
+                                    // only send headers here when response is NOT returned
+                                    // and processed elsewhere
+                                    $this->header(\sprintf('HTTP/%s %d %s',
                                         $response->getProtocolVersion(),
                                         $response->getStatusCode(),
-                                        $response->getReasonPhrase()),
-                                    ...$headers,
-                                ];
+                                        $response->getReasonPhrase()));
+                                    foreach ($response->getHeaders() as $name => $values) {
+                                        $this->header($name.": ".\implode(", ", $values));
+                                    }
+                                }
                             }
-                            // Save to cache backend
-                            $cache->set($hash,[
-                                // Remove cookies
-                                \preg_grep('/Set-Cookie\:/',$headers,
-                                    PREG_GREP_INVERT),$body,$isPsr ? NULL : $response],$ttl);
+                            if (isset($cache) && $this->CACHE && !\error_get_last()) {
+                                // prepare headers for cache item
+                                $headers = $this->RESPONSE_HEADERS;
+                                if ($isPsr) {
+                                    $body = $stream ? $stream->getContents() : '';
+                                    $headers = [
+                                        // status header is not returned by headers_list()
+                                        \sprintf('HTTP/%s %d %s',
+                                            $response->getProtocolVersion(),
+                                            $response->getStatusCode(),
+                                            $response->getReasonPhrase()),
+                                        ...$headers,
+                                    ];
+                                }
+                                // Save to cache backend
+                                $cache->set($hash,[
+                                    // Remove cookies
+                                    \preg_grep('/Set-Cookie:/',$headers,
+                                        PREG_GREP_INVERT),$body,$isPsr ? NULL : $response],$ttl);
+                            }
+                        }
+                        $this->RESPONSE = $isPsr ? $response : $body;
+                    } catch (ResponseException $r) {
+                        // handle response from error handler
+                        $isPsr = \is_object($this->RESPONSE)
+                            && \is_a($this->RESPONSE, 'Psr\Http\Message\ResponseInterface');
+                        if ($isPsr) {
+                            $response = $this->RESPONSE;
+                            if ($stream = $response->getBody())
+                                $stream->rewind();
+                        } else {
+                            $body = $this->RESPONSE;
                         }
                     }
-                    $this->RESPONSE = $isPsr ? $response : $body;
+                    catch (\Throwable $t) {
+                        !$this->NONBLOCKING && throw $t;
+                        // handle response from error handler
+                        $response = $this->error($t->getCode(), $t->getMessage(), $t->getTrace(), throw: false);
+                    }
                     if (!$this->QUIET) {
+                        if (!$this->NONBLOCKING)
+                            $this->send_headers();
                         $stream?->rewind();
-                        if ($kbps) {
+                        if (isset($kbps) && $kbps>0) {
                             $ctr=$i=0;
                             if (!$stream)
                                 $max = \count($chunks = \str_split($body,1024));
@@ -3726,30 +3957,72 @@ namespace F3\Http {
                 }
                 $allowed = \array_merge($allowed,\array_keys($route));
             }
-            if (!$allowed)
+            if (!$allowed) {
                 // URL doesn't match any route
-                $this->error(404);
-            elseif (!$this->CLI) {
-                if (!\preg_grep('/Allow:/',$headers_send=\headers_list()))
+                return $this->error(404, throw: false);
+            }
+            elseif (!$this->CLI || $this->NONBLOCKING) {
+                // allowed but no route handler executed
+                if (!\preg_grep('/Allow:/',$this->RESPONSE_HEADERS))
                     // Unhandled HTTP method
-                    \header('Allow: '.\implode(',',\array_unique($allowed)));
+                    $this->header('Allow: '.\implode(',',\array_unique($allowed)));
                 if ($cors) {
-                    if (!\preg_grep('/Access-Control-Allow-Methods:/',$headers_send))
-                        \header('Access-Control-Allow-Methods: OPTIONS,'.
+                    if (!\preg_grep('/Access-Control-Allow-Methods:/',$this->RESPONSE_HEADERS))
+                        $this->header('Access-Control-Allow-Methods: OPTIONS,'.
                             \implode(',',$allowed));
                     if ($cors['headers'] &&
-                        !\preg_grep('/Access-Control-Allow-Headers:/',$headers_send))
-                        \header('Access-Control-Allow-Headers: '.
+                        !\preg_grep('/Access-Control-Allow-Headers:/',$this->RESPONSE_HEADERS))
+                        $this->header('Access-Control-Allow-Headers: '.
                             (\is_array($cors['headers'])?
                                 \implode(',',$cors['headers']):
                                 $cors['headers']));
                     if ($cors['ttl'] > 0)
-                        \header('Access-Control-Max-Age: '.$cors['ttl']);
+                        $this->header('Access-Control-Max-Age: '.$cors['ttl']);
                 }
-                if ($this->VERB != 'OPTIONS')
-                    $this->error(405);
+                if (!$this->NONBLOCKING)
+                    $this->send_headers();
+                if ($this->VERB != 'OPTIONS') {
+                    return $this->error(405, throw: false);
+                }
             }
             return FALSE;
+        }
+
+        /**
+         * add header line to the response header queue
+         */
+        public function header(string $header, bool $replace = true): void
+        {
+            if ($replace && \str_contains($header, ':')) {
+                $key = \explode(':',$header, 2);
+                $this->header_remove($key[0]);
+            }
+            $this->push('RESPONSE_HEADERS', $header);
+        }
+
+        /**
+         * remove a specified response header, or all
+         * @param string|null $name
+         * @return void
+         */
+        function header_remove(?string $name = null): void
+        {
+            if (!$name) {
+                $this->clear('RESPONSE_HEADERS');
+                return;
+            }
+            $this->RESPONSE_HEADERS = \preg_grep('/^'.\preg_quote($name).'.*/i',
+                $this->RESPONSE_HEADERS, PREG_GREP_INVERT);
+        }
+
+        /**
+         * send all headers to client
+         */
+        public function send_headers(): void
+        {
+            if (PHP_SAPI=='cli')
+                return;
+            foreach ($this->RESPONSE_HEADERS as $hl) \header($hl);
         }
 
     }

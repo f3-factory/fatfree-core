@@ -207,12 +207,12 @@ class Session extends Mapper {
 		$headers=$fw->HEADERS;
 		$this->_csrf=$fw->hash($fw->SEED.
 			extension_loaded('openssl')?
-				implode(unpack('L',openssl_random_pseudo_bytes(4))):
+				implode(unpack('L', openssl_random_pseudo_bytes(4))):
 				mt_rand()
 			);
 		if ($key)
 			$fw->$key=$this->_csrf;
-		$this->_agent=isset($headers['User-Agent'])?$headers['User-Agent']:'';
+		$this->_agent = $headers['User-Agent'] ?? '';
 		if (strlen($this->_agent) > 300) {
 			$this->_agent = substr($this->_agent, 0, 300);
 		}

@@ -39,14 +39,14 @@ class OpenID extends \F3\Magic {
 	protected function discover($proxy) {
 		// Normalize
 		if (!preg_match('/https?:\/\//i',$this->args['endpoint']))
-			$this->args['endpoint']='http://'.$this->args['endpoint'];
+			$this->args['endpoint']='https://'.$this->args['endpoint'];
 		$url=parse_url($this->args['endpoint']);
 		// Remove fragment; reconnect parts
 		$this->args['endpoint']=$url['scheme'].'://'.
 			(isset($url['user'])?
 				($url['user'].
 				(isset($url['pass'])?(':'.$url['pass']):'').'@'):'').
-			strtolower($url['host']).(isset($url['path'])?$url['path']:'/').
+			strtolower($url['host']).($url['path'] ?? '/').
 			(isset($url['query'])?('?'.$url['query']):'');
 		// HTML-based discovery of OpenID provider
 		$req=\F3\Web::instance()->
@@ -64,7 +64,7 @@ class OpenID extends \F3\Magic {
 			if (isset($svc[0]))
 				$svc=$svc[0];
 			$svc_type=is_array($svc['Type'])?$svc['Type']:array($svc['Type']);
-			if (preg_grep('/http:\/\/specs\.openid\.net\/auth\/2.0\/'.
+			if (preg_grep('/https?:\/\/specs\.openid\.net\/auth\/2.0\/'.
 					'(?:server|signon)/',$svc_type)) {
 				$this->args['provider']=$svc['URI'];
 				if (isset($svc['LocalID']))
@@ -92,7 +92,7 @@ class OpenID extends \F3\Magic {
 							PREG_SET_ORDER)) {
 						$node=[];
 						foreach ($attr as $kv)
-							$node[$kv[1]]=isset($kv[2])?$kv[2]:$kv[3];
+							$node[$kv[1]] = $kv[2] ?? $kv[3];
 						if (isset($node['rel']) &&
 							preg_match('/openid2?\.(\w+)/',
 								$node['rel'],$var) &&
@@ -173,7 +173,7 @@ class OpenID extends \F3\Magic {
 	**/
 	function verified($proxy=NULL) {
 		preg_match_all('/(?<=^|&)openid\.([^=]+)=([^&]+)/',
-			$_SERVER['QUERY_STRING'],$matches,PREG_SET_ORDER);
+			\F3\Base::instance()->QUERY,$matches,PREG_SET_ORDER);
 		foreach ($matches as $match)
 			$this->args[$match[1]]=urldecode($match[2]);
 		if (isset($this->args['mode']) &&

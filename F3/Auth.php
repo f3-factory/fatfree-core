@@ -221,43 +221,39 @@ class Auth {
 	function basic($func=NULL) {
 		$fw=Base::instance();
 		$realm=$fw->REALM;
-		$hdr=NULL;
-		if (isset($_SERVER['HTTP_AUTHORIZATION']))
-			$hdr=$_SERVER['HTTP_AUTHORIZATION'];
-		elseif (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION']))
-			$hdr=$_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+        $hdr = $fw->SERVER['HTTP_AUTHORIZATION']
+            ?? $fw->SERVER['REDIRECT_HTTP_AUTHORIZATION']
+            ?? $fw->HEADERS['Authorization']
+            ?? null;
 		if (!empty($hdr))
-			list($_SERVER['PHP_AUTH_USER'],$_SERVER['PHP_AUTH_PW'])=
+			list($fw->SERVER['PHP_AUTH_USER'],$fw->SERVER['PHP_AUTH_PW'])=
 				explode(':',base64_decode(substr($hdr,6)));
-		if (isset($_SERVER['PHP_AUTH_USER'],$_SERVER['PHP_AUTH_PW']) &&
+		if (isset($fw->SERVER['PHP_AUTH_USER'],$fw->SERVER['PHP_AUTH_PW']) &&
 			$this->login(
-				$_SERVER['PHP_AUTH_USER'],
+				$fw->SERVER['PHP_AUTH_USER'],
 				$func?
-					$fw->call($func,$_SERVER['PHP_AUTH_PW']):
-					$_SERVER['PHP_AUTH_PW'],
+					$fw->call($func,$fw->SERVER['PHP_AUTH_PW']):
+					$fw->SERVER['PHP_AUTH_PW'],
 				$realm
 			))
 			return TRUE;
-		if (PHP_SAPI!='cli')
-			header('WWW-Authenticate: Basic realm="'.$realm.'"');
+        $fw->header('WWW-Authenticate: Basic realm="'.$realm.'"');
 		$fw->status(401);
 		return FALSE;
 	}
 
-	/**
-	*	Instantiate class
-	*	@return object
-	*	@param $storage string|object
-	*	@param $args array
-	*	@param $func callback
-	**/
-	function __construct($storage,array $args=NULL,$func=NULL) {
-		if (is_object($storage) && is_a($storage,'\F3\DB\Cursor')) {
+    /**
+     * Instantiate class
+     * @param object|string $storage
+     * @param array|null $args
+     * @param callable|null $func
+     */
+	function __construct(object|string $storage, ?array $args=NULL, ?callable $func=NULL)
+    {
+		if (is_object($storage) && is_a($storage,\F3\DB\Cursor::class)) {
 			$this->storage=$storage->dbtype();
 			$this->mapper=$storage;
-			unset($ref);
-		}
-		else
+		} else
 			$this->storage=$storage;
 		$this->args=$args;
 		$this->func=$func;

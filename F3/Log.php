@@ -22,52 +22,54 @@
 
 namespace F3;
 
-//! Custom logger
+/**
+ * Custom logger
+ */
 class Log {
 
-	protected
-		//! File name
-		$file;
+    /** File name */
+    protected string $file;
 
-	/**
-	*	Write specified text to log file
-	*	@return string
-	*	@param $text string
-	*	@param $format string
-	**/
-	function write($text,$format='r') {
-		$fw=Base::instance();
-		foreach (preg_split('/\r?\n|\r/',trim($text)) as $line)
-			$fw->write(
-				$this->file,
-				date($format).
-				(isset($_SERVER['REMOTE_ADDR'])?
-					(' ['.$_SERVER['REMOTE_ADDR'].
-					(($fwd=filter_var($fw->get('HEADERS.X-Forwarded-For'),
-						FILTER_VALIDATE_IP))?(' ('.$fwd.')'):'')
-					.']'):'').' '.
-				trim($line).PHP_EOL,
-				TRUE
-			);
-	}
+    /**
+     * Write specified text to log file
+     * @param string $text
+     * @param string $format
+     */
+    function write(string $text, string $format = 'r'): void
+    {
+        $fw = Base::instance();
+        $ip = isset($fw->SERVER['REMOTE_ADDR'])
+            ? (' ['.$fw->SERVER['REMOTE_ADDR'].
+                (($fwd = \filter_var($fw->get('HEADERS.X-Forwarded-For'),
+                    FILTER_VALIDATE_IP))?(' ('.$fwd.')'):'')
+                .']')
+            :'';
+        foreach (\preg_split('/\r?\n|\r/', \trim($text)) as $line)
+            $fw->write(
+                $this->file,
+                \date($format).$ip.' '.\trim($line).PHP_EOL,
+                TRUE
+            );
+    }
 
-	/**
-	*	Erase log
-	*	@return NULL
-	**/
-	function erase() {
-		@unlink($this->file);
-	}
+    /**
+     * Erase log file
+     * @return void
+     */
+    function erase(): void
+    {
+        @\unlink($this->file);
+    }
 
-	/**
-	*	Instantiate class
-	*	@param $file string
-	**/
-	function __construct($file) {
-		$fw=Base::instance();
-		if (!is_dir($dir=$fw->LOGS))
-			mkdir($dir,Base::MODE,TRUE);
-		$this->file=$dir.$file;
-	}
+    /**
+     * @param string $file filepath within LOGS dir
+     */
+    function __construct(string $file)
+    {
+        $fw = Base::instance();
+        if (!\is_dir($dir = $fw->LOGS))
+            \mkdir($dir,Base::MODE,TRUE);
+        $this->file = $dir.$file;
+    }
 
 }
