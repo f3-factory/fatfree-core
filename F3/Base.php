@@ -2024,7 +2024,7 @@ namespace F3 {
                                 array_merge([$match['lval']],
                                     str_getcsv($cmd[1]=='config' ?
                                     $this->cast($match['rval']) :
-                                        $match['rval']))
+                                        $match['rval'],",",'"', "\\"))
                             );
                         }
                         else {
@@ -2046,7 +2046,7 @@ namespace F3 {
                                 // Mark quoted strings with 0x00 whitespace
                                 str_getcsv(preg_replace(
                                     '/(?<!\\\\)(")(.*?)\1/',
-                                    "\\1\x00\\2\\1",trim($rval)))
+                                    "\\1\x00\\2\\1",trim($rval)),",",'"', "\\")
                             );
                             preg_match('/^(?<section>[^:]+)(?:\:(?<func>.+))?/',
                                 $sec,$parts);
@@ -2240,7 +2240,7 @@ namespace F3 {
             \mb_internal_encoding($charset);
             \ini_set('display_errors',0);
             // Intercept errors/exceptions
-            $check = \error_reporting((E_ALL|E_STRICT)&~(E_NOTICE|E_USER_NOTICE));
+            $check = \error_reporting(E_ALL & ~(E_NOTICE|E_USER_NOTICE));
             \set_exception_handler(
                 function(\Throwable $obj) {
                     $this->EXCEPTION = $obj;
