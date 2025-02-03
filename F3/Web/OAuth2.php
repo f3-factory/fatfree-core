@@ -39,7 +39,7 @@ class OAuth2 extends \F3\Magic {
 	**/
 	function uri($endpoint,$query=TRUE) {
 		return $endpoint.($query?('?'.
-				http_build_query($this->args,null,'&',$this->enc_type)):'');
+				http_build_query($this->args,'','&',$this->enc_type)):'');
 	}
 
 	/**
@@ -53,7 +53,7 @@ class OAuth2 extends \F3\Magic {
 		$web=\F3\Web::instance();
 		$options=[
 			'method'=>$method,
-			'content'=>http_build_query($this->args,null,'&',$this->enc_type),
+			'content'=>http_build_query($this->args,'','&',$this->enc_type),
 			'header'=>['Accept: application/json']
 		];
 		if ($token)
