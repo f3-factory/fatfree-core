@@ -2952,6 +2952,7 @@ namespace F3 {
          */
         function resolve(string|array $node, array $hive=NULL, int $ttl=0, bool $persist=FALSE, ?bool $escape=NULL): string
         {
+            $hash=null;
             $fw = $this->fw;
             $cache = Cache::instance();
             if ($escape !== NULL) {
