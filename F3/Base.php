@@ -1028,7 +1028,7 @@ namespace F3 {
         /**
          * Convert PHP expression/value to compressed exportable string
          */
-        function stringify(mixed $arg, array $stack=NULL): string
+        function stringify(mixed $arg, ?array $stack=NULL): string
         {
             if ($stack) {
                 foreach ($stack as $node)
@@ -1567,7 +1567,7 @@ namespace F3 {
         /**
          * Return filtered stack trace as a formatted string (or array)
          */
-        function trace(array $trace=NULL, bool $format=TRUE): string|array
+        function trace(?array $trace=NULL, bool $format=TRUE): string|array
         {
             if (!$trace) {
                 $trace = \debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 100);
@@ -1611,7 +1611,7 @@ namespace F3 {
          * default error page (HTML for synchronous requests, JSON string
          * for AJAX requests)
          */
-        function error(int $code, string $text='', array $trace=NULL, int $level=0, bool $halt=false, bool $throw=true): mixed
+        function error(int $code, string $text='', ?array $trace=NULL, int $level=0, bool $halt=false, bool $throw=true): mixed
         {
             $prior = $this->ERROR;
             if ($code === 0)
@@ -1696,7 +1696,7 @@ namespace F3 {
         /**
          * Mock HTTP request
          */
-        function mock(string $pattern, array $args=NULL, array $headers=NULL, string $body=NULL, bool $sandbox=FALSE): mixed
+        function mock(string $pattern, ?array $args=NULL, ?array $headers=NULL, ?string $body=NULL, bool $sandbox=FALSE): mixed
         {
             if (!$args)
                 $args = [];
@@ -2950,7 +2950,7 @@ namespace F3 {
         /**
          * Render template string
          */
-        function resolve(string|array $node, array $hive=NULL, int $ttl=0, bool $persist=FALSE, ?bool $escape=NULL): string
+        function resolve(string|array $node, ?array $hive=NULL, int $ttl=0, bool $persist=FALSE, ?bool $escape=NULL): string
         {
             $hash=null;
             $fw = $this->fw;
