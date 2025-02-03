@@ -556,6 +556,7 @@ namespace F3 {
         public bool $QUIET = FALSE;
         public bool $RAW = FALSE;
         public string $REALM = '';
+        public bool $REROUTE_TRAILING_SLASH = TRUE;
         public string|object $RESPONSE = '';
         public array $RESPONSE_HEADERS = [];
         public string $ROOT = '';
@@ -3805,7 +3806,8 @@ namespace F3\Http {
                     $response = $stream = NULL;
                     // capture response exceptions
                     try {
-                        if ($this->VERB == 'GET' &&
+                        if ($this->REROUTE_TRAILING_SLASH &&
+                            $this->VERB == 'GET' &&
                             \preg_match('/.+\/$/',$this->PATH))
                             $this->reroute(\substr($this->PATH,0,-1).
                                 ($this->QUERY ? ('?'.$this->QUERY) : ''));
