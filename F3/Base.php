@@ -2535,7 +2535,7 @@ namespace F3 {
                 'memcache' => memcache_get($this->ref,$ndx),
                 'wincache' => wincache_ucache_get($ndx),
                 'xcache' => xcache_get($ndx),
-                'folder' => $fw->read($parts[1].$ndx),
+                'folder' => $fw->read($parts[1].str_replace(['/','\\'],'',$ndx)),
                 default => throw new \RuntimeException('Cache dsn not found: '.var_export($this->dsn, true)),
             };
             if (!empty($raw)) {

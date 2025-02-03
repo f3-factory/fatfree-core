@@ -169,7 +169,7 @@ abstract class Cursor extends \F3\Magic implements \IteratorAggregate {
 
 	/**
 	*	Map to first record that matches criteria
-	*	@return array|FALSE
+	*	@return \DB\SQL\Mapper|FALSE
 	*	@param $filter string|array
 	*	@param $options array
 	*	@param $ttl int
