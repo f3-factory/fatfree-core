@@ -3608,7 +3608,7 @@ namespace F3\Http {
                 if (!\constant(Verb::class.'::'.$verb))
                     $this->error(501,$verb.' '.$this->URI);
                 $this->ROUTES[$parts[3]][$type][\strtoupper($verb)] =
-                    [$handler,$ttl,$kbps,$alias];
+                    [is_string($handler) ? trim($handler) : $handler,$ttl,$kbps,$alias];
             }
         }
 
