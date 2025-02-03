@@ -375,7 +375,8 @@ class SQL {
 							('AND K.TABLE_CATALOG=T.TABLE_CATALOG '):'').
 				'WHERE '.
 					'C.TABLE_NAME='.$this->quote($table).
-					($this->dbname?
+                        (empty($schema) ? '' : ' AND C.TABLE_SCHEMA='.$this->quote($schema)).
+						($this->dbname?
 						(' AND C.TABLE_CATALOG='.
 							$this->quote($this->dbname)):''),
 				'field','type','defval','nullable','YES','pkey','PRIMARY KEY','autoinc',1],
