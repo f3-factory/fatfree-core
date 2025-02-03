@@ -1337,7 +1337,7 @@ namespace F3 {
                                     $dateType=(empty($mod) || $mod=='short') ? \IntlDateFormatter::SHORT :
                                         ($mod=='full' ? \IntlDateFormatter::FULL : \IntlDateFormatter::LONG);
                                     $pattern = $dateType === \IntlDateFormatter::SHORT
-                                        ? \IntlDatePatternGenerator::create($lang[0])?->getBestPattern('YYYYMMdd') : null;
+                                        ? \IntlDatePatternGenerator::create($lang[0])?->getBestPattern('yyyyMMdd') : null;
                                     $formatter = new \IntlDateFormatter($lang[0],$dateType,
                                         \IntlDateFormatter::NONE, pattern: $pattern);
                                     return $formatter->format($args[$pos]);
