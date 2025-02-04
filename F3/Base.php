@@ -447,7 +447,7 @@ namespace F3 {
 
         const
             PACKAGE='Fat-Free Framework',
-            VERSION='4.0.0-dev.5';
+            VERSION='4.0.0-alpha.5';
 
         const
             // Mapped PHP globals
