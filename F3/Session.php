@@ -23,7 +23,7 @@
 namespace F3;
 
 //! Cache-based session handler
-class Session extends Magic {
+class Session extends Magic implements \SessionHandlerInterface {
 
 	protected
 		//! Session ID
@@ -43,19 +43,17 @@ class Session extends Magic {
 
 	/**
 	*	Open session
-	*	@return TRUE
-	*	@param $path string
-	*	@param $name string
 	**/
-	function open($path,$name) {
-		return TRUE;
-	}
+    public function open(string $path, string $name): bool
+    {
+        return TRUE;
+    }
 
 	/**
 	*	Close session
-	*	@return TRUE
 	**/
-	function close() {
+    public function close(): bool
+    {
 		$this->sid=NULL;
 		$this->_data=[];
 		return TRUE;
@@ -63,10 +61,9 @@ class Session extends Magic {
 
 	/**
 	*	Return session data in serialized format
-	*	@return string
-	*	@param $id string
 	**/
-	function read($id) {
+    public function read(string $id): false|string
+    {
 		$this->sid=$id;
 		if (!$data=$this->_cache->get($id.'.@'))
 			return '';
@@ -87,11 +84,9 @@ class Session extends Magic {
 
 	/**
 	*	Write session data
-	*	@return TRUE
-	*	@param $id string
-	*	@param $data string
 	**/
-	function write($id,$data) {
+    public function write(string $id, string $data): bool
+    {
 		$fw=Base::instance();
 		$jar=$fw->JAR;
 		$this->_cache->set($id.'.@',
@@ -108,53 +103,50 @@ class Session extends Magic {
 
 	/**
 	*	Destroy session
-	*	@return TRUE
-	*	@param $id string
 	**/
-	function destroy($id) {
+    public function destroy(string $id): bool
+    {
 		$this->_cache->clear($id.'.@');
 		return TRUE;
 	}
 
 	/**
 	*	Garbage collector
-	*	@return TRUE
-	*	@param $max int
 	**/
-	function cleanup($max) {
-		$this->_cache->reset('.@',$max);
-		return TRUE;
+    public function gc(int $max_lifetime): int|false
+    {
+		return (int) $this->_cache->reset('.@', $max_lifetime);
 	}
 
 	/**
 	 *	Return session id (if session has started)
-	 *	@return string|NULL
 	 **/
-	function sid() {
+	public function sid(): ?string
+    {
 		return $this->sid;
 	}
 
 	/**
 	 *	Return anti-CSRF token
-	 *	@return string
 	 **/
-	function csrf() {
+	public function csrf(): string
+    {
 		return $this->_csrf;
 	}
 
 	/**
 	 *	Return IP address
-	 *	@return string
 	 **/
-	function ip() {
+	public function ip(): string
+    {
 		return $this->_ip;
 	}
 
 	/**
 	 *	Return Unix timestamp
-	 *	@return string|FALSE
 	 **/
-	function stamp() {
+	public function stamp(): false|string
+    {
 		if (!$this->sid)
 			session_start();
 		return $this->_cache->exists($this->sid.'.@',$data)?
@@ -163,28 +155,20 @@ class Session extends Magic {
 
 	/**
 	 *	Return HTTP user agent
-	 *	@return string
 	 **/
-	function agent() {
+	public function agent(): string
+    {
 		return $this->_agent;
 	}
 
-	/**
-	*	Instantiate class
-	*	@param $onsuspect callback
-	*	@param $key string
-	**/
-	function __construct($onsuspect=NULL,$key=NULL,$cache=null) {
-		$this->onsuspect=$onsuspect;
+    /**
+     * Register session handler
+     */
+	function __construct(?callable $onSuspect=NULL, ?string $key=NULL, ?Cache $cache=null)
+    {
+		$this->onsuspect=$onSuspect;
 		$this->_cache=$cache?:Cache::instance();
-		session_set_save_handler(
-			[$this,'open'],
-			[$this,'close'],
-			[$this,'read'],
-			[$this,'write'],
-			[$this,'destroy'],
-			[$this,'cleanup']
-		);
+        session_set_save_handler($this);
 		register_shutdown_function('session_commit');
 		$fw=Base::instance();
 		$this->_csrf=$fw->hash($fw->SEED.

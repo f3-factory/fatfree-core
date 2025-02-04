@@ -23,7 +23,10 @@
 namespace F3\DB\SQL;
 
 //! SQL-managed session handler
-class Session extends Mapper {
+use F3\Base;
+use F3\DB\SQL;
+
+class Session extends Mapper implements \SessionHandlerInterface {
 
 	protected
 		//! Session ID
@@ -39,19 +42,17 @@ class Session extends Mapper {
 
 	/**
 	*	Open session
-	*	@return TRUE
-	*	@param $path string
-	*	@param $name string
 	**/
-	function open($path,$name) {
+    public function open(string $path, string $name): bool
+    {
 		return TRUE;
 	}
 
 	/**
 	*	Close session
-	*	@return TRUE
 	**/
-	function close() {
+    public function close(): bool
+    {
 		$this->reset();
 		$this->sid=NULL;
 		return TRUE;
@@ -59,15 +60,14 @@ class Session extends Mapper {
 
 	/**
 	*	Return session data in serialized format
-	*	@return string
-	*	@param $id string
 	**/
-	function read($id) {
+    public function read(string $id): false|string
+    {
 		$this->load(['session_id=?',$this->sid=$id]);
 		if ($this->dry())
 			return '';
 		if ($this->get('ip')!=$this->_ip || $this->get('agent')!=$this->_agent) {
-			$fw=\F3\Base::instance();
+			$fw=Base::instance();
 			if (!isset($this->onsuspect) ||
 				$fw->call($this->onsuspect,[$this,$id])===FALSE) {
 				//NB: `session_destroy` can't be called at that stage (`session_start` not completed)
@@ -82,11 +82,9 @@ class Session extends Mapper {
 
 	/**
 	*	Write session data
-	*	@return TRUE
-	*	@param $id string
-	*	@param $data string
 	**/
-	function write($id,$data) {
+    public function write(string $id, string $data): bool
+    {
 		$this->set('session_id',$id);
 		$this->set('data',$data);
 		$this->set('ip',$this->_ip);
@@ -98,53 +96,50 @@ class Session extends Mapper {
 
 	/**
 	*	Destroy session
-	*	@return TRUE
-	*	@param $id string
 	**/
-	function destroy($id) {
+    public function destroy(string $id): bool
+    {
 		$this->erase(['session_id=?',$id]);
 		return TRUE;
 	}
 
 	/**
 	*	Garbage collector
-	*	@return TRUE
-	*	@param $max int
 	**/
-	function cleanup($max) {
-		$this->erase(['stamp+?<?',$max,time()]);
-		return TRUE;
+    public function gc(int $max_lifetime): int|false
+    {
+		return (int) $this->erase(['stamp+?<?',$max_lifetime,time()]);
 	}
 
 	/**
 	*	Return session id (if session has started)
-	*	@return string|NULL
 	**/
-	function sid() {
+    public function sid(): ?string
+    {
 		return $this->sid;
 	}
 
 	/**
 	*	Return anti-CSRF token
-	*	@return string
 	**/
-	function csrf() {
+    public function csrf(): string
+    {
 		return $this->_csrf;
 	}
 
 	/**
 	*	Return IP address
-	*	@return string
 	**/
-	function ip() {
+    public function ip(): string
+    {
 		return $this->_ip;
 	}
 
 	/**
 	*	Return Unix timestamp
-	*	@return string|FALSE
 	**/
-	function stamp() {
+    public function stamp(): false|string
+    {
 		if (!$this->sid)
 			session_start();
 		return $this->dry()?FALSE:$this->get('stamp');
@@ -154,20 +149,22 @@ class Session extends Mapper {
 	*	Return HTTP user agent
 	*	@return string
 	**/
-	function agent() {
+    public function agent(): string
+    {
 		return $this->_agent;
 	}
 
-	/**
-	*	Instantiate class
-	*	@param $db \DB\SQL
-	*	@param $table string
-	*	@param $force bool
-	*	@param $onsuspect callback
-	*	@param $key string
-	*	@param $type string, column type for data field
-	**/
-	function __construct(\F3\DB\SQL $db,$table='sessions',$force=TRUE,$onsuspect=NULL,$key=NULL,$type='TEXT') {
+    /**
+     * Register session handler
+     * @param SQL $db
+     * @param string $table
+     * @param bool $force
+     * @param callable|null $onSuspect
+     * @param string|null $key
+     * @param string $type column type for data field
+     */
+	function __construct(SQL $db, string $table='sessions', bool $force=TRUE, ?callable $onSuspect=NULL, ?string $key=NULL, string $type='TEXT')
+    {
 		if ($force) {
 			$eol="\n";
 			$tab="\t";
@@ -193,17 +190,10 @@ class Session extends Mapper {
 			);
 		}
 		parent::__construct($db,$table);
-		$this->onsuspect=$onsuspect;
-		session_set_save_handler(
-			[$this,'open'],
-			[$this,'close'],
-			[$this,'read'],
-			[$this,'write'],
-			[$this,'destroy'],
-			[$this,'cleanup']
-		);
+		$this->onsuspect=$onSuspect;
+		session_set_save_handler($this);
 		register_shutdown_function('session_commit');
-		$fw=\F3\Base::instance();
+		$fw=Base::instance();
 		$headers=$fw->HEADERS;
 		$this->_csrf=$fw->hash($fw->SEED.
 			extension_loaded('openssl')?
