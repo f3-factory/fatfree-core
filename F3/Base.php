@@ -370,7 +370,7 @@ namespace F3 {
         /**
          * Retrieve contents of hive key
          */
-        function get(string $key, string|array $args=NULL): mixed
+        function get(string $key, string|array|null $args=NULL): mixed
         {
             if (\is_string($val = $this->ref($key,FALSE)) && !\is_null($args))
                 return Base::instance()->format($val, ...(\is_array($args) ? $args : [$args]));
@@ -1190,7 +1190,7 @@ namespace F3 {
          * Remove HTML tags (except those enumerated) and non-printable
          * characters to mitigate XSS/code injection attacks
          */
-        function clean(mixed $arg, string $tags=NULL): mixed
+        function clean(mixed $arg, ?string $tags=NULL): mixed
         {
             return $this->recursive($arg,
                 function($val) use($tags) {
@@ -1206,7 +1206,7 @@ namespace F3 {
         /**
          * Similar to clean(), except that variable is passed by reference
          */
-        function scrub(mixed &$var, string$tags=NULL): mixed
+        function scrub(mixed &$var, ?string $tags=NULL): mixed
         {
             return $var = $this->clean($var,$tags);
         }
@@ -1534,7 +1534,7 @@ namespace F3 {
         /**
          * Return HTTP user agent
          */
-        function agent(array $headers=null): string
+        function agent(?array $headers=null): string
         {
             if (!$headers)
                 $headers = $this->HEADERS;
@@ -1545,7 +1545,7 @@ namespace F3 {
         /**
          * Return TRUE if XMLHttpRequest detected
          */
-        function ajax(array $headers=null): bool
+        function ajax(?array $headers=null): bool
         {
             if (!$headers)
                 $headers = $this->HEADERS;
@@ -1755,7 +1755,7 @@ namespace F3 {
         /**
          * Assemble url from alias name
          */
-        function alias(string $name, array|string $params=[], string|array $query=NULL, string $fragment=NULL): string
+        function alias(string $name, array|string $params=[], string|array|null $query=NULL, ?string $fragment=NULL): string
         {
             if (!is_array($params))
                 $params = $this->parse($params);
@@ -2907,7 +2907,7 @@ namespace F3 {
          * Register or get (one specific or all) token filters
          * @return array|Closure|string
          */
-        function filter(string $key=NULL, callable|string|null $func=NULL): mixed
+        function filter(?string $key=NULL, callable|string|null $func=NULL): mixed
         {
             if (!$key)
                 return array_keys($this->filter);
@@ -3648,7 +3648,7 @@ namespace F3\Http {
         /**
          * Reroute to specified URI
          */
-        function reroute(array|string $url=NULL, bool $permanent=FALSE, bool $exit=TRUE): void
+        function reroute(array|string|null $url=NULL, bool $permanent=FALSE, bool $exit=TRUE): void
         {
             if (!$url)
                 $url = $this->REALM;
