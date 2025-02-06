@@ -220,12 +220,12 @@ namespace F3 {
          */
         function toArray(): array
         {
-            $out = \array_diff_key(\get_object_vars($this), array_flip(static::OWN_PROPS));
+            $out = \array_diff_key(\get_mangled_object_vars($this), \array_flip(static::OWN_PROPS));
             $src = \array_keys($this->_hive_data);
             if ($this->_hive)
                 $src = [
                     ...$src,
-                    ...\array_diff(\array_keys(\get_object_vars($this->_hive)),static::OWN_PROPS)];
+                    ...\array_diff(\array_keys(\get_mangled_object_vars($this->_hive)),static::OWN_PROPS)];
             foreach ($src as $key) {
                 $out[$key] = $this->get($key);
             }
@@ -372,6 +372,9 @@ namespace F3 {
          */
         function get(string $key, string|array|null $args=NULL): mixed
         {
+            if (property_exists($this,$key)) {
+                return $this->{$key};
+            }
             if (\is_string($val = $this->ref($key,FALSE)) && !\is_null($args))
                 return Base::instance()->format($val, ...(\is_array($args) ? $args : [$args]));
             if (\is_null($val)) {
@@ -390,6 +393,9 @@ namespace F3 {
             $parts = $this->cut($key);
             if (!$this->accessible($parts[0]))
                 return false;
+            if (count($parts) === 1 && \property_exists($this,$parts[0])) {
+                return true;
+            }
             $val = $this->ref($key,FALSE);
             return isset($val);
         }
@@ -482,13 +488,13 @@ namespace F3 {
         protected const OWN_PROPS = ['_hive','_hive_data', 'languages', 'locks', 'fallback'];
 
         static protected array $AccessorProps = [
-            'CACHE',
-            'ENCODING',
-            'FALLBACK',
-            'LANGUAGE',
-            'LOCALES',
-            'TZ',
-            'JAR',
+//            'CACHE',
+//            'ENCODING',
+//            'FALLBACK',
+//            'LANGUAGE',
+//            'LOCALES',
+//            'TZ',
+//            'JAR',
         ];
 
         public string $AGENT = '';
@@ -499,7 +505,9 @@ namespace F3 {
         public string $BASE = '';
         public int $BITMASK = ENT_COMPAT|ENT_SUBSTITUTE;
         public ?string $BODY = NULL;
-        public string|bool $CACHE = FALSE;
+        public string|bool $CACHE = FALSE {
+            set => Cache::instance()->load($value);
+        }
         public bool $CASELESS = FALSE;
         public bool $CLI = FALSE;
         public bool $NONBLOCKING = FALSE;
@@ -515,12 +523,24 @@ namespace F3 {
         public array $DIACRITICS = [];
         public string|array $DNSBL = [];
         public array $EMOJI = [];
-        public string $ENCODING = 'UTF-8';
+        public string $ENCODING = 'UTF-8' {
+            set {
+                \ini_set('default_charset', $value);
+                \mb_internal_encoding($value);
+                $this->ENCODING = $value;
+            }
+        }
         public ?array $ERROR = NULL;
         public bool $ESCAPE = TRUE;
         public ?\Throwable $EXCEPTION = NULL;
         public string|array $EXEMPT = [];
-        public string $FALLBACK = 'en';
+        public string $FALLBACK = 'en' {
+            set {
+                $this->fallback = $value;
+                $lang = $this->language($this->LANGUAGE);
+                $this->FALLBACK = $value;
+            }
+        }
         public array $FORMATS = [];
         public bool $HALT = TRUE;
         public array $HEADERS = [];
@@ -536,8 +556,27 @@ namespace F3 {
             'httponly'=>TRUE,
             'samesite'=>'Lax',
         ];
-        public string $LANGUAGE = '';
-        public ?string $LOCALES = null;
+        public string $LANGUAGE = '' {
+            set(string $val) {
+                $val = $this->language($val);
+                if ($this->LOCALES) {
+                    $lex = $this->lexicon($this->LOCALES);
+                    $this->set('LOCALES', $lex);
+                }
+                $this->LANGUAGE = $val;
+            }
+        }
+        public ?string $LOCALES = null {
+            set {
+                if ($lex = $this->lexicon($value, 0))
+                    foreach ($lex as $dt => $dd) {
+                        $ref = &$this->ref($this->PREFIX.$dt);
+                        $ref = $dd;
+                        unset($ref);
+                    }
+                $this->LOCALES = $value;
+            }
+        }
         public int $LOCK = LOCK_EX;
         public string|array $LOGGABLE = '*';
         public string $LOGS = './';
@@ -566,7 +605,12 @@ namespace F3 {
         public string $SERIALIZER = 'php';
         public string $TEMP = 'tmp/';
         public float $TIME = 0;
-        public string $TZ = '';
+        public string $TZ = '' {
+            set {
+                date_default_timezone_set($value);
+                $this->TZ = $value;
+            }
+        }
         public string $UI = './';
         public mixed $UNLOAD = NULL;
         public string $UPLOADS = './';
@@ -766,31 +810,37 @@ namespace F3 {
             }
             else switch ($key) {
                 case 'CACHE':
-                    $val = Cache::instance()->load($val);
-                    break;
+                    return $this->{$key} = $val;
+
+//                    $val = Cache::instance()->load($val);
+//                    break;
                 case 'ENCODING':
-                    \ini_set('default_charset', $val);
-                    \mb_internal_encoding($val);
-                    break;
+                    return $this->{$key} = $val;
+//                    \ini_set('default_charset', $val);
+//                    \mb_internal_encoding($val);
+//                    break;
                 case 'FALLBACK':
                     $this->fallback = $val;
                     $lang = $this->language($this->LANGUAGE);
                 case 'LANGUAGE':
-                    if (!isset($lang))
-                        $val = $this->language($val);
-                    if ($this->LOCALES)
-                        $lex = $this->lexicon($this->LOCALES, $ttl);
+                    return $this->{$key} = $val;
+//                    if (!isset($lang))
+//                        $val = $this->language($val);
+//                    if ($this->LOCALES)
+//                        $lex = $this->lexicon($this->LOCALES, $ttl);
                 case 'LOCALES':
-                    if (isset($lex) || $lex = $this->lexicon($val, $ttl))
-                        foreach ($lex as $dt => $dd) {
-                            $ref = &$this->ref($this->PREFIX.$dt);
-                            $ref = $dd;
-                            unset($ref);
-                        }
+                    return $this->{$key} = $val;
+//                    if (isset($lex) || $lex = $this->lexicon($val, $ttl))
+//                        foreach ($lex as $dt => $dd) {
+//                            $ref = &$this->ref($this->PREFIX.$dt);
+//                            $ref = $dd;
+//                            unset($ref);
+//                        }
                     break;
                 case 'TZ':
-                    date_default_timezone_set($val);
-                    break;
+                    return $this->{$key} = $val;
+//                    date_default_timezone_set($val);
+//                    break;
             }
             $ref = parent::set($key, $val);
             if (preg_match('/^JAR\b/', $key)) {
@@ -1418,7 +1468,8 @@ namespace F3 {
                 $locales[] = $locale;
             }
             \setlocale(LC_ALL,$locales);
-            $out = $this->_hive->LANGUAGE = \implode(',',$this->languages);
+//            $out = $this->_hive->LANGUAGE = \implode(',',$this->languages);
+            $out = \implode(',',$this->languages);
             if ($lexiconPath)
                 $this->set('LOCALES', $lexiconPath, $ttl);
             return $out;
