@@ -979,10 +979,10 @@ final class Base extends Prefab implements ArrayAccess {
 	}
 
 	/**
-	*	Remove HTML tags (except those enumerated) and non-printable
-	*	characters to mitigate XSS/code injection attacks
-	*	@return mixed
-	*	@param $arg mixed
+	*	Remove HTML tags (except those enumerated) and non-printable characters
+    *   NB: This method doesn't mitigate XSS/code injection attacks.
+    *   @return mixed
+    *	@param $arg mixed
 	*	@param $tags string
 	**/
 	function clean($arg,$tags=NULL) {
