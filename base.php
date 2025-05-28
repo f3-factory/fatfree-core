@@ -2240,9 +2240,15 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $file string
 	*	@param $lf bool
 	**/
-	function read($file,$lf=FALSE) {
-		$out=@file_get_contents($file);
-		return $lf?preg_replace('/\r\n|\r/',"\n",$out):$out;
+	function read($file, $lf = FALSE)
+	{
+		if (!file_exists($file)) {
+			return false;
+		}
+		
+		$out = file_get_contents($file);
+
+		return $lf ? preg_replace('/\r\n|\r/', "\n", $out) : $out;
 	}
 
 	/**
