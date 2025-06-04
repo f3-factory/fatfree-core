@@ -3720,5 +3720,3 @@ final class Registry {
 	}
 
 }
-
-return Base::instance();
