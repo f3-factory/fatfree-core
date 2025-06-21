@@ -156,12 +156,17 @@ class Jig {
 	*	@param $dir string
 	*	@param $format int
 	**/
-	function __construct($dir=NULL,$format=self::FORMAT_JSON,$lazy=FALSE) {
-		if ($dir && !is_dir($dir))
-			mkdir($dir,\Base::MODE,TRUE);
-		$this->uuid=\Base::instance()->hash($this->dir=$dir);
-		$this->format=$format;
-		$this->lazy=$lazy;
+	function __construct($dir = NULL, $format = self::FORMAT_JSON, $lazy = FALSE)
+	{
+		if ($dir) {
+			$dir = rtrim($dir, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+			if (!is_dir($dir)) {
+				mkdir($dir, \Base::MODE, TRUE);
+			}
+		}
+		$this->uuid = \Base::instance()->hash($this->dir = $dir);
+		$this->format = $format;
+		$this->lazy = $lazy;
 	}
 
 	/**
