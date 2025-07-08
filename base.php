@@ -773,6 +773,18 @@ final class Base extends Prefab implements ArrayAccess {
 		return $out;
 	}
 
+    /**
+     * fetch a hive key result, then clear the key
+     * @param string $key
+     * @return mixed
+     */
+    function pull($key): mixed
+    {
+        $value = $this->get($key);
+        $this->clear($key);
+        return $value;
+    }
+
 	/**
 	*	Convert backslashes to slashes
 	*	@return string
