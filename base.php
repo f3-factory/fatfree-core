@@ -1305,7 +1305,7 @@ final class Base extends Prefab implements ArrayAccess {
 
 	/**
 	*	Return PHP value derived from string
-	*	@return string
+	*	@return mixed
 	*	@param $arg mixed
 	**/
 	function unserialize($arg) {
