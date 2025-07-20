@@ -71,7 +71,7 @@ class Session extends Magic {
     {
 		$this->sid=$id;
 		if (!$data=$this->_cache->get($id.'.@'))
-			return false;
+			return '';
 		$this->_data = $data;
 		if ($data['ip']!=$this->_ip || $data['agent']!=$this->_agent) {
 			$fw=Base::instance();
