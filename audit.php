@@ -27,7 +27,8 @@ class Audit extends Prefab {
 	const
 		UA_Mobile='android|blackberry|phone|ipod|palm|windows\s+ce',
 		UA_Desktop='bsd|linux|os\s+[x9]|solaris|windows',
-		UA_Bot='bot|crawl|slurp|spider';
+		UA_AI='gpt|claude|mistral|oai|google\-extended|perplexity|anthropic|cohere|duckassist|amazonbot|bingbot|\-ai|ai\-';
+		UA_Bot='bot|crawl|slurp|spider|agent|omgili|external';
 	//@}
 
 	/**
@@ -134,6 +135,27 @@ class Audit extends Prefab {
 		if (!isset($agent))
 			$agent=Base::instance()->AGENT;
 		return (bool)preg_match('/('.self::UA_Bot.')/i',$agent);
+	}
+
+	/**
+	*	Return TRUE if user agent is an AI
+	*	@return bool
+	*	@param $agent string
+	**/
+	function isai($agent=NULL) {
+		if (!isset($agent))
+			$agent=Base::instance()->AGENT;
+		return (bool)preg_match('/('.self::UA_AI.')/i',$agent);
+	}
+
+
+	/**
+	*	Return TRUE if user agent is a Web bot or an AI
+	*	@return bool
+	*	@param $agent string
+	**/
+	function isbotorai($agent=NULL) {
+		return $self->isbot($agent) || $self->isai($agent);
 	}
 
 	/**
