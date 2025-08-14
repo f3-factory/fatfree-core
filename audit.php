@@ -27,8 +27,8 @@ class Audit extends Prefab {
 	const
 		UA_Mobile='android|blackberry|phone|ipod|palm|windows\s+ce',
 		UA_Desktop='bsd|linux|os\s+[x9]|solaris|windows',
-		UA_AI='google\-extended|perplexity|external|\-ai|ai\-';
-		UA_Bot='bot|crawl|slurp|spider|agent|omgili';
+		UA_AI='gpt|claude|mistral|oai|google\-extended|perplexity|anthropic|cohere|\-ai|ai\-';
+		UA_Bot='bot|crawl|slurp|spider|agent|omgili|external';
 	//@}
 
 	/**
