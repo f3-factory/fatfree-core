@@ -134,7 +134,28 @@ class Audit extends Prefab {
 	function isbot($agent=NULL) {
 		if (!isset($agent))
 			$agent=Base::instance()->AGENT;
-		return (bool)preg_match('/('.self::UA_Bot.')/i',$agent) || (bool)preg_match('/('.self::UA_AI.')/i',$agent);
+		return (bool)preg_match('/('.self::UA_Bot.')/i',$agent);
+	}
+
+	/**
+	*	Return TRUE if user agent is an AI
+	*	@return bool
+	*	@param $agent string
+	**/
+	function isai($agent=NULL) {
+		if (!isset($agent))
+			$agent=Base::instance()->AGENT;
+		return (bool)preg_match('/('.self::UA_AI.')/i',$agent);
+	}
+
+
+	/**
+	*	Return TRUE if user agent is a Web bot or an AI
+	*	@return bool
+	*	@param $agent string
+	**/
+	function isbotorai($agent=NULL) {
+		return $self->isbot($agent) || $self->isai($agent);
 	}
 
 	/**
