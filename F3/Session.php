@@ -88,7 +88,6 @@ class Session extends Magic implements \SessionHandlerInterface {
     public function write(string $id, string $data): bool
     {
 		$fw=Base::instance();
-		$jar=$fw->JAR;
 		$this->_cache->set($id.'.@',
 			[
 				'data'=>$data,
@@ -96,7 +95,7 @@ class Session extends Magic implements \SessionHandlerInterface {
 				'agent'=>$this->_agent,
 				'stamp'=>time()
 			],
-			$jar['expire']
+            $fw->JAR->expire
 		);
 		return TRUE;
 	}
