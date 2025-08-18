@@ -1225,7 +1225,6 @@ namespace F3 {
                                 $this->FORMATS[$type],
                                 [$args[$pos], $mod ?? NULL, $prop ?? NULL]
                             );
-                        $php81 = \version_compare(PHP_VERSION, '8.1.0') >= 0;
                         switch ($type) {
                             case 'plural':
                                 \preg_match_all('/(?<tag>\w+)'.
@@ -1247,15 +1246,10 @@ namespace F3 {
                                             return \number_format(
                                                 $args[$pos],0,'',$thousands_sep);
                                         case 'currency':
-                                            $int = $cstm = FALSE;
+                                            $int = FALSE;
                                             if (isset($prop) &&
-                                                ($cstm = !$int = ($prop == 'int')))
+                                                (!$int = ($prop == 'int')))
                                                 $currency_symbol = $prop;
-                                            if (!$cstm &&
-                                                \function_exists('money_format') &&
-                                                \version_compare(PHP_VERSION,'7.4.0') < 0)
-                                                return \money_format(
-                                                    '%'.($int ? 'i' : 'n'),$args[$pos]);
                                             $fmt=[
                                                 0=>'(nc)',1=>'(n c)',
                                                 2=>'(nc)',10=>'+nc',
@@ -1307,43 +1301,25 @@ namespace F3 {
                                     $prop ?? ($frac ? \strlen($frac) - 2 : 0),
                                     $decimal_point,$thousands_sep);
                             case 'date':
-                                if ($php81) {
-                                    $lang = $this->split($this->LANGUAGE);
-                                    // requires intl extension
-                                    $dateType=(empty($mod) || $mod=='short') ? \IntlDateFormatter::SHORT :
-                                        ($mod=='full' ? \IntlDateFormatter::FULL : \IntlDateFormatter::LONG);
-                                    $pattern = $dateType === \IntlDateFormatter::SHORT
-                                        ? \IntlDatePatternGenerator::create($lang[0])?->getBestPattern('yyyyMMdd') : null;
-                                    $formatter = new \IntlDateFormatter($lang[0],$dateType,
-                                        \IntlDateFormatter::NONE, pattern: $pattern);
-                                    return $formatter->format($args[$pos]);
-                                } else {
-                                    if (empty($mod) || $mod == 'short')
-                                        $prop='%x';
-                                    elseif ($mod == 'full')
-                                        $prop='%A, %d %B %Y';
-                                    elseif ($mod != 'custom')
-                                        $prop = '%d %B %Y';
-                                    return strftime($prop,$args[$pos]);
-                                }
+                                $lang = $this->split($this->LANGUAGE);
+                                // requires intl extension
+                                $dateType=(empty($mod) || $mod=='short') ? \IntlDateFormatter::SHORT :
+                                    ($mod=='full' ? \IntlDateFormatter::FULL : \IntlDateFormatter::LONG);
+                                $pattern = $dateType === \IntlDateFormatter::SHORT
+                                    ? \IntlDatePatternGenerator::create($lang[0])?->getBestPattern('yyyyMMdd') : null;
+                                $formatter = new \IntlDateFormatter($lang[0],$dateType,
+                                    \IntlDateFormatter::NONE, pattern: $pattern);
+                                return $formatter->format($args[$pos]);
                             case 'time':
-                                if ($php81) {
-                                    $lang = $this->split($this->LANGUAGE);
-                                    // requires intl extension
-                                    $formatter = new \IntlDateFormatter($lang[0],
-                                        \IntlDateFormatter::NONE,
-                                        (empty($mod) || $mod=='short')
-                                            ? \IntlDateFormatter::SHORT :
-                                            ($mod == 'full' ? \IntlDateFormatter::LONG : \IntlDateFormatter::MEDIUM),
-                                        \IntlTimeZone::createTimeZone($this->TZ));
-                                    return $formatter->format($args[$pos]);
-                                } else {
-                                    if (empty($mod) || $mod=='short')
-                                        $prop='%X';
-                                    elseif ($mod != 'custom')
-                                        $prop = '%r';
-                                    return strftime($prop,$args[$pos]);
-                                }
+                                $lang = $this->split($this->LANGUAGE);
+                                // requires intl extension
+                                $formatter = new \IntlDateFormatter($lang[0],
+                                    \IntlDateFormatter::NONE,
+                                    (empty($mod) || $mod=='short')
+                                        ? \IntlDateFormatter::SHORT :
+                                        ($mod == 'full' ? \IntlDateFormatter::LONG : \IntlDateFormatter::MEDIUM),
+                                    \IntlTimeZone::createTimeZone($this->TZ));
+                                return $formatter->format($args[$pos]);
                             default:
                                 return $expr[0];
                         }

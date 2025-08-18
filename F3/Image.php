@@ -376,11 +376,7 @@ class Image {
 				$block=$sprites[hexdec($hash[($j*$blocks+$i)*2])%$ctr];
 				for ($k=0,$pts=count($block);$k<$pts;++$k)
 					$block[$k]*=$dim;
-				if (version_compare(PHP_VERSION, '8.1.0') >= 0) {
-					imagefilledpolygon($sprite,$block,$fg);
-				} else {
-					imagefilledpolygon($sprite,$block,$pts/2,$fg);
-				}
+                imagefilledpolygon($sprite,$block,$fg);
 				for ($k=0;$k<4;++$k) {
 					imagecopyresampled($this->data,$sprite,
 						round($i*$dim/2),round($j*$dim/2),0,0,round($dim/2),round($dim/2),$dim,$dim);
