@@ -633,7 +633,7 @@ namespace F3 {
         {
             if ($addParams)
                 $args += $this->recursive($this->PARAMS, fn($val) =>
-                    \implode('/', \array_map('urlencode', \explode('/', $val))));
+                    \implode('/', \array_map('urlencode', \explode('/', $val ?? ''))));
             if (\is_array($url))
                 foreach ($url as &$var) {
                     $var = $this->build($var,$args, false);
@@ -1162,8 +1162,8 @@ namespace F3 {
         }
 
         /**
-         * Remove HTML tags (except those enumerated) and non-printable
-         * characters to mitigate XSS/code injection attacks
+         * Remove HTML tags (except those enumerated) and non-printable characters
+         * NB: This method doesn't mitigate XSS/code injection attacks.
          */
         public function clean(mixed $arg, ?string $tags=NULL): mixed
         {
@@ -1986,7 +1986,7 @@ namespace F3 {
                             $ttl = NULL;
                             if (\preg_match('/^(.+)\|\h*(\d+)$/',$rval,$tmp)) {
                                 \array_shift($tmp);
-                                list($rval,$ttl) = $tmp;
+                                [$rval,$ttl] = $tmp;
                             }
                             $args = \array_map(function($val) {
                                     $val = $this->cast($val);
@@ -2054,10 +2054,13 @@ namespace F3 {
         /**
          * Read file (with option to apply Unix LF as standard line ending)
          */
-        public function read(string $file, bool $lf=FALSE): string
+        public function read(string $file, bool $lf=FALSE): string|false
         {
-            $out = @\file_get_contents($file);
-            return $lf ? \preg_replace('/\r\n|\r/',"\n",$out) : $out;
+            if (!file_exists($file)) {
+                return false;
+            }
+            $out = \file_get_contents($file);
+            return $lf ? \preg_replace('/\r\n|\r/', "\n", $out) : $out;
         }
 
         /**
@@ -2141,7 +2144,7 @@ namespace F3 {
             $func = NULL;
             if (\is_array($path=$this->AUTOLOAD) &&
                 isset($path[1]) && \is_callable($path[1]))
-                list($path,$func) = $path;
+                [$path,$func] = $path;
             foreach ($this->split($this->PLUGINS.';'.$path) as $auto)
                 if (($func &&
                     \is_file($file = $func($auto.$class).'.php')) ||
@@ -2592,7 +2595,7 @@ namespace F3 {
                 default => throw new \RuntimeException('Cache dsn not found: '.var_export($this->dsn, true)),
             };
             if (!empty($raw)) {
-                list($val,$time,$ttl) = (array) $fw->unserialize($raw);
+                [$val,$time,$ttl] = (array) $fw->unserialize($raw);
                 if ($ttl===0 || $time + $ttl > microtime(TRUE))
                     return [$time,$ttl];
                 $val = null;
@@ -2736,7 +2739,7 @@ namespace F3 {
             if ($dsn=trim($dsn)) {
                 if (preg_match('/^redis=(.+)/',$dsn,$parts) &&
                     extension_loaded('redis')) {
-                    list($host,$port,$db,$password) = explode(':',$parts[1])+[1=>6379,2=>NULL,3=>NULL];
+                    [$host,$port,$db,$password] = explode(':',$parts[1])+[1=>6379,2=>NULL,3=>NULL];
                     $this->ref = new \Redis;
                     if (!$this->ref->connect($host,$port,2))
                         $this->ref = NULL;
@@ -2748,7 +2751,7 @@ namespace F3 {
                 elseif (preg_match('/^memcache=(.+)/',$dsn,$parts) &&
                     extension_loaded('memcache'))
                     foreach ($fw->split($parts[1]) as $server) {
-                        list($host,$port) = explode(':',$server)+[1=>11211];
+                        [$host,$port] = explode(':',$server)+[1=>11211];
                         if (empty($this->ref))
                             $this->ref = @memcache_connect($host,$port) ?: NULL;
                         else
@@ -2757,7 +2760,7 @@ namespace F3 {
                 elseif (preg_match('/^memcached=(.+)/',$dsn,$parts) &&
                     extension_loaded('memcached'))
                     foreach ($fw->split($parts[1]) as $server) {
-                        list($host,$port) = explode(':',$server)+[1=>11211];
+                        [$host,$port] = explode(':',$server)+[1=>11211];
                         if (empty($this->ref))
                             $this->ref=new \Memcached();
                         $this->ref->addServer($host,$port);
@@ -3851,7 +3854,7 @@ namespace F3\Http {
                             \preg_match('/.+\/$/',$this->PATH))
                             $this->reroute(\substr($this->PATH,0,-1).
                                 ($this->QUERY ? ('?'.$this->QUERY) : ''));
-                        list($handler,$ttl,$kbps,$alias) = $route[$this->VERB];
+                        [$handler,$ttl,$kbps,$alias] = $route[$this->VERB];
                         // Capture values of route pattern tokens
                         $this->PARAMS = $args;
                         // Save matching route
