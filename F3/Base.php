@@ -31,39 +31,26 @@ namespace F3 {
     /**
      * Mixin for singleton instance access
      */
-    trait Instance {
+    trait Prefab {
 
         /**
          * Return class instance
          */
-        static function instance(...$args): static
+        public static function instance(...$args): static
         {
-            if (!Registry::exists($class=static::class))
-                Registry::set($class,new $class(...$args));
+            if (!Registry::exists($class = static::class))
+                Registry::set($class, new $class(...$args));
             return Registry::get($class);
         }
 
     }
 
     /**
-     * Mixin for single-instance classes
-     */
-    trait Prefab {
-
-        use Instance;
-
-        // Prohibit cloning
-        private function __clone() {}
-
-    }
-
-
-    /**
      * Key-Value store
      */
     class Hive {
 
-        const E_Hive = 'Invalid hive key %s';
+        public const E_Hive = 'Invalid hive key %s';
 
         /** @var array dynamic key-value store */
         protected array $_hive_data = [];
@@ -112,8 +99,7 @@ namespace F3 {
 
         /**
          * Get hive key reference/contents; Add non-existent hive keys,
-         * array elements, and object properties by default. Use $var to specify
-         * a different hive, array or object to work with.
+         * array elements, and object properties by default.
          */
         public function &ref(array|string $key, bool $add = TRUE, mixed $val = NULL): mixed
         {
@@ -436,7 +422,7 @@ namespace F3 {
      */
     final class Base extends Hive {
 
-        use Instance;
+        use Prefab;
         use Router;
 
         public const string
@@ -1154,7 +1140,7 @@ namespace F3 {
             switch (\gettype($arg)) {
                 case 'object':
                     $ref = new \ReflectionClass($arg);
-                    if ($ref->iscloneable()) {
+                    if ($ref->isCloneable()) {
                         $arg = clone($arg);
                         $cast = ($it = \is_a($arg,'IteratorAggregate')) ?
                             \iterator_to_array($arg) : \get_object_vars($arg);
@@ -1710,7 +1696,7 @@ namespace F3 {
             $fw = $this;
             if ($sandbox) {
                 $fw = clone $this;
-                $reg_bak = Registry::get($class=static::class);
+                $reg_bak = Registry::get($class=Base::class);
                 Registry::set($class, $fw);
             }
             if (\preg_match('/GET|HEAD/', $verb))
@@ -3566,18 +3552,6 @@ namespace F3 {
 
 }
 
-
-namespace F3\Hive {
-
-    /**
-     * Enable accessor proxy for all typed public properties by default
-     */
-    trait OverloadProps {
-        const OVERLOAD_PROPS = TRUE;
-    }
-
-}
-
 namespace F3\Http {
 
     use F3\Base;
@@ -3600,7 +3574,7 @@ namespace F3\Http {
 
         public static function names(): array
         {
-            return \array_map(fn ($e) => $e->name,self::cases());
+            return \array_map(fn ($e) => $e->name, self::cases());
         }
     }
 
@@ -4116,7 +4090,8 @@ namespace F3\Http {
         {
             if (PHP_SAPI=='cli')
                 return;
-            foreach ($this->RESPONSE_HEADERS as $hl) \header($hl);
+            foreach ($this->RESPONSE_HEADERS as $hl)
+                \header($hl);
         }
 
     }
