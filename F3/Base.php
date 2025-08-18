@@ -1660,13 +1660,13 @@ namespace F3 {
             $verb = \strtoupper($parts[1]);
             if ($parts[2]) {
                 if (empty($this->ALIASES[$parts[2]]))
-                    \user_error(\sprintf(self::E_Named,$parts[2]),E_USER_ERROR);
+                    throw new \Exception(\sprintf(self::E_Named,$parts[2]));
                 $parts[4] = $this->ALIASES[$parts[2]];
                 $parts[4] = $this->build($parts[4],
                     isset($parts[3]) ? $this->parse($parts[3]) : []);
             }
             if (empty($parts[4]))
-                \user_error(\sprintf(self::E_Pattern,$pattern),E_USER_ERROR);
+                throw new \Exception(\sprintf(self::E_Pattern,$pattern));
             $url = \parse_url($parts[4]);
             \parse_str($url['query'] ?? '', $this->GET);
             $fw = $this;
@@ -1713,7 +1713,7 @@ namespace F3 {
             if (!\is_array($params))
                 $params = $this->parse($params);
             if (empty($this->ALIASES[$name]))
-                \user_error(\sprintf(self::E_Named,$name),E_USER_ERROR);
+                throw new \Exception(\sprintf(self::E_Named,$name));
             $url = $this->build($this->ALIASES[$name],$params);
             if (\is_array($query))
                 $query = \http_build_query($query);
@@ -1823,7 +1823,7 @@ namespace F3 {
         /**
          * Grab the callable behind a string or array callable expression
          */
-        public function grab(string|array $func, ?array $args=NULL): string|array|null
+        public function grab(string|array $func, ?array $args=NULL): string|array
         {
             if (\is_array($func)) {
                 $func[0] = $this->make($func[0], $args ?? []);
@@ -1832,8 +1832,7 @@ namespace F3 {
             if (\preg_match('/(.+)\h*(->|::)\h*(.+)/s', $func, $parts)) {
                 // Convert string to executable PHP callback
                 if (!\class_exists($parts[1])) {
-                    \user_error(\sprintf(self::E_Class, $parts[1]), E_USER_ERROR);
-                    return null;
+                    throw new \Exception(\sprintf(self::E_Class, $parts[1]));
                 }
                 if ($parts[2] == '->') {
                     $parts[1] = $this->make($parts[1], $args ?? []);
@@ -1859,9 +1858,8 @@ namespace F3 {
                 elseif (\is_callable($container))
                     return \call_user_func($container, $class, $args);
                 else
-                    \user_error(\sprintf(self::E_Class,
-                        $this->stringify($class)),
-                        E_USER_ERROR);
+                    throw new \Exception(\sprintf(self::E_Class,
+                        $this->stringify($class)));
             } elseif (\in_array(Prefab::class, $this->traits($class))) {
                 return $class::instance();
             }
@@ -1879,9 +1877,8 @@ namespace F3 {
             // Grab the real handler behind the string representation
             if ((!\is_callable($func) || \is_string($func))
                 && !\is_callable($func = $this->grab($func, $args)))
-                \user_error(\sprintf(self::E_Method,
-                    \is_string($func) ? $func : $this->stringify($func)),
-                    E_USER_ERROR);
+                throw new \Exception(\sprintf(self::E_Method,
+                    \is_string($func) ? $func : $this->stringify($func)));
             if ($this->CONTAINER) {
                 if ((\is_array($func) && !\method_exists(...$func))
                     || \is_string($func) && \function_exists($func)) {
@@ -2181,10 +2178,9 @@ namespace F3 {
          */
         public function __call(string $key, array $args): mixed
         {
-            if ($this->exists($key,$val))
-                return \call_user_func_array($val,$args);
-            \user_error(\sprintf(self::E_Method,$key),E_USER_ERROR);
-            return null;
+            if ($this->exists($key, $val))
+                return \call_user_func_array($val, $args);
+            throw new \Exception(\sprintf(self::E_Method, $key));
         }
 
         /**
@@ -2888,7 +2884,7 @@ namespace F3 {
                     return $data;
                 }
             }
-            user_error(sprintf(Base::E_Open,$file),E_USER_ERROR);
+            throw new \Exception(sprintf(Base::E_Open,$file));
         }
 
         /**
@@ -3093,7 +3089,7 @@ namespace F3 {
                     return $data;
                 }
             }
-            user_error(sprintf(Base::E_Open,$file),E_USER_ERROR);
+            throw new \Exception(sprintf(Base::E_Open,$file));
         }
 
         /**
@@ -3637,16 +3633,16 @@ namespace F3\Http {
                 '(?:\h+\[('.\implode('|',$types).')\])?/u',$pattern,$parts);
             if (isset($parts[2]) && $parts[2]) {
                 if (!\preg_match('/^\w+$/',$parts[2]))
-                    \user_error(\sprintf(self::E_Alias,$parts[2]),E_USER_ERROR);
+                    throw new \Exception(\sprintf(self::E_Alias,$parts[2]));
                 $this->ALIASES[$alias = $parts[2]] = $parts[3];
             }
             elseif (!empty($parts[4])) {
                 if (empty($this->ALIASES[$parts[4]]))
-                    \user_error(\sprintf(self::E_Named,$parts[4]),E_USER_ERROR);
+                    throw new \Exception(\sprintf(self::E_Named,$parts[4]));
                 $parts[3] = $this->ALIASES[$alias = $parts[4]];
             }
             if (empty($parts[3]))
-                \user_error(\sprintf(self::E_Pattern,$pattern),E_USER_ERROR);
+                throw new \Exception(\sprintf(self::E_Pattern,$pattern));
             $type = empty($parts[5]) ? 0 : \constant('self::REQ_'.\strtoupper($parts[5]));
             foreach ($this->split($parts[1]) as $verb) {
                 if (!\constant(Verb::class.'::'.$verb))
@@ -3799,7 +3795,7 @@ namespace F3\Http {
         /**
          * Match routes against incoming URI
          */
-        function run(): mixed
+        public function run(): mixed
         {
             if ($this->blacklisted($this->IP)) {
                 // Spammer detected
@@ -3808,7 +3804,7 @@ namespace F3\Http {
             }
             if (!$this->ROUTES)
                 // No routes defined
-                \user_error(self::E_Routes,E_USER_ERROR);
+                throw new \Exception(self::E_Routes);
             // Match specific routes first
             $paths = [];
             foreach ($keys=\array_keys($this->ROUTES) as $key) {

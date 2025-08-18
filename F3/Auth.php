@@ -152,7 +152,7 @@ class Auth {
 				array_intersect_key($info[0],
 					array_flip($this->args['attr'])))),TRUE);
 		}
-		user_error(self::E_LDAP,E_USER_ERROR);
+        throw new \Exception(self::E_LDAP);
 	}
 
 	/**
@@ -197,9 +197,9 @@ class Auth {
 			$reply=$dialog(base64_encode($pw));
 			$dialog('QUIT');
 			fclose($socket);
-			return (bool)preg_match('/^235 /',$reply);
+			return (bool) preg_match('/^235 /',$reply);
 		}
-		user_error(self::E_SMTP,E_USER_ERROR);
+        throw new \Exception(self::E_SMTP);
 	}
 
 	/**

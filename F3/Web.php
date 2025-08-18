@@ -564,7 +564,7 @@ class Web {
 		foreach ($flags as $key=>$val)
 			if ($val)
 				return $this->wrapper=$key;
-		user_error(self::E_Request,E_USER_ERROR);
+        throw new \Exception(self::E_Request);
 	}
 
 	/**

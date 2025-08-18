@@ -59,23 +59,22 @@ class OAuth2 extends \F3\Magic {
 		if ($token)
 			array_push($options['header'],'Authorization: Bearer '.$token);
 		elseif ($method=='POST' && isset($this->args['client_id']))
-			array_push($options['header'],'Authorization: Basic '.
-				base64_encode(
-					$this->args['client_id'].':'.
-					$this->args['client_secret']
-				)
-			);
+			$options['header'][] = 'Authorization: Basic '.
+                base64_encode(
+                    $this->args['client_id'].':'.
+                    $this->args['client_secret']
+                );
 		$response=$web->request($uri,$options);
 		if ($response['error'])
-			user_error($response['error'],E_USER_ERROR);
+            throw new \Exception($response['error']);
 		if (isset($response['body'])) {
 			if (preg_grep('/^Content-Type:.*application\/json/i',
 				$response['headers'])) {
 				$token=json_decode($response['body'],TRUE);
 				if (isset($token['error_description']))
-					user_error($token['error_description'],E_USER_ERROR);
+					throw new \Exception($token['error_description']);
 				if (isset($token['error']))
-					user_error($token['error'],E_USER_ERROR);
+					throw new \Exception($token['error']);
 				return $token;
 			}
 			else
