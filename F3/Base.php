@@ -986,6 +986,16 @@ namespace F3 {
         }
 
         /**
+         * fetch a hive key result, then clear the key
+         */
+        public function pull(string $key): mixed
+        {
+            $value = $this->get($key);
+            $this->clear($key);
+            return $value;
+        }
+
+        /**
          * Convert backslashes to slashes
          */
         public function fixslashes(string $str): string
