@@ -946,10 +946,11 @@ class Web {
 	*	Return a URL/filesystem-friendly version of string
 	*	@return string
 	*	@param $text string
+	*	@param $separatpr string
 	**/
-	function slug($text) {
-		return trim(strtolower(preg_replace('/([^\pL\pN])+/u','-',
-			trim(strtr($text,Base::instance()->DIACRITICS+$this->diacritics())))),'-');
+	function slug($text, $separator = '-') {
+		return trim(strtolower(preg_replace('/([^\pL\pN])+/u',$separator,
+			trim(strtr($text, Base::instance()->DIACRITICS + $this->diacritics())))), $separator);
 	}
 
 	/**
