@@ -17,6 +17,8 @@
  *
  * You should have received a copy of the GNU General Public License along
  * with Fat-Free Framework. If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @author 2009-2019 Bong Cosca
  */
 
 namespace F3 {
