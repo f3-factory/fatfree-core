@@ -282,12 +282,12 @@ namespace F3 {
         {
             return (!$evaluate)
                 ? \preg_replace_callback(
-                    '/^@(\w+)((?:\..+|\[(?:(?:[^\[\]]*|(?R))*)\]|(?:\->|::)\w+)*)/',
+                    '/^@(\w+)((?:\..+|\[(?:[^\[\]]*|(?R))*]|(?:->|::)\w+)*)/',
                     function ($expr) {
                         $str = '$'.$expr[1];
                         if (isset($expr[2]))
                             $str .= \preg_replace_callback(
-                                '/\.([^.\[\]]+)|\[((?:[^\[\]\'"]*|(?R))*)\]/',
+                                '/\.([^.\[\]]+)|\[((?:[^\[\]\'"]*|(?R))*)]/',
                                 function ($sub) {
                                     $val = $sub[2] ?? $sub[1];
                                     if (\ctype_digit($val))
@@ -301,13 +301,13 @@ namespace F3 {
                     $str,
                 )
                 : \preg_replace_callback(
-                    '/(?<!\w)@(\w+(?:(?:\->|::)\w+)?)'.
-                    '((?:\.\w+|\[(?:(?:[^\[\]]*|(?R))*)\]|(?:\->|::)\w+|\()*)/',
+                    '/(?<!\w)@(\w+(?:(?:->|::)\w+)?)'.
+                    '((?:\.\w+|\[(?:[^\[\]]*|(?R))*]|(?:->|::)\w+|\()*)/',
                     function ($expr) {
                         $str = '$'.$expr[1];
                         if (isset($expr[2]))
                             $str .= \preg_replace_callback(
-                                '/\.(\w+)(\()?|\[((?:[^\[\]]*|(?R))*)\]/',
+                                '/\.(\w+)(\()?|\[((?:[^\[\]]*|(?R))*)]/',
                                 function ($sub) {
                                     if (empty($sub[2])) {
                                         if (\ctype_digit($sub[1]))
@@ -658,7 +658,7 @@ namespace F3 {
             else {
                 $i = 0;
                 $url = \preg_replace_callback(
-                    '/(\{)?@(\w+)(?(1)\})|(\*)/',
+                    '/(\{)?@(\w+)(?(1)})|(\*)/',
                     function ($match) use (&$i, $args) {
                         if (isset($match[2]) &&
                             \array_key_exists($match[2], $args))
@@ -684,7 +684,7 @@ namespace F3 {
         public function parse(string $str): array
         {
             \preg_match_all(
-                '/(\w+|\*)\h*=\h*(?:\[(.+?)\]|(.+?))(?=,|$)/',
+                '/(\w+|\*)\h*=\h*(?:\[(.+?)]|(.+?))(?=,|$)/',
                 $str,
                 $pairs,
                 PREG_SET_ORDER,
@@ -1265,8 +1265,8 @@ namespace F3 {
             $conv = \localeconv();
             return \preg_replace_callback(
                 '/\{\s*(?P<pos>\d+)\s*(?:,\s*(?P<type>\w+)\s*'.
-                '(?:,\s*(?P<mod>(?:\w+(?:\s*\{.+?\}\s*,?\s*)?)*)'.
-                '(?:,\s*(?P<prop>.+?))?)?)?\s*\}/',
+                '(?:,\s*(?P<mod>(?:\w+(?:\s*\{.+?}\s*,?\s*)?)*)'.
+                '(?:,\s*(?P<prop>.+?))?)?)?\s*}/',
                 function ($expr) use ($args, $conv) {
                     /**
                      * @var string $pos
@@ -1297,7 +1297,7 @@ namespace F3 {
                             case 'plural':
                                 \preg_match_all(
                                     '/(?<tag>\w+)'.
-                                    '(?:\s*\{\s*(?<data>.*?)\s*\})/',
+                                    '\s*\{\s*(?<data>.*?)\s*}/',
                                     $mod,
                                     $matches,
                                     PREG_SET_ORDER,
@@ -1511,7 +1511,7 @@ namespace F3 {
                     elseif (\is_file($file = $base.'.ini')) {
                         \preg_match_all(
                             '/(?<=^|\n)(?:'.
-                            '\[(?<prefix>.+?)\]|'.
+                            '\[(?<prefix>.+?)]|'.
                             '(?<lval>[^\h\r\n;].*?)\h*=\h*'.
                             '(?<rval>(?:\\\\\h*\r?\n|.+?)*)'.
                             ')(?=\r?\n|$)/',
@@ -2116,7 +2116,7 @@ namespace F3 {
             foreach ($source as $file) {
                 \preg_match_all(
                     '/(?<=^|\n)(?:'.
-                    '\[(?<section>.+?)\]|'.
+                    '\[(?<section>.+?)]|'.
                     '(?<lval>[^\h\r\n;].*?)\h*=\h*'.
                     '(?<rval>(?:\\\\\h*\r?\n|.+?)*)'.
                     ')(?=\r?\n|$)/',
@@ -2132,7 +2132,7 @@ namespace F3 {
                             $sec = $match['section'];
                             if (\preg_match(
                                     '/^(?!(?:global|config|route|map|redirect)s\b)'.
-                                    '(.*?)(?:\s*[:>])/i',
+                                    '(.*?)\s*[:>]/i',
                                     $sec,
                                     $msec,
                                 ) &&
@@ -2140,7 +2140,7 @@ namespace F3 {
                                 $this->set($msec[1], null);
                             \preg_match(
                                 '/^(config|route|map|redirect)s\b|'.
-                                '^(.+?)\s*\>\s*(.*)/i',
+                                '^(.+?)\s*>\s*(.*)/i',
                                 $sec,
                                 $cmd,
                             );
@@ -2196,7 +2196,7 @@ namespace F3 {
                                 ),
                             );
                             \preg_match(
-                                '/^(?<section>[^:]+)(?:\:(?<func>.+))?/',
+                                '/^(?<section>[^:]+)(?::(?<func>.+))?/',
                                 $sec,
                                 $parts,
                             );
@@ -3200,9 +3200,9 @@ namespace F3 {
          */
         public function token(string $str): string
         {
-            $str = trim(preg_replace('/\{\{(.+?)\}\}/s', '\1', $this->fw->compile($str)));
+            $str = trim(preg_replace('/\{\{(.+?)}}/s', '\1', $this->fw->compile($str)));
             if (preg_match(
-                '/^(.+)(?<!\|)\|((?:\h*\w+(?:\h*[,;]?))+)$/s',
+                '/^(.+)(?<!\|)\|((?:\h*\w+\h*[,;]?)+)$/s',
                 $str,
                 $parts,
             )) {
@@ -3239,8 +3239,8 @@ namespace F3 {
         protected function build($node): string
         {
             return preg_replace_callback(
-                '/\{~(.+?)~\}|\{\*(.+?)\*\}|\{\-(.+?)\-\}|'.
-                '\{\{(.+?)\}\}((\r?\n)*)/s',
+                '/\{~(.+?)~}|\{\*(.+?)\*}|\{-(.+?)-}|'.
+                '\{\{(.+?)}}((\r?\n)*)/s',
                 function ($expr) {
                     if ($expr[1])
                         $str = '<?php '.$this->token($expr[1]).' ?>';
@@ -3320,7 +3320,7 @@ namespace F3 {
             // Remove PHP code and comments
             return preg_replace(
                 '/\h*<\?(?!xml)(?:php|\s*=)?.+?\?>\h*|'.
-                '\{\*.+?\*\}/is',
+                '\{\*.+?\*}/is',
                 '',
                 $text,
             );
@@ -3912,8 +3912,8 @@ namespace F3\Http {
                 return;
             }
             \preg_match(
-                '/([\|\w]+)\h+(?:(?:@?(.+?)\h*:\h*)?(@(\w+)|[^\h]+))'.
-                '(?:\h+\[('.\implode('|', $types).')\])?/u',
+                '/([|\w]+)\h+(?:@?(.+?)\h*:\h*)?(@(\w+)|\H+)'.
+                '(?:\h+\[('.\implode('|', $types).')])?/u',
                 $pattern,
                 $parts,
             );
@@ -3992,7 +3992,7 @@ namespace F3\Http {
             if (\is_array($url))
                 $url = \call_user_func_array([$this, 'alias'], $url);
             elseif (\preg_match(
-                    '/^(?:@([^\/()?#]+)(?:\((.+?)\))*(\?[^#]+)*(#.+)*)/',
+                    '/^@([^\/()?#]+)(?:\((.+?)\))*(\?[^#]+)*(#.+)*/',
                     $url,
                     $parts,
                 ) && isset($this->ALIASES[$parts[1]]))

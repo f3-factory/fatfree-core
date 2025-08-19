@@ -42,7 +42,7 @@ class Template extends Preview
         $out = '';
         foreach ($node['@attrib'] as $key => $val)
             $out .= '$'.$key.'='.
-                (preg_match('/\{\{(.+?)\}\}/', $val ?: '') ?
+                (preg_match('/\{\{(.+?)}}/', $val ?: '') ?
                     $this->token($val) :
                     Base::instance()->stringify($val)).'; ';
         return '<?php '.$out.'?>';
@@ -79,7 +79,7 @@ class Template extends Preview
             '<?php '.(isset($attrib['if']) ?
                 ('if ('.$this->token($attrib['if']).') ') : '').
             ('echo $this->render('.
-                (preg_match('/^\{\{(.+?)\}\}$/', $attrib['href']) ?
+                (preg_match('/^\{\{(.+?)}}$/', $attrib['href']) ?
                     $this->token($attrib['href']) :
                     Base::instance()->stringify($attrib['href'])).','.
                 'NULL,'.$hive.','.$ttl.'); ?>');
@@ -200,7 +200,7 @@ class Template extends Preview
         $attrib = $node['@attrib'];
         unset($node['@attrib']);
         return
-            '<?php case '.(preg_match('/\{\{(.+?)\}\}/', $attrib['value']) ?
+            '<?php case '.(preg_match('/\{\{(.+?)}}/', $attrib['value']) ?
                 $this->token($attrib['value']) :
                 Base::instance()->stringify($attrib['value'])).': ?>'.
             $this->build($node).
@@ -266,8 +266,8 @@ class Template extends Preview
             if (preg_match(
                 '/^(.{0,'.$w.'}?)<(\/?)(?:F3:)?'.
                 '('.$this->tags.')\b((?:\s+[\w.:@!\-]+'.
-                '(?:\h*=\h*(?:"(?:.*?)"|\'(?:.*?)\'))?|'.
-                '\h*\{\{.+?\}\})*)\s*(\/?)>/is',
+                '(?:\h*=\h*(?:".*?"|\'.*?\'))?|'.
+                '\h*\{\{.+?}})*)\s*(\/?)>/is',
                 substr($text, $ptr),
                 $match,
             )) {
@@ -295,7 +295,7 @@ class Template extends Preview
                     if ($match[4]) {
                         // Process attributes
                         preg_match_all(
-                            '/(?:(\{\{.+?\}\})|([^\s\/"\'=]+))'.
+                            '/(?:(\{\{.+?}})|([^\s\/"\'=]+))'.
                             '\h*(?:=\h*(?:"(.*?)"|\'(.*?)\'))?/s',
                             $match[4],
                             $attr,
@@ -334,7 +334,7 @@ class Template extends Preview
     {
         $ref = new \ReflectionClass(get_called_class());
         $this->tags = '';
-        foreach ($ref->getmethods() as $method)
+        foreach ($ref->getMethods() as $method)
             if (preg_match('/^_(?=[[:alpha:]])/', $method->name))
                 $this->tags .= (strlen($this->tags) ? '|' : '').
                     substr($method->name, 1);
