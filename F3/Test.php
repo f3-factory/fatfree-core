@@ -60,9 +60,9 @@ class Test
     /**
      * Evaluate condition and save test result
      */
-    public function expect(bool $cond, ?string $text = null): static
+    public function expect(mixed $cond, ?string $text = null): static
     {
-        $out = $cond;
+        $out = (bool) $cond;
         if ($this->level == $out || $this->level == self::FLAG_Both) {
             $data = ['status' => $out, 'text' => $text, 'source' => null];
             foreach (debug_backtrace(limit: 100) as $frame)

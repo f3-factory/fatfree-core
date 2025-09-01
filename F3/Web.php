@@ -381,7 +381,6 @@ class Web {
 		ob_start();
 		curl_exec($curl);
 		$err=curl_error($curl);
-		curl_close($curl);
 		$body=ob_get_clean();
 		if (!$err &&
 			$options['follow_location'] && $open_basedir &&

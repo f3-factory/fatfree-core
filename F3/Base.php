@@ -440,7 +440,7 @@ namespace F3 {
 
         public const string
             PACKAGE = 'Fat-Free Framework',
-            VERSION = '4.0.0-alpha.7';
+            VERSION = '4.0.0-alpha.8';
 
         // Mapped PHP globals
         public const string GLOBALS = 'GET|POST|COOKIE|REQUEST|SESSION|FILES|SERVER|ENV';

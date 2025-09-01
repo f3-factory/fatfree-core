@@ -131,10 +131,9 @@ class SQL
                 return (int) $val;
             case \PDO::PARAM_BOOL:
                 return (bool) $val;
+            case \PDO::PARAM_LOB:
             case \PDO::PARAM_STR:
                 return (string) $val;
-            case \PDO::PARAM_LOB:
-                return (binary) $val;
         }
         throw new \Exception('Unknown type value');
     }
@@ -592,7 +591,7 @@ class SQL
             $options = [];
         if (isset($parts[0]) && strstr($parts[0], ':', true) == 'mysql')
             $options += [
-                \PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES '.
+                \PDO\Mysql::ATTR_INIT_COMMAND => 'SET NAMES '.
                     strtolower(str_replace('-', '', $fw->ENCODING)).';',
             ];
         $this->pdo = new \PDO($dsn, $user, $pw, $options);
