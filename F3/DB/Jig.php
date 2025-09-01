@@ -1,177 +1,166 @@
 <?php
 
-/*
+/**
+ *
+ * Copyright (c) 2025 F3::Factory, All rights reserved.
+ *
+ * This file is part of the Fat-Free Framework (http://fatfreeframework.com).
+ *
+ * This is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or later.
+ *
+ * Fat-Free Framework is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with Fat-Free Framework. If not, see <http://www.gnu.org/licenses/>.
+ */
 
-	Copyright (c) 2009-2019 F3::Factory/Bong Cosca, All rights reserved.
+namespace F3\DB {
 
-	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
+    use F3\Base;
+    use F3\DB\Jig\StorageFormat;
 
-	This is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or later.
+    /**
+     * In-memory / flat-file DB wrapper
+     */
+    class Jig
+    {
+        // UUID
+        public readonly string $uuid;
+        // Storage location
+        public readonly string $dir;
+        // Jig log
+        protected string|false $log = '';
+        // Memory-held data
+        protected array $data = [];
 
-	Fat-Free Framework is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-	General Public License for more details.
+        public function __construct(
+            string $dir = '',
+            // Current storage format
+            public readonly StorageFormat $format = StorageFormat::JSON,
+            // lazy load/save files
+            protected bool $lazy = false
+        ) {
+            if ($dir && !is_dir($dir))
+                mkdir($dir, Base::MODE, true);
+            $this->uuid = Base::instance()->hash($this->dir = $dir);
+        }
 
-	You should have received a copy of the GNU General Public License along
-	with Fat-Free Framework.  If not, see <http://www.gnu.org/licenses/>.
+        /**
+         * Read data from memory/file
+         */
+        public function &read(string $file): array
+        {
+            if (!$this->dir || !is_file($dst = $this->dir.$file)) {
+                if (!isset($this->data[$file]))
+                    $this->data[$file] = [];
+                return $this->data[$file];
+            }
+            if ($this->lazy && isset($this->data[$file]))
+                return $this->data[$file];
+            $fw = Base::instance();
+            $raw = $fw->read($dst);
+            $this->data[$file] = match ($this->format) {
+                StorageFormat::JSON => json_decode($raw, true),
+                StorageFormat::Serialized => $fw->unserialize($raw),
+            };
+            return $this->data[$file];
+        }
 
-*/
+        /**
+         * Write data to memory/file
+         */
+        public function write(string $file, ?array $data = null): false|int
+        {
+            if (!$this->dir || $this->lazy)
+                return count($this->data[$file] = $data);
+            $fw = Base::instance();
+            $out = match ($this->format) {
+                StorageFormat::JSON => json_encode(
+                    $data,
+                    JSON_PRETTY_PRINT | JSON_INVALID_UTF8_IGNORE,
+                ),
+                StorageFormat::Serialized => $fw->serialize($data),
+            };
+            return $fw->write($this->dir.$file, $out);
+        }
 
-namespace F3\DB;
+        /**
+         * Return directory
+         */
+        public function dir(): string
+        {
+            return $this->dir;
+        }
 
-//! In-memory/flat-file DB wrapper
-use F3\Base;
+        /**
+         * Return UUID
+         */
+        public function uuid(): string
+        {
+            return $this->uuid;
+        }
 
-class Jig {
+        /**
+         * Return profiler results (or disable logging)
+         */
+        public function log(bool $flag = true): false|string
+        {
+            if (!$flag)
+                $this->log = false;
+            return $this->log;
+        }
 
-	//@{ Storage formats
-	const
-		FORMAT_JSON=0,
-		FORMAT_Serialized=1;
-	//@}
+        /**
+         * Jot down log entry
+         */
+        public function jot(string $frame): void
+        {
+            if ($frame)
+                $this->log .= date('r').' '.$frame.PHP_EOL;
+        }
 
-	protected
-		//! UUID
-		$uuid,
-		//! Storage location
-		$dir,
-		//! Current storage format
-		$format,
-		//! Jig log
-		$log,
-		//! Memory-held data
-		$data,
-		//! lazy load/save files
-		$lazy;
+        /**
+         * Clean storage
+         */
+        public function drop(): void
+        {
+            if ($this->lazy) // intentional
+                $this->data = [];
+            if (!$this->dir)
+                $this->data = [];
+            elseif ($glob = @glob($this->dir.'/*', GLOB_NOSORT))
+                foreach ($glob as $file)
+                    @unlink($file);
+        }
 
-	/**
-	*	Read data from memory/file
-	*	@return array
-	*	@param $file string
-	**/
-	function &read($file) {
-		if (!$this->dir || !is_file($dst=$this->dir.$file)) {
-			if (!isset($this->data[$file]))
-				$this->data[$file]=[];
-			return $this->data[$file];
-		}
-		if ($this->lazy && isset($this->data[$file]))
-			return $this->data[$file];
-		$fw=Base::instance();
-		$raw=$fw->read($dst);
-		switch ($this->format) {
-			case self::FORMAT_JSON:
-				$data=json_decode($raw,TRUE);
-				break;
-			case self::FORMAT_Serialized:
-				$data=$fw->unserialize($raw);
-				break;
-		}
-		$this->data[$file] = $data;
-		return $this->data[$file];
-	}
+        // Prohibit cloning
+        private function __clone() {}
 
-	/**
-	*	Write data to memory/file
-	*	@return int
-	*	@param $file string
-	*	@param $data array
-	**/
-	function write($file,?array $data=NULL) {
-		if (!$this->dir || $this->lazy)
-			return count($this->data[$file]=$data);
-		$fw=Base::instance();
-		switch ($this->format) {
-			case self::FORMAT_JSON:
-				$out=json_encode($data, JSON_PRETTY_PRINT | JSON_INVALID_UTF8_IGNORE);
-				break;
-			case self::FORMAT_Serialized:
-				$out=$fw->serialize($data);
-				break;
-		}
-		return $fw->write($this->dir.$file,$out);
-	}
+        /**
+         *    save file on destruction
+         */
+        public function __destruct()
+        {
+            if ($this->lazy) {
+                $this->lazy = false;
+                foreach ($this->data ?: [] as $file => $data)
+                    $this->write($file, $data);
+            }
+        }
 
-	/**
-	*	Return directory
-	*	@return string
-	**/
-	function dir() {
-		return $this->dir;
-	}
+    }
+}
 
-	/**
-	*	Return UUID
-	*	@return string
-	**/
-	function uuid() {
-		return $this->uuid;
-	}
+namespace F3\DB\Jig {
 
-	/**
-	*	Return profiler results (or disable logging)
-	*	@param $flag bool
-	*	@return string
-	**/
-	function log($flag=TRUE) {
-		if ($flag)
-			return $this->log;
-		$this->log=FALSE;
-	}
-
-	/**
-	*	Jot down log entry
-	*	@return NULL
-	*	@param $frame string
-	**/
-	function jot($frame) {
-		if ($frame)
-			$this->log.=date('r').' '.$frame.PHP_EOL;
-	}
-
-	/**
-	*	Clean storage
-	*	@return NULL
-	**/
-	function drop() {
-		if ($this->lazy) // intentional
-			$this->data=[];
-		if (!$this->dir)
-			$this->data=[];
-		elseif ($glob=@glob($this->dir.'/*',GLOB_NOSORT))
-			foreach ($glob as $file)
-				@unlink($file);
-	}
-
-	//! Prohibit cloning
-	private function __clone() {
-	}
-
-	/**
-	*	Instantiate class
-	*	@param $dir string
-	*	@param $format int
-	**/
-	function __construct(string $dir='', int $format=self::FORMAT_JSON, bool $lazy=FALSE) {
-		if ($dir && !is_dir($dir))
-			mkdir($dir,Base::MODE,TRUE);
-		$this->uuid = Base::instance()->hash($this->dir=$dir);
-		$this->format=$format;
-		$this->lazy=$lazy;
-	}
-
-	/**
-	*	save file on destruction
-	**/
-	function __destruct() {
-		if ($this->lazy) {
-			$this->lazy = FALSE;
-			foreach ($this->data?:[] as $file => $data)
-				$this->write($file,$data);
-		}
-	}
-
+    enum StorageFormat
+    {
+        case JSON;
+        case Serialized;
+    }
 }

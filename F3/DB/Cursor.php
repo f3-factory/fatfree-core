@@ -34,9 +34,8 @@ abstract class Cursor extends Magic implements \IteratorAggregate
         E_Field = 'Undefined field %s';
     //endregion
 
-    protected
-        // Query results
-    array $query = [];
+    // Query results
+    protected array $query = [];
     // Current position
     protected int $ptr = 0;
     // Event listeners
@@ -98,10 +97,12 @@ abstract class Cursor extends Magic implements \IteratorAggregate
 
     /**
      * Get cursor's equivalent external iterator
-     * Causes a fatal error in PHP 5.3.5 if uncommented
-     * return ArrayIterator
+     * returns ArrayIterator
      */
-    abstract public function getIterator(): \Traversable;
+    public function getIterator(): \Traversable
+    {
+        return new \ArrayIterator($this->cast());
+    }
 
     /**
      * Return TRUE if current cursor position is not mapped to any record

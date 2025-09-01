@@ -1,405 +1,378 @@
 <?php
 
-/*
-
-	Copyright (c) 2009-2019 F3::Factory/Bong Cosca, All rights reserved.
-
-	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
-
-	This is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or later.
-
-	Fat-Free Framework is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-	General Public License for more details.
-
-	You should have received a copy of the GNU General Public License along
-	with Fat-Free Framework.  If not, see <http://www.gnu.org/licenses/>.
-
-*/
+/**
+ *
+ * Copyright (c) 2025 F3::Factory, All rights reserved.
+ *
+ * This file is part of the Fat-Free Framework (http://fatfreeframework.com).
+ *
+ * This is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or later.
+ *
+ * Fat-Free Framework is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with Fat-Free Framework. If not, see <http://www.gnu.org/licenses/>.
+ */
 
 namespace F3\DB\Mongo;
 
-//! MongoDB mapper
-class Mapper extends \F3\DB\Cursor {
+use F3\DB\Mongo;
 
-	protected
-		//! MongoDB wrapper
-		$db,
-		//! Legacy flag
-		$legacy,
-		//! Mongo collection
-		$collection,
-		//! Mongo document
-		$document=[],
-		//! Mongo cursor
-		$cursor,
-		//! Defined fields
-		$fields;
+/**
+ * MongoDB mapper
+ */
+class Mapper extends \F3\DB\Cursor
+{
 
-	/**
-	*	Return database type
-	*	@return string
-	**/
-	function dbtype() {
-		return 'Mongo';
-	}
+    // MongoDB wrapper
+    protected Mongo $db;
+    // Mongo collection
+    protected $collection;
+    // Mongo document
+    protected $document = [];
+    // Mongo cursor
+    protected $cursor;
+    // Defined fields
+    protected ?array $fields;
 
-	/**
-	*	Return TRUE if field is defined
-	*	@return bool
-	*	@param $key string
-	**/
-	function exists($key) {
-		return array_key_exists($key,$this->document);
-	}
+    /**
+     * Return database type
+     */
+    public function dbtype(): string
+    {
+        return 'Mongo';
+    }
 
-	/**
-	*	Assign value to field
-	*	@return scalar|FALSE
-	*	@param $key string
-	*	@param $val scalar
-	**/
-	function set($key,$val) {
-		return $this->document[$key]=$val;
-	}
+    /**
+     * Return TRUE if field is defined
+     */
+    public function exists(string $key): bool
+    {
+        return array_key_exists($key, $this->document);
+    }
 
-	/**
-	*	Retrieve value of field
-	*	@return scalar|FALSE
-	*	@param $key string
-	**/
-	function &get($key) {
-		if ($this->exists($key))
-			return $this->document[$key];
-        throw new \Exception(sprintf(self::E_Field,$key));
-	}
+    /**
+     * Assign value to field
+     */
+    public function set(string $key, mixed $val): mixed
+    {
+        return $this->document[$key] = $val;
+    }
 
-	/**
-	*	Delete field
-	*	@return NULL
-	*	@param $key string
-	**/
-	function clear($key) {
-		unset($this->document[$key]);
-	}
+    /**
+     * Retrieve value of field
+     */
+    public function &get(string $key): mixed
+    {
+        if ($this->exists($key))
+            return $this->document[$key];
+        throw new \Exception(sprintf(self::E_Field, $key));
+    }
 
-	/**
-	*	Convert array to mapper object
-	*	@return static
-	*	@param $row array
-	**/
-	function factory($row) {
-		$mapper=clone($this);
-		$mapper->reset();
-		foreach ($row as $key=>$val)
-			$mapper->document[$key]=$val;
-		$mapper->query=[clone($mapper)];
-		if (isset($mapper->trigger['load']))
-			\F3\Base::instance()->call($mapper->trigger['load'],$mapper);
-		return $mapper;
-	}
+    /**
+     * Delete field
+     */
+    public function clear($key): void
+    {
+        unset($this->document[$key]);
+    }
 
-	/**
-	*	Return fields of mapper object as an associative array
-	*	@return array
-	*	@param $obj object
-	**/
-	function cast($obj=NULL) {
-		if (!$obj)
-			$obj=$this;
-		return $obj->document;
-	}
+    /**
+     * Convert array to mapper object
+     */
+    public function factory(array $row): static
+    {
+        $mapper = clone($this);
+        $mapper->reset();
+        foreach ($row as $key => $val)
+            $mapper->document[$key] = $val;
+        $mapper->query = [clone($mapper)];
+        if (isset($mapper->trigger['load']))
+            \F3\Base::instance()->call($mapper->trigger['load'], [$mapper]);
+        return $mapper;
+    }
 
-	/**
-	*	Build query and execute
-	*	@return static[]
-	*	@param $fields string
-	*	@param $filter array
-	*	@param $options array
-	*	@param $ttl int|array
-	**/
-	function select($fields=NULL,$filter=NULL,?array $options=NULL,$ttl=0) {
-		if (!$options)
-			$options=[];
-		$options+=[
-			'group'=>NULL,
-			'order'=>NULL,
-			'limit'=>0,
-			'offset'=>0
-		];
-		$tag='';
-		if (is_array($ttl))
-			list($ttl,$tag)=$ttl;
-		$fw=\F3\Base::instance();
-		$cache=\F3\Cache::instance();
-		if (!($cached=$cache->exists($hash=$fw->hash($this->db->dsn().
-			$fw->stringify([$fields,$filter,$options])).($tag?'.'.$tag:'').'.mongo',
-			$result)) || !$ttl || $cached[0]+$ttl<microtime(TRUE)) {
-			if ($options['group']) {
-				$grp=$this->collection->group(
-					$options['group']['keys'],
-					$options['group']['initial'],
-					$options['group']['reduce'],
-					[
-						'condition'=>$filter,
-						'finalize'=>$options['group']['finalize']
-					]
-				);
-				$tmp=$this->db->selectcollection(
-					$fw->HOST.'.'.$fw->BASE.'.'.
-					uniqid('',TRUE).'.tmp'
-				);
-				$tmp->batchinsert($grp['retval'],['w'=>1]);
-				$filter=[];
-				$collection=$tmp;
-			}
-			else {
-				$filter=$filter?:[];
-				$collection=$this->collection;
-			}
-			if ($this->legacy) {
-				$this->cursor=$collection->find($filter,$fields?:[]);
-				if ($options['order'])
-					$this->cursor=$this->cursor->sort($options['order']);
-				if ($options['limit'])
-					$this->cursor=$this->cursor->limit($options['limit']);
-				if ($options['offset'])
-					$this->cursor=$this->cursor->skip($options['offset']);
-				$result=[];
-				while ($this->cursor->hasnext())
-					$result[]=$this->cursor->getnext();
-			}
-			else {
-				$this->cursor=$collection->find($filter,[
-					'sort'=>$options['order'],
-					'limit'=>$options['limit'],
-					'skip'=>$options['offset']
-				]);
-				$result=$this->cursor->toarray();
-			}
-			if ($options['group'])
-				$tmp->drop();
-			if ($fw->CACHE && $ttl)
-				// Save to cache backend
-				$cache->set($hash,$result,$ttl);
-		}
-		$out=[];
-		foreach ($result as $doc)
-			$out[]=$this->factory($doc);
-		return $out;
-	}
+    /**
+     * Return fields of mapper object as an associative array
+     */
+    public function cast(?object $obj = null): array
+    {
+        if (!$obj)
+            $obj = $this;
+        return $obj->document;
+    }
 
-	/**
-	*	Return records that match criteria
-	*	@return static[]
-	*	@param $filter array
-	*	@param $options array
-	*	@param $ttl int|array
-	**/
-	function find($filter=NULL,?array $options=NULL,$ttl=0) {
-		if (!$options)
-			$options=[];
-		$options+=[
-			'group'=>NULL,
-			'order'=>NULL,
-			'limit'=>0,
-			'offset'=>0
-		];
-		return $this->select($this->fields,$filter,$options,$ttl);
-	}
+    /**
+     * Build query and execute
+     * @return static[]
+     */
+    public function select(
+        ?array $fields = null,
+        string|array|null $filter = null,
+        ?array $options = null,
+        int|array $ttl = 0
+    ): array {
+        if (!$options)
+            $options = [];
+        $options += [
+            'group' => null,
+            'order' => null,
+            'limit' => 0,
+            'offset' => 0,
+        ];
+        $tag = '';
+        if (is_array($ttl))
+            [$ttl, $tag] = $ttl;
+        $fw = \F3\Base::instance();
+        $cache = \F3\Cache::instance();
+        if (!($cached = $cache->exists(
+                $hash = $fw->hash(
+                        $this->db->dsn().
+                        $fw->stringify([$fields, $filter, $options]),
+                    ).($tag ? '.'.$tag : '').'.mongo',
+                $result,
+            )) || !$ttl || $cached[0] + $ttl < microtime(true)) {
+            if ($options['group']) {
+                $grp = $this->collection->group(
+                    $options['group']['keys'],
+                    $options['group']['initial'],
+                    $options['group']['reduce'],
+                    [
+                        'condition' => $filter,
+                        'finalize' => $options['group']['finalize'],
+                    ],
+                );
+                $tmp = $this->db->selectcollection(
+                    $fw->HOST.'.'.$fw->BASE.'.'.
+                    uniqid('', true).'.tmp',
+                );
+                $tmp->batchinsert($grp['retval'], ['w' => 1]);
+                $filter = [];
+                $collection = $tmp;
+            } else {
+                $filter = $filter ?: [];
+                $collection = $this->collection;
+            }
 
-	/**
-	*	Count records that match criteria
-	*	@return int
-	*	@param $filter array
-	*	@param $options array
-	*	@param $ttl int|array
-	**/
-	function count($filter=NULL,?array $options=NULL,$ttl=0) {
-		$fw=\F3\Base::instance();
-		$cache=\F3\Cache::instance();
-		$tag='';
-		if (is_array($ttl))
-			list($ttl,$tag)=$ttl;
-		if (!($cached=$cache->exists($hash=$fw->hash($fw->stringify(
-			[$filter])).($tag?'.'.$tag:'').'.mongo',$result)) || !$ttl ||
-			$cached[0]+$ttl<microtime(TRUE)) {
-			$result=$this->collection->count($filter?:[]);
-			if ($fw->CACHE && $ttl)
-				// Save to cache backend
-				$cache->set($hash,$result,$ttl);
-		}
-		return $result;
-	}
+            $this->cursor = $collection->find($filter, [
+                'sort' => $options['order'],
+                'limit' => $options['limit'],
+                'skip' => $options['offset'],
+            ]);
+            $result = $this->cursor->toarray();
 
-	/**
-	*	Return record at specified offset using criteria of previous
-	*	load() call and make it active
-	*	@return array
-	*	@param $ofs int
-	**/
-	function skip($ofs=1) {
-		$this->document=($out=parent::skip($ofs))?$out->document:[];
-		if ($this->document && isset($this->trigger['load']))
-			\F3\Base::instance()->call($this->trigger['load'],$this);
-		return $out;
-	}
+            if ($options['group'])
+                $tmp->drop();
+            if ($fw->CACHE && $ttl)
+                // Save to cache backend
+                $cache->set($hash, $result, $ttl);
+        }
+        $out = [];
+        foreach ($result as $doc)
+            $out[] = $this->factory($doc);
+        return $out;
+    }
 
-	/**
-	*	Insert new record
-	*	@return array
-	**/
-	function insert() {
-		if (isset($this->document['_id']))
-			return $this->update();
-		if (isset($this->trigger['beforeinsert']) &&
-			\F3\Base::instance()->call($this->trigger['beforeinsert'],
-				[$this,['_id'=>$this->document['_id']]])===FALSE)
-			return $this->document;
-		if ($this->legacy) {
-			$this->collection->insert($this->document);
-			$pkey=['_id'=>$this->document['_id']];
-		}
-		else {
-			$result=$this->collection->insertone($this->document);
-			$pkey=['_id'=>$result->getinsertedid()];
-		}
-		if (isset($this->trigger['afterinsert']))
-			\F3\Base::instance()->call($this->trigger['afterinsert'],
-				[$this,$pkey]);
-		$this->load($pkey);
-		return $this->document;
-	}
+    /**
+     * Return records that match criteria
+     */
+    public function find(
+        array|string|null $filter = null,
+        ?array $options = null,
+        int|array $ttl = 0,
+    ): array {
+        if (!$options)
+            $options = [];
+        $options += [
+            'group' => null,
+            'order' => null,
+            'limit' => 0,
+            'offset' => 0,
+        ];
+        return $this->select($this->fields, $filter, $options, $ttl);
+    }
 
-	/**
-	*	Update current record
-	*	@return array
-	**/
-	function update() {
-		$pkey=['_id'=>$this->document['_id']];
-		if (isset($this->trigger['beforeupdate']) &&
-			\F3\Base::instance()->call($this->trigger['beforeupdate'],
-				[$this,$pkey])===FALSE)
-			return $this->document;
-		$upsert=['upsert'=>TRUE];
-		if ($this->legacy)
-			$this->collection->update($pkey,$this->document,$upsert);
-		else
-			$this->collection->replaceone($pkey,$this->document,$upsert);
-		if (isset($this->trigger['afterupdate']))
-			\F3\Base::instance()->call($this->trigger['afterupdate'],
-				[$this,$pkey]);
-		return $this->document;
-	}
+    /**
+     * Count records that match criteria
+     */
+    public function count(
+        array|string|null $filter = null,
+        ?array $options = null,
+        int|array $ttl = 0,
+    ): int {
+        $fw = \F3\Base::instance();
+        $cache = \F3\Cache::instance();
+        $tag = '';
+        if (is_array($ttl))
+            [$ttl, $tag] = $ttl;
+        if (!($cached = $cache->exists(
+                $hash = $fw->hash(
+                        $fw->stringify(
+                            [$filter],
+                        ),
+                    ).($tag ? '.'.$tag : '').'.mongo',
+                $result,
+            )) || !$ttl ||
+            $cached[0] + $ttl < microtime(true)) {
+            $result = $this->collection->count($filter ?: []);
+            if ($fw->CACHE && $ttl)
+                // Save to cache backend
+                $cache->set($hash, $result, $ttl);
+        }
+        return $result;
+    }
 
-	/**
-	*	Delete current record
-	*	@return bool
-	*	@param $quick bool
-	*	@param $filter array
-	**/
-	function erase($filter=NULL,$quick=TRUE) {
-		if ($filter) {
-			if (!$quick) {
-				foreach ($this->find($filter) as $mapper)
-					if (!$mapper->erase())
-						return FALSE;
-				return TRUE;
-			}
-			return $this->legacy?
-				$this->collection->remove($filter):
-				$this->collection->deletemany($filter);
-		}
-		$pkey=['_id'=>$this->document['_id']];
-		if (isset($this->trigger['beforeerase']) &&
-			\F3\Base::instance()->call($this->trigger['beforeerase'],
-				[$this,$pkey])===FALSE)
-			return FALSE;
-		$result=$this->legacy?
-			$this->collection->remove(['_id'=>$this->document['_id']]):
-			$this->collection->deleteone(['_id'=>$this->document['_id']]);
-		parent::erase();
-		if (isset($this->trigger['aftererase']))
-			\F3\Base::instance()->call($this->trigger['aftererase'],
-				[$this,$pkey]);
-		return $result;
-	}
+    /**
+     * Return record at specified offset using criteria of previous
+     * load() call and make it active
+     */
+    public function skip(int $ofs = 1): ?static
+    {
+        $this->document = ($out = parent::skip($ofs)) ? $out->document : [];
+        if ($this->document && isset($this->trigger['load']))
+            \F3\Base::instance()->call($this->trigger['load'], [$this]);
+        return $out;
+    }
 
-	/**
-	*	Reset cursor
-	*	@return NULL
-	**/
-	function reset() {
-		$this->document=[];
-		parent::reset();
-	}
+    /**
+     * Insert new record
+     */
+    public function insert(): static
+    {
+        if (isset($this->document['_id']))
+            return $this->update();
+        if (isset($this->trigger['beforeInsert']) &&
+            \F3\Base::instance()->call(
+                $this->trigger['beforeInsert'],
+                [$this, ['_id' => $this->document['_id']]],
+            ) === false)
+            return $this->document;
 
-	/**
-	*	Hydrate mapper object using hive array variable
-	*	@return NULL
-	*	@param $var array|string
-	*	@param $func callback
-	**/
-	function copyfrom($var,$func=NULL) {
-		if (is_string($var))
-			$var=\F3\Base::instance()->$var;
-		if ($func)
-			$var=call_user_func($func,$var);
-		foreach ($var as $key=>$val)
-			$this->set($key,$val);
-	}
+        $result = $this->collection->insertone($this->document);
+        $pkey = ['_id' => $result->getinsertedid()];
 
-	/**
-	*	Populate hive array variable with mapper fields
-	*	@return NULL
-	*	@param $key string
-	**/
-	function copyto($key) {
-		$var=&\F3\Base::instance()->ref($key);
-		foreach ($this->document as $key=>$field)
-			$var[$key]=$field;
-	}
+        if (isset($this->trigger['afterInsert']))
+            \F3\Base::instance()->call(
+                $this->trigger['afterInsert'],
+                [$this, $pkey],
+            );
+        $this->load($pkey);
+        return $this;
+    }
 
-	/**
-	*	Return field names
-	*	@return array
-	**/
-	function fields() {
-		return array_keys($this->document);
-	}
+    /**
+     * Update current record
+     */
+    function update(): static
+    {
+        $pkey = ['_id' => $this->document['_id']];
+        if (isset($this->trigger['beforeUpdate']) &&
+            \F3\Base::instance()->call(
+                $this->trigger['beforeUpdate'],
+                [$this, $pkey],
+            ) === false)
+            return $this->document;
+        $upsert = ['upsert' => true];
 
-	/**
-	*	Return the cursor from last query
-	*	@return object|NULL
-	**/
-	function cursor() {
-		return $this->cursor;
-	}
+        $this->collection->replaceone($pkey, $this->document, $upsert);
+        if (isset($this->trigger['afterUpdate']))
+            \F3\Base::instance()->call(
+                $this->trigger['afterUpdate'],
+                [$this, $pkey],
+            );
+        return $this->document;
+    }
 
-	/**
-	*	Retrieve external iterator for fields
-	*	@return object
-	**/
-	function getiterator() {
-		return new \ArrayIterator($this->cast());
-	}
+    /**
+     * Delete current record
+     */
+    public function erase(string|array|null $filter = null, bool $quick = true): int
+    {
+        if ($filter) {
+            if (!$quick) {
+                $out = 0;
+                foreach ($this->find($filter) as $mapper)
+                    $out += $mapper->erase();
+                return $out;
+            }
+            return $this->collection->deletemany($filter);
+        }
+        $pkey = ['_id' => $this->document['_id']];
+        if (isset($this->trigger['beforeErase']) &&
+            \F3\Base::instance()->call(
+                $this->trigger['beforeErase'],
+                [$this, $pkey],
+            ) === false)
+            return false;
+        $result = $this->collection->deleteone(['_id' => $this->document['_id']]);
+        parent::erase();
+        if (isset($this->trigger['afterErase']))
+            \F3\Base::instance()->call(
+                $this->trigger['afterErase'],
+                [$this, $pkey],
+            );
+        return $result;
+    }
 
-	/**
-	*	Instantiate class
-	*	@return void
-	*	@param $db object
-	*	@param $collection string
-	*	@param $fields array
-	**/
-	function __construct(\F3\DB\Mongo $db,$collection,$fields=NULL) {
-		$this->db=$db;
-		$this->legacy=$db->legacy();
-		$this->collection=$db->selectcollection($collection);
-		$this->fields=$fields;
-		$this->reset();
-	}
+    /**
+     * Reset cursor
+     */
+    public function reset(): void
+    {
+        $this->document = [];
+        parent::reset();
+    }
+
+    /**
+     * Hydrate mapper object using hive array variable
+     */
+    public function copyFrom(array|string $var, ?callable $func = null): void
+    {
+        if (is_string($var))
+            $var = \F3\Base::instance()->$var;
+        if ($func)
+            $var = call_user_func($func, $var);
+        foreach ($var as $key => $val)
+            $this->set($key, $val);
+    }
+
+    /**
+     * Populate hive array variable with mapper fields
+     */
+    public function copyTo(string $key): void
+    {
+        $var =& \F3\Base::instance()->ref($key);
+        foreach ($this->document as $key => $field)
+            $var[$key] = $field;
+    }
+
+    /**
+     * Return field names
+     */
+    public function fields(): array
+    {
+        return array_keys($this->document);
+    }
+
+    /**
+     * Return the cursor from last query
+     */
+    public function cursor(): ?object
+    {
+        return $this->cursor;
+    }
+
+    public function __construct(\F3\DB\Mongo $db, string $collection, ?array $fields = null)
+    {
+        $this->db = $db;
+        $this->collection = $db->selectcollection($collection);
+        $this->fields = $fields;
+        $this->reset();
+    }
 
 }

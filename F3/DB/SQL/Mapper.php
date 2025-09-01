@@ -364,7 +364,6 @@ class Mapper extends Cursor
 
     /**
      * Count records that match criteria
-     * @return int
      */
     public function count(
         array|string|null $filter = null,
@@ -756,14 +755,6 @@ class Mapper extends Cursor
     {
         return isset($this->fields[$field]) &&
             !$this->fields[$field]['nullable'];
-    }
-
-    /**
-     * Retrieve external iterator for fields
-     */
-    public function getIterator(): \ArrayIterator
-    {
-        return new \ArrayIterator($this->cast());
     }
 
     /**
