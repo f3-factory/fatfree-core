@@ -1,389 +1,371 @@
 <?php
 
-/*
-
-	Copyright (c) 2009-2019 F3::Factory/Bong Cosca, All rights reserved.
-
-	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
-
-	This is free software: you can redistribute it and/or modify it under the
-	terms of the GNU General Public License as published by the Free Software
-	Foundation, either version 3 of the License, or later.
-
-	Fat-Free Framework is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-	General Public License for more details.
-
-	You should have received a copy of the GNU General Public License along
-	with Fat-Free Framework.  If not, see <http://www.gnu.org/licenses/>.
-
-*/
+/**
+ *
+ * Copyright (c) 2025 F3::Factory, All rights reserved.
+ *
+ * This file is part of the Fat-Free Framework (http://fatfreeframework.com).
+ *
+ * This is free software: you can redistribute it and/or modify it under the
+ * terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or later.
+ *
+ * Fat-Free Framework is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with Fat-Free Framework. If not, see <http://www.gnu.org/licenses/>.
+ */
 
 namespace F3\DB;
 
-//! Simple cursor implementation
-abstract class Cursor extends \F3\Magic implements \IteratorAggregate {
+use F3\Magic;
 
-	//@{ Error messages
-	const
-		E_Field='Undefined field %s';
-	//@}
+/**
+ * Simple cursor implementation
+ */
+abstract class Cursor extends Magic implements \IteratorAggregate
+{
 
-	protected
-		//! Query results
-		$query=[],
-		//! Current position
-		$ptr=0,
-		//! Event listeners
-		$trigger=[];
+    //region Error messages
+    const
+        E_Field = 'Undefined field %s';
+    //endregion
 
-	/**
-	*	Return database type
-	*	@return string
-	**/
-	abstract function dbtype();
+    protected
+        // Query results
+    array $query = [];
+    // Current position
+    protected int $ptr = 0;
+    // Event listeners
+    protected array $trigger = [];
 
-	/**
-	*	Return field names
-	*	@return array
-	**/
-	abstract function fields();
+    /**
+     * Return database type
+     */
+    abstract public function dbtype(): string;
 
-	/**
-	*	Return fields of mapper object as an associative array
-	*	@return array
-	*	@param $obj object
-	**/
-	abstract function cast($obj=NULL);
+    /**
+     * Return field names
+     */
+    abstract public function fields(): array;
 
-	/**
-	*	Return records (array of mapper objects) that match criteria
-	*	@return array
-	*	@param $filter string|array
-	*	@param $options array
-	*	@param $ttl int
-	**/
-	abstract function find($filter=NULL,?array $options=NULL,$ttl=0);
+    /**
+     * Return fields of mapper object as an associative array
+     */
+    abstract public function cast(?object $obj = null): array;
 
-	/**
-	*	Count records that match criteria
-	*	@return int
-	*	@param $filter array
-	*	@param $options array
-	*	@param $ttl int
-	**/
-	abstract function count($filter=NULL,?array $options=NULL,$ttl=0);
+    /**
+     * Return records (array of mapper objects) that match criteria
+     * @return static[]
+     */
+    abstract public function find(
+        array|string|null $filter = null,
+        ?array $options = null,
+        int|array $ttl = 0,
+    ): array;
 
-	/**
-	*	Insert new record
-	*	@return array
-	**/
-	abstract function insert();
+    /**
+     * Count records that match criteria
+     */
+    abstract public function count(
+        array|string|null $filter = null,
+        ?array $options = null,
+        int|array $ttl = 0,
+    ): int;
 
-	/**
-	*	Update current record
-	*	@return array
-	**/
-	abstract function update();
+    /**
+     * Insert new record
+     */
+    abstract public function insert(): static;
 
-	/**
-	*	Hydrate mapper object using hive array variable
-	*	@return NULL
-	*	@param $var array|string
-	*	@param $func callback
-	**/
-	abstract function copyfrom($var,$func=NULL);
+    /**
+     * Update current record
+     */
+    abstract public function update(): static;
 
-	/**
-	*	Populate hive array variable with mapper fields
-	*	@return NULL
-	*	@param $key string
-	**/
-	abstract function copyto($key);
+    /**
+     * Hydrate mapper object using hive array variable
+     */
+    abstract public function copyFrom(array|string $var, ?callable $func = null): void;
 
-	/**
-	*	Get cursor's equivalent external iterator
-	*	Causes a fatal error in PHP 5.3.5 if uncommented
-	*	return ArrayIterator
-	**/
-	#[\ReturnTypeWillChange]
-	abstract function getiterator();
+    /**
+     * Populate hive array variable with mapper fields
+     */
+    abstract public function copyTo(string $key): void;
 
+    /**
+     * Get cursor's equivalent external iterator
+     * Causes a fatal error in PHP 5.3.5 if uncommented
+     * return ArrayIterator
+     */
+    abstract public function getIterator(): \Traversable;
 
-	/**
-	*	Return TRUE if current cursor position is not mapped to any record
-	*	@return bool
-	**/
-	function dry() {
-		return empty($this->query[$this->ptr]);
-	}
+    /**
+     * Return TRUE if current cursor position is not mapped to any record
+     */
+    public function dry(): bool
+    {
+        return empty($this->query[$this->ptr]);
+    }
 
-	/**
-	*	Return first record (mapper object) that matches criteria
-	*	@return static|FALSE
-	*	@param $filter string|array
-	*	@param $options array
-	*	@param $ttl int
-	**/
-	function findone($filter=NULL,?array $options=NULL,$ttl=0) {
-		if (!$options)
-			$options=[];
-		// Override limit
-		$options['limit']=1;
-		return ($data=$this->find($filter,$options,$ttl))?$data[0]:FALSE;
-	}
+    /**
+     * Return first record (mapper object) that matches criteria
+     */
+    public function findOne(
+        array|string|null $filter = null,
+        ?array $options = null,
+        int $ttl = 0,
+    ): ?static {
+        if (!$options)
+            $options = [];
+        // Override limit
+        $options['limit'] = 1;
+        return ($data = $this->find($filter, $options, $ttl)) ? $data[0] : null;
+    }
 
-	/**
-	*	Return array containing subset of records matching criteria,
-	*	total number of records in superset, specified limit, number of
-	*	subsets available, and actual subset position
-	*	@return array
-	*	@param $pos int
-	*	@param $size int
-	*	@param $filter string|array
-	*	@param $options array
-	*	@param $ttl int
-	*	@param $bounce bool
-	**/
-	function paginate(
-		$pos=0,$size=10,$filter=NULL,?array $options=NULL,$ttl=0,$bounce=TRUE) {
-		$total=$this->count($filter,$options,$ttl);
-		$count=(int)ceil($total/$size);
-		if ($bounce)
-			$pos=max(0,min($pos,$count-1));
-		return [
-			'subset'=>($bounce || $pos<$count)?$this->find($filter,
-				array_merge(
-					$options?:[],
-					['limit'=>$size,'offset'=>$pos*$size]
-				),
-				$ttl
-			):[],
-			'total'=>$total,
-			'limit'=>$size,
-			'count'=>$count,
-			'pos'=>$bounce?($pos<$count?$pos:0):$pos
-		];
-	}
+    /**
+     * Return array containing subset of records matching criteria,
+     * total number of records in superset, specified limit, number of
+     * subsets available, and actual subset position
+     */
+    public function paginate(
+        int $pos = 0,
+        int $size = 10,
+        array|string|null $filter = null,
+        ?array $options = null,
+        int $ttl = 0,
+        bool $bounce = true,
+    ): array {
+        $total = $this->count($filter, $options, $ttl);
+        $count = (int) ceil($total / $size);
+        if ($bounce)
+            $pos = max(0, min($pos, $count - 1));
+        return [
+            'subset' => ($bounce || $pos < $count) ? $this->find(
+                $filter,
+                array_merge(
+                    $options ?: [],
+                    ['limit' => $size, 'offset' => $pos * $size],
+                ),
+                $ttl,
+            ) : [],
+            'total' => $total,
+            'limit' => $size,
+            'count' => $count,
+            'pos' => $bounce ? ($pos < $count ? $pos : 0) : $pos,
+        ];
+    }
 
-	/**
-	*	Map to first record that matches criteria
-	*	@return \DB\SQL\Mapper|FALSE
-	*	@param $filter string|array
-	*	@param $options array
-	*	@param $ttl int
-	**/
-	function load($filter=NULL,?array $options=NULL,$ttl=0) {
-		$this->reset();
-		return ($this->query=$this->find($filter,$options,$ttl)) &&
-			$this->skip(0)?$this->query[$this->ptr]:FALSE;
-	}
+    /**
+     * Map to first record that matches criteria
+     */
+    public function load(
+        string|array|null $filter = null,
+        ?array $options = null,
+        int $ttl = 0,
+    ): ?static {
+        $this->reset();
+        return ($this->query = $this->find($filter, $options, $ttl))
+        && $this->skip(0)
+            ? $this->query[$this->ptr]
+            : null;
+    }
 
-	/**
-	*	Return the count of records loaded
-	*	@return int
-	**/
-	function loaded() {
-		return count($this->query);
-	}
+    /**
+     * Return the count of records loaded
+     */
+    public function loaded(): int
+    {
+        return count($this->query);
+    }
 
-	/**
-	*	Map to first record in cursor
-	*	@return mixed
-	**/
-	function first() {
-		return $this->skip(-$this->ptr);
-	}
+    /**
+     * Map to first record in cursor
+     */
+    public function first(): ?static
+    {
+        return $this->skip(-$this->ptr);
+    }
 
-	/**
-	*	Map to last record in cursor
-	*	@return mixed
-	**/
-	function last() {
-		return $this->skip(($ofs=count($this->query)-$this->ptr)?$ofs-1:0);
-	}
+    /**
+     * Map to last record in cursor
+     */
+    public function last(): ?static
+    {
+        return $this->skip(($ofs = count($this->query) - $this->ptr) ? $ofs - 1 : 0);
+    }
 
-	/**
-	*	Map to nth record relative to current cursor position
-	*	@return mixed
-	*	@param $ofs int
-	**/
-	function skip($ofs=1) {
-		$this->ptr+=$ofs;
-		return $this->ptr>-1 && $this->ptr<count($this->query)?
-			$this->query[$this->ptr]:FALSE;
-	}
+    /**
+     * Map to nth record relative to current cursor position
+     */
+    public function skip(int $ofs = 1): ?static
+    {
+        $this->ptr += $ofs;
+        return $this->ptr > -1 && $this->ptr < count($this->query) ?
+            $this->query[$this->ptr] : null;
+    }
 
-	/**
-	*	Map next record
-	*	@return mixed
-	**/
-	function next() {
-		return $this->skip();
-	}
+    /**
+     * Map next record
+     */
+    public function next(): ?static
+    {
+        return $this->skip();
+    }
 
-	/**
-	*	Map previous record
-	*	@return mixed
-	**/
-	function prev() {
-		return $this->skip(-1);
-	}
+    /**
+     * Map previous record
+     */
+    public function prev(): ?static
+    {
+        return $this->skip(-1);
+    }
 
-	/**
-	 * Return whether current iterator position is valid.
-	 */
-	function valid() {
-		return !$this->dry();
-	}
+    /**
+     * Return whether current iterator position is valid.
+     */
+    public function valid(): bool
+    {
+        return !$this->dry();
+    }
 
-	/**
-	*	Save mapped record
-	*	@return mixed
-	**/
-	function save() {
-		return $this->query?$this->update():$this->insert();
-	}
+    /**
+     * Save mapped record
+     */
+    public function save(): static
+    {
+        return $this->query ? $this->update() : $this->insert();
+    }
 
-	/**
-	*	Delete current record
-	*	@return int|bool
-	**/
-	function erase() {
-		$this->query=array_slice($this->query,0,$this->ptr,TRUE)+
-			array_slice($this->query,$this->ptr,NULL,TRUE);
-		$this->skip(0);
-	}
+    /**
+     * Delete current record
+     */
+    public function erase(): int
+    {
+        $this->query = array_slice($this->query, 0, $this->ptr, true) +
+            array_slice($this->query, $this->ptr, null, true);
+        $this->skip(0);
+        return 1;
+    }
 
-	/**
-	*	Define onload trigger
-	*	@return callback
-	*	@param $func callback
-	**/
-	function onload($func) {
-		return $this->trigger['load']=$func;
-	}
+    /**
+     * Define onload trigger
+     */
+    public function onLoad(callable $func): callable
+    {
+        return $this->trigger['load'] = $func;
+    }
 
-	/**
-	*	Define beforeinsert trigger
-	*	@return callback
-	*	@param $func callback
-	**/
-	function beforeinsert($func) {
-		return $this->trigger['beforeinsert']=$func;
-	}
+    /**
+     * Define beforeInsert trigger
+     */
+    public function beforeInsert(callable $func): callable
+    {
+        return $this->trigger['beforeInsert'] = $func;
+    }
 
-	/**
-	*	Define afterinsert trigger
-	*	@return callback
-	*	@param $func callback
-	**/
-	function afterinsert($func) {
-		return $this->trigger['afterinsert']=$func;
-	}
+    /**
+     * Define afterInsert trigger
+     */
+    public function afterInsert(callable $func): callable
+    {
+        return $this->trigger['afterInsert'] = $func;
+    }
 
-	/**
-	*	Define oninsert trigger
-	*	@return callback
-	*	@param $func callback
-	**/
-	function oninsert($func) {
-		return $this->afterinsert($func);
-	}
+    /**
+     * Define onInsert trigger
+     */
+    public function onInsert(callable $func): callable
+    {
+        return $this->afterInsert($func);
+    }
 
-	/**
-	*	Define beforeupdate trigger
-	*	@return callback
-	*	@param $func callback
-	**/
-	function beforeupdate($func) {
-		return $this->trigger['beforeupdate']=$func;
-	}
+    /**
+     * Define beforeUpdate trigger
+     */
+    public function beforeUpdate(callable $func): callable
+    {
+        return $this->trigger['beforeUpdate'] = $func;
+    }
 
-	/**
-	*	Define afterupdate trigger
-	*	@return callback
-	*	@param $func callback
-	**/
-	function afterupdate($func) {
-		return $this->trigger['afterupdate']=$func;
-	}
+    /**
+     * Define afterUpdate trigger
+     */
+    public function afterUpdate(callable $func): callable
+    {
+        return $this->trigger['afterUpdate'] = $func;
+    }
 
-	/**
-	*	Define onupdate trigger
-	*	@return callback
-	*	@param $func callback
-	**/
-	function onupdate($func) {
-		return $this->afterupdate($func);
-	}
+    /**
+     * Define onUpdate trigger
+     */
+    public function onUpdate(callable $func): callable
+    {
+        return $this->afterUpdate($func);
+    }
 
-	/**
-	*	Define beforesave trigger
-	*	@return callback
-	*	@param $func callback
-	**/
-	function beforesave($func) {
-		$this->trigger['beforeinsert']=$func;
-		$this->trigger['beforeupdate']=$func;
-		return $func;
-	}
+    /**
+     * Define beforeSave trigger
+     */
+    public function beforeSave(callable $func): callable
+    {
+        $this->trigger['beforeInsert'] = $func;
+        $this->trigger['beforeUpdate'] = $func;
+        return $func;
+    }
 
-	/**
-	*	Define aftersave trigger
-	*	@return callback
-	*	@param $func callback
-	**/
-	function aftersave($func) {
-		$this->trigger['afterinsert']=$func;
-		$this->trigger['afterupdate']=$func;
-		return $func;
-	}
+    /**
+     * Define afterSave trigger
+     */
+    public function afterSave(callable $func): callable
+    {
+        $this->trigger['afterInsert'] = $func;
+        $this->trigger['afterUpdate'] = $func;
+        return $func;
+    }
 
-	/**
-	*	Define onsave trigger
-	*	@return callback
-	*	@param $func callback
-	**/
-	function onsave($func) {
-		return $this->aftersave($func);
-	}
+    /**
+     * Define onSave trigger
+     */
+    public function onSave(callable $func): callable
+    {
+        return $this->afterSave($func);
+    }
 
-	/**
-	*	Define beforeerase trigger
-	*	@return callback
-	*	@param $func callback
-	**/
-	function beforeerase($func) {
-		return $this->trigger['beforeerase']=$func;
-	}
+    /**
+     * Define beforeErase trigger
+     */
+    public function beforeErase(callable $func): callable
+    {
+        return $this->trigger['beforeErase'] = $func;
+    }
 
-	/**
-	*	Define aftererase trigger
-	*	@return callback
-	*	@param $func callback
-	**/
-	function aftererase($func) {
-		return $this->trigger['aftererase']=$func;
-	}
+    /**
+     * Define afterErase trigger
+     */
+    public function afterErase(callable $func): callable
+    {
+        return $this->trigger['afterErase'] = $func;
+    }
 
-	/**
-	*	Define onerase trigger
-	*	@return callback
-	*	@param $func callback
-	**/
-	function onerase($func) {
-		return $this->aftererase($func);
-	}
+    /**
+     * Define onErase trigger
+     */
+    public function onErase(callable $func): callable
+    {
+        return $this->afterErase($func);
+    }
 
-	/**
-	*	Reset cursor
-	*	@return NULL
-	**/
-	function reset() {
-		$this->query=[];
-		$this->ptr=0;
-	}
+    /**
+     * Reset cursor
+     */
+    public function reset(): void
+    {
+        $this->query = [];
+        $this->ptr = 0;
+    }
 
 }
