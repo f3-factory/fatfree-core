@@ -22,8 +22,6 @@
 
 namespace F3\CLI;
 
-use JetBrains\PhpStorm\NoReturn;
-
 /**
  * RFC6455 WebSocket server
  */
@@ -207,7 +205,6 @@ class WS
     /**
      * Terminate server
      */
-    #[NoReturn]
     public function kill(): never
     {
         die;
