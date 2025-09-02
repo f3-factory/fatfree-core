@@ -4,7 +4,7 @@
  *
  * Copyright (c) 2025 F3::Factory, All rights reserved.
  *
- * This file is part of the Fat-Free Framework (http://fatfreeframework.com).
+ * This file is part of the Fat-Free Framework (https://fatfreeframework.com).
  *
  * This is free software: you can redistribute it and/or modify it under the
  * terms of the GNU General Public License as published by the Free Software
