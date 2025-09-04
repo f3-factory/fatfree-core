@@ -37,18 +37,18 @@ class SMTP extends Magic
     //@}
 
     // Message properties
-    protected $headers;
+    protected array $headers;
     // E-mail attachments
-    protected $attachments;
-    protected $host;
+    protected array $attachments = [];
+    protected string $host;
     // TLS/SSL
-    protected $scheme;
+    protected string $scheme;
     // TLS/SSL stream context
     protected $context;
     // TCP/IP socket
     protected $socket;
     // Server-client conversation
-    protected $log;
+    protected string $log = '';
 
     public function __construct(
         string $host = 'localhost',
@@ -192,7 +192,7 @@ class SMTP extends Magic
     /**
      * Transmit message
      */
-    function send(string $message, bool $log = true, bool $mock = false): bool
+    public function send(string $message, bool $log = true, bool $mock = false): bool
     {
         if ($this->scheme == 'ssl' && !extension_loaded('openssl'))
             throw new \Exception(self::E_SSL_Ext);

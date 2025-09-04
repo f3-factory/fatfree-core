@@ -35,7 +35,7 @@ class Web
     //endregion
 
     // HTTP request engine
-    protected string $wrapper;
+    protected ?string $wrapper = null;
 
     /**
      * Detect MIME type using file extension or file inspection

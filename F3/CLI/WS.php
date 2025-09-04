@@ -50,10 +50,10 @@ class WS
         Length = 0x7f;
     //@}
 
-    protected $addr;
+    protected string $addr;
     protected $ctx;
-    protected $wait;
-    protected $sockets;
+    protected int $wait;
+    protected array $sockets;
     protected $protocol;
     protected array $agents = [];
     protected array $events = [];
