@@ -6,8 +6,8 @@ namespace F3;
  * Service Locator / DI Container
  * PSR-11 compatible
  */
-class Service {
-
+class Service
+{
     use Prefab;
 
     private array $factories = [];
@@ -91,12 +91,12 @@ class Service {
             throw new \Exception("Class $class is not instantiable");
         }
         $cRef = $ref->getConstructor();
-        if ($cRef === NULL) {
+        if ($cRef === null) {
             return $ref->newInstance();
         }
         $dep = [];
         foreach ($cRef->getParameters() as $p) {
-            $dep[$name=$p->getName()] = $args[$name] ?? $this->resolveParam($p);
+            $dep[$name = $p->getName()] = $args[$name] ?? $this->resolveParam($p);
         }
         return $ref->newInstanceArgs($dep);
     }
