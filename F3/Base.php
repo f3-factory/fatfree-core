@@ -572,7 +572,6 @@ namespace F3 {
         public array $PARAMS = [];
         public string $PATH = '';
         public ?string $PATTERN = null;
-        public string $PLUGINS = './';
         public int $PORT = 80;
         public ?string $PREFIX = null;
         public string $PREMAP = '';
@@ -2348,7 +2347,7 @@ namespace F3 {
             if (\is_array($path = $this->AUTOLOAD) &&
                 isset($path[1]) && \is_callable($path[1]))
                 [$path, $func] = $path;
-            foreach ($this->split($this->PLUGINS.';'.$path) as $auto)
+            foreach ($this->split($path) as $auto)
                 if (($func &&
                         \is_file($file = $func($auto.$class).'.php')) ||
                     \is_file($file = $auto.$class.'.php') ||
@@ -2412,9 +2411,9 @@ namespace F3 {
                     $this->EXCEPTION = $obj;
                     $this->error(
                         500,
-                        $obj->getmessage().' '.
+                        $obj->getMessage().' '.
                         '['.$obj->getFile().':'.$obj->getLine().']',
-                        $obj->gettrace(),
+                        $obj->getTrace(),
                     );
                 },
             );
@@ -2518,7 +2517,6 @@ namespace F3 {
                 'IP' => $this->ip(),
                 'JAR' => $jar,
                 'PATH' => $path,
-                'PLUGINS' => $this->fixslashes(__DIR__).'/../',
                 'PORT' => $port,
                 'QUERY' => $uri['query'] ?? '',
                 'REALM' => $scheme.'://'.$_SERVER['SERVER_NAME'].
@@ -3748,7 +3746,7 @@ namespace F3 {
     {
 
         //! Object catalog
-        private static array $table;
+        private static array $table = [];
 
         /**
          * Return TRUE if object exists in catalog
@@ -3761,7 +3759,7 @@ namespace F3 {
         /**
          * Add object to catalog
          */
-        public static function set(string $key, object $obj): object
+        public static function set(string $key, mixed $obj): mixed
         {
             return self::$table[$key] = $obj;
         }
@@ -3769,7 +3767,7 @@ namespace F3 {
         /**
          * Retrieve object from catalog
          */
-        public static function get(string $key): object
+        public static function get(string $key): mixed
         {
             return self::$table[$key];
         }
