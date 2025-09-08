@@ -510,6 +510,15 @@ namespace F3 {
                 }
             }
         }
+        /**
+         * @var ?array{
+         *  status: string,
+         *  code: int,
+         *  text: string,
+         *  trace: string,
+         *  level: int,
+         * }
+         */
         public ?array $ERROR = null;
         public bool $ESCAPE = true;
         public ?\Throwable $EXCEPTION = null;
@@ -1759,7 +1768,7 @@ namespace F3 {
                     $out = PHP_EOL.'==================================='.PHP_EOL.
                         'ERROR '.$error['code'].' - '.$error['status'].PHP_EOL.
                         $error['text'].PHP_EOL.PHP_EOL.($error['trace'] ?? '');
-                else
+                else {
                     $out = $this->AJAX ? \json_encode($error) :
                         ('<!DOCTYPE html>'.$eol.
                             '<html>'.$eol.
@@ -1774,6 +1783,8 @@ namespace F3 {
                             ($this->DEBUG ? ('<pre>'.$trace.'</pre>'.$eol) : '').
                             '</body>'.$eol.
                             '</html>');
+                    $this->header('Content-Type: text/html');
+                }
                 $this->RESPONSE = $out;
             }
             if (isset($handlerOut) && $handlerOut !== false)
@@ -1798,6 +1809,7 @@ namespace F3 {
             ?array $headers = null,
             ?string $body = null,
             bool $sandbox = false,
+            bool $throw = false,
         ): mixed {
             if (!$args)
                 $args = [];
@@ -1846,12 +1858,25 @@ namespace F3 {
             $fw->RESPONSE_HEADERS = [];
             if (!\preg_match('/GET|HEAD/', $verb))
                 $fw->BODY = $body ?: \http_build_query($args);
-            $fw->AJAX = isset($parts[5]) &&
-                \preg_match('/ajax/i', $parts[5]);
+            $fw->AJAX = (isset($parts[5]) &&
+                \preg_match('/ajax/i', $parts[5])) || ($headers && $this->ajax($headers));
             $fw->CLI = isset($parts[5]) &&
                 \preg_match('/cli/i', $parts[5]);
             $fw->TIME = $fw->SERVER['REQUEST_TIME_FLOAT'] = \microtime(true);
-            $out = $fw->run();
+            try {
+                $out = $fw->run();
+            } catch (\Throwable $e) {
+                $fw->EXCEPTION = $e;
+                if ($throw)
+                    throw $e;
+                else
+                    $out = $fw->error(
+                        500,
+                        $e->getMessage().' '.
+                        '['.$e->getFile().':'.$e->getLine().']',
+                        $e->getTrace(),
+                    );
+            }
             if ($sandbox) {
                 Registry::set($class, $reg_bak);
             }
@@ -2634,12 +2659,14 @@ namespace F3 {
             try {
                 \ob_start();
                 $psr7Response = $runHandler ? $runHandler() : $this->run();
-                $out = \ob_get_clean();
-                if (!empty($out))
-                    throw new \Exception("Irregular output:".PHP_EOL.$out);
             } catch (ResponseException $e) {
                 $psr7Response = null;
                 // simply continue
+            } finally {
+                $out = \ob_get_clean();
+                if (!empty($out))
+                    // Irregular output
+                    $this->RESPONSE = $out;
             }
             return $psr7Response instanceof ResponseInterface
                 ? $psr7Response : $this->respond();
@@ -4298,6 +4325,7 @@ namespace F3\Http {
                             $body = $this->RESPONSE;
                         }
                     } catch (\Throwable $t) {
+                        $this->RESPONSE = \ob_get_clean();
                         !$this->NONBLOCKING && throw $t;
                         // handle response from error handler
                         $response = $this->error(
@@ -4402,7 +4430,7 @@ namespace F3\Http {
          */
         public function send_headers(): void
         {
-            if (PHP_SAPI == 'cli')
+            if (PHP_SAPI == 'cli' || headers_sent())
                 return;
             foreach ($this->RESPONSE_HEADERS as $hl)
                 \header($hl);
