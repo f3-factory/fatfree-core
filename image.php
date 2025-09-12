@@ -179,7 +179,9 @@ class Image {
 		imagefill($tmp,0,0,IMG_COLOR_TRANSPARENT);
 		imagecopyresampled($tmp,$this->data,
 			0,0,$width-1,0,$width,$height,-$width,$height);
-		imagedestroy($this->data);
+		if (version_compare(PHP_VERSION, '8.5.0')<0)
+			// TODO: remove this when php7 support is dropped
+			imagedestroy($this->data);
 		$this->data=$tmp;
 		return $this->save();
 	}
@@ -195,7 +197,9 @@ class Image {
 		imagefill($tmp,0,0,IMG_COLOR_TRANSPARENT);
 		imagecopyresampled($tmp,$this->data,
 			0,0,0,$height-1,$width,$height,$width,-$height);
-		imagedestroy($this->data);
+		if (version_compare(PHP_VERSION, '8.5.0')<0)
+			// TODO: remove this when php7 support is dropped
+			imagedestroy($this->data);
 		$this->data=$tmp;
 		return $this->save();
 	}
@@ -214,7 +218,9 @@ class Image {
 		imagefill($tmp,0,0,IMG_COLOR_TRANSPARENT);
 		imagecopyresampled($tmp,$this->data,
 			0,0,$x1,$y1,$width,$height,$width,$height);
-		imagedestroy($this->data);
+		if (version_compare(PHP_VERSION, '8.5.0')<0)
+			// TODO: remove this when php7 support is dropped
+			imagedestroy($this->data);
 		$this->data=$tmp;
 		return $this->save();
 	}
@@ -269,7 +275,9 @@ class Image {
 		else
 			imagecopyresampled($tmp,$this->data,
 				0,0,0,0,$width,$height,$origw,$origh);
-		imagedestroy($this->data);
+		if (version_compare(PHP_VERSION, '8.5.0')<0)
+			// TODO: remove this when php7 support is dropped
+			imagedestroy($this->data);
 		$this->data=$tmp;
 		return $this->save();
 	}
@@ -385,7 +393,9 @@ class Image {
 					$this->data=imagerotate($this->data,90,
 						imagecolorallocatealpha($this->data,0,0,0,127));
 				}
-				imagedestroy($sprite);
+				if (version_compare(PHP_VERSION, '8.5.0')<0)
+					// TODO: remove this when php7 support is dropped
+					imagedestroy($sprite);
 			}
 		imagesavealpha($this->data,TRUE);
 		return $this->save();
@@ -538,7 +548,8 @@ class Image {
 		$fw=Base::instance();
 		if ($this->flag && is_file($file=($path=$fw->TEMP.
 			$fw->SEED.'.'.$fw->hash($this->file).'-').$state.'.png')) {
-			if (is_resource($this->data))
+			if (version_compare(PHP_VERSION, '8.5.0')<0 && isset($this->data))
+				// TODO: remove this when php7 support is dropped
 				imagedestroy($this->data);
 			$this->data=imagecreatefromstring($fw->read($file));
 			imagesavealpha($this->data,TRUE);
@@ -603,8 +614,10 @@ class Image {
 	*	@return NULL
 	**/
 	function __destruct() {
-		if (is_resource($this->data)) {
-			imagedestroy($this->data);
+		if (isset($this->data)) {
+			if (version_compare(PHP_VERSION, '8.5.0')<0)
+				// TODO: remove this when php7 support is dropped
+				imagedestroy($this->data);
 			$fw=Base::instance();
 			$path=$fw->TEMP.$fw->SEED.'.'.$fw->hash($this->file);
 			if ($glob=@glob($path.'*.png',GLOB_NOSORT))

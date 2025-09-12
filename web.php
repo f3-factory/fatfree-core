@@ -380,7 +380,9 @@ class Web extends Prefab {
 		ob_start();
 		curl_exec($curl);
 		$err=curl_error($curl);
-		curl_close($curl);
+		if (version_compare(PHP_VERSION, '8.5.0')<0)
+			// TODO: remove this when php7 support is dropped
+			curl_close($curl);
 		$body=ob_get_clean();
 		if (!$err &&
 			$options['follow_location'] && $open_basedir &&
