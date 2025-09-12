@@ -134,9 +134,8 @@ class SQL {
 			case \PDO::PARAM_BOOL:
 				return (bool)$val;
 			case \PDO::PARAM_STR:
-				return (string)$val;
 			case \PDO::PARAM_LOB:
-				return (binary)$val;
+				return (string)$val;
 		}
 	}
 
@@ -543,8 +542,12 @@ class SQL {
 		if (!$options)
 			$options=[];
 		if (isset($parts[0]) && strstr($parts[0],':',TRUE)=='mysql')
-			$options+=[\PDO::MYSQL_ATTR_INIT_COMMAND=>'SET NAMES '.
-				strtolower(str_replace('-','',$fw->ENCODING)).';'];
+			if (version_compare(PHP_VERSION, '8.5.0')<0)
+				$options+=[\PDO::MYSQL_ATTR_INIT_COMMAND=>'SET NAMES '.
+					strtolower(str_replace('-','',$fw->ENCODING)).';'];
+			else
+				$options+=[\PDO\Mysql::ATTR_INIT_COMMAND=>'SET NAMES '.
+					strtolower(str_replace('-','',$fw->ENCODING)).';'];
 		$this->pdo=new \PDO($dsn,$user,$pw,$options);
 		$this->engine=$this->pdo->getattribute(\PDO::ATTR_DRIVER_NAME);
 	}
