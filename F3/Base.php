@@ -495,6 +495,7 @@ namespace F3 {
             'expose' => false,
             'ttl' => 0,
         ];
+        /** @var object|\Psr\Container\ContainerInterface|Service|null  */
         public ?object $CONTAINER = null;
         public int $DEBUG = 2;
         public array $DIACRITICS = [];
