@@ -27,7 +27,7 @@ class Audit extends Prefab {
 	const
 		UA_Mobile='android|blackberry|phone|ipod|palm|windows\s+ce',
 		UA_Desktop='bsd|linux|os\s+[x9]|solaris|windows',
-		UA_AI='gpt|claude|mistral|oai|google\-extended|perplexity|anthropic|cohere|duckassist|amazonbot|bingbot|\-ai|ai\-';
+		UA_AI='gpt|claude|mistral|oai|google-extended|perplexity|anthropic|cohere|duckassist|amazonbot|bingbot|-ai|ai-',
 		UA_Bot='bot|crawl|slurp|spider|agent|omgili|external';
 	//@}
 
@@ -155,7 +155,7 @@ class Audit extends Prefab {
 	*	@param $agent string
 	**/
 	function isbotorai($agent=NULL) {
-		return $self->isbot($agent) || $self->isai($agent);
+		return $this->isbot($agent) || $this->isai($agent);
 	}
 
 	/**
