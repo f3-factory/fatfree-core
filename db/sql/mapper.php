@@ -464,7 +464,7 @@ class Mapper extends \DB\Cursor {
 			}
 			if ($field['changed'] && $key!=$inc) {
 				$fields.=($actr?',':'').$this->db->quotekey($key);
-				$values.=($actr?',':'').'?';
+				$values.=($actr?',':'').($field['type'] === 'geometry' ? 'ST_GeomFromText(?)' : '?');
 				$args[$actr+1]=[$field['value'],$field['pdo_type']];
 				++$actr;
 				$ckeys[]=$key;
@@ -527,7 +527,7 @@ class Mapper extends \DB\Cursor {
 			return $this;
 		foreach ($this->fields as $key=>$field)
 			if ($field['changed']) {
-				$pairs.=($pairs?',':'').$this->db->quotekey($key).'=?';
+				$pairs.=($pairs?',':'').$this->db->quotekey($key).($field['type'] === 'geometry' ? '=ST_GeomFromText(?)' : '=?');
 				$args[++$ctr]=[$field['value'],$field['pdo_type']];
 			}
 		if ($pairs) {
@@ -566,7 +566,7 @@ class Mapper extends \DB\Cursor {
 		$pairs='';
 		foreach ($this->fields as $key=>$field)
 			if ($field['changed']) {
-				$pairs.=($pairs?',':'').$this->db->quotekey($key).'=?';
+				$pairs.=($pairs?',':'').$this->db->quotekey($key).($field['type'] === 'geometry' ? '=ST_GeomFromText(?)' : '=?');
 				$args[++$ctr]=[$field['value'],$field['pdo_type']];
 			}
 		if ($filter)
