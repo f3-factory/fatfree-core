@@ -478,6 +478,7 @@ namespace F3 {
         public bool $AJAX = false;
         public ?string $ALIAS = null;
         public array $ALIASES = [];
+        /** @var string|array{string, ?callable(string): string} */
         public string|array $AUTOLOAD = './';
         public string $BASE = '';
         public int $BITMASK = ENT_COMPAT | ENT_SUBSTITUTE;
@@ -2795,9 +2796,8 @@ namespace F3 {
 
         public function toArray(): array
         {
-            $keys = Hive::public($this);
             $out = [];
-            foreach ($keys as $key)
+            foreach (['expire', 'lifetime', 'path', 'domain', 'secure', 'httponly', 'samesite'] as $key)
                 $out[$key] = $this->$key;
             return $out;
         }

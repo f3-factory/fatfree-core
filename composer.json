@@ -4,7 +4,7 @@
   "keywords": ["F3","fatfree","micro-framework","php"],
   "homepage": "https://fatfreeframework.com/",
   "license": "GPL-3.0",
-  "version": "4.0.0-alpha.7",
+  "version": "4.0.0-alpha.8",
   "require": {
     "php": ">=8.4",
     "ext-json": "*",

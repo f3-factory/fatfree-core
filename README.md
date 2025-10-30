@@ -1,15 +1,18 @@
-# fatfree-core
-Fat-Free Framework core library
+# Fat-Free Framework core library
+
+Just the raw core source code, nothing else.
+
+![Packagist Version](https://img.shields.io/packagist/v/bcosca/fatfree-core)
+
+More resources:
+
+- [testing bench and unit tests](https://github.com/f3-factory/fatfree-dev)
+- [documentation and user guides](https://fatfreeframework.com)
+- https://github.com/bcosca/fatfree
+
+![Matrix](https://img.shields.io/matrix/fat-free-framework%3Amatrix.org?label=chat%20on%20Matrix&link=https%3A%2F%2Fmatrix.to%2F%23%2F%23fat-free-framework%3Amatrix.org)
 
 ### Usage:
-
-First make sure to add a proper url rewrite configuration to your server, see https://fatfreeframework.com/3.6/routing-engine#DynamicWebSites
-
-**without composer:**
-
-```php
-$f3 = require('lib/base.php');
-```
 
 **with composer:**
 
@@ -18,12 +21,12 @@ composer require bcosca/fatfree-core
 ```
 
 ```php
-require("vendor/autoload.php");
-$f3 = \Base::instance();
+require 'vendor/autoload.php';
+$f3 = \F3\Base::instance();
 ```
 
----
-For the main repository (demo package), see https://github.com/bcosca/fatfree  
-For the test bench and unit tests, see https://github.com/f3-factory/fatfree-dev  
-For the user guide, see https://fatfreeframework.com/user-guide  
-For the documentation, see https://fatfreeframework.com/api-reference
+**without composer:**
+
+```php
+$f3 = require('lib/base.php');
+```
