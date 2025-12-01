@@ -446,7 +446,8 @@ class Image {
 					imagefill($tmp[$i],0,0,IMG_COLOR_TRANSPARENT);
 					imagecopyresampled($tmp[$i],
 						$char,0,0,0,0,round($w/2),round($h/2),$w,$h);
-					imagedestroy($char);
+					if (version_compare(PHP_VERSION, '8.5.0')<0)
+						imagedestroy($char);
 					$width+=$i+1<$len?$block/2:$w/2;
 					$height=max($height,$h/2);
 				}
@@ -456,7 +457,8 @@ class Image {
 					imagecopy($this->data,$tmp[$i],
 						round($i*$block/2),round(($height-imagesy($tmp[$i]))/2),0,0,
 						imagesx($tmp[$i]),imagesy($tmp[$i]));
-					imagedestroy($tmp[$i]);
+					if (version_compare(PHP_VERSION, '8.5.0')<0)
+						imagedestroy($tmp[$i]);
 				}
 				imagesavealpha($this->data,TRUE);
 				if ($key)

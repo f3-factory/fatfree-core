@@ -423,8 +423,11 @@ class Web extends Prefab {
 		$options['header']=implode($eol,$options['header']);
 		$body=@file_get_contents($url,FALSE,
 			stream_context_create(['http'=>$options]));
-		$headers=isset($http_response_header)?
-			$http_response_header:[];
+		if (PHP_VERSION_ID >= 80500)
+			$headers=http_get_last_response_headers() ?: [];
+		else
+			$headers=isset($http_response_header)?
+				$http_response_header:[];
 		$err='';
 		if (is_string($body)) {
 			$match=NULL;
