@@ -1,5 +1,10 @@
 CHANGELOG
 
+3.9.2 (02.12.2025)
+---
+feat, Audit: Added bot/AI detection, #401
+fix: php 8.5 compatibility
+
 3.9.1 (09.08.2025)
 ---
 *	fix: return type hint for unserialize, closes [#391](https://github.com/f3-factory/fatfree-core/issues/391)
