@@ -1849,6 +1849,8 @@ namespace F3 {
             $fw->HEADERS = $headers ?? [];
             foreach ($headers ?: [] as $key => $val)
                 $fw->SERVER['HTTP_'.\strtr(\strtoupper($key), '-', '_')] = $val;
+            if (isset($headers['Accept-Language']))
+                $fw->LANGUAGE = $headers['Accept-Language'];
             $fw->VERB = $fw->SERVER['REQUEST_METHOD'] = $verb;
             $fw->PATH = $url['path'];
             $fw->URI = $fw->SERVER['REQUEST_URI'] = $this->BASE.$url['path'];
