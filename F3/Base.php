@@ -463,16 +463,13 @@ namespace F3 {
         //endregion
 
         // Language lookup sequence
-        protected array $languages;
+        protected array $languages = [];
 
         // Mutex locks
         protected array $locks = [];
 
-        // Default fallback language
-        protected string $fallback = 'en';
-
         // list of all reserved own properties
-        protected const array OWN_PROPS = ['_hive_data', 'languages', 'locks', 'fallback'];
+        protected const array OWN_PROPS = ['_hive_data', 'languages', 'locks'];
 
         public string $AGENT = '';
         public bool $AJAX = false;
@@ -527,52 +524,44 @@ namespace F3 {
         public string|array $EXEMPT = [];
         public string $FALLBACK = 'en' {
             set {
-                $this->fallback = $value;
-                $this->language($this->LANGUAGE);
+                $changed = $this->FALLBACK !== $value;
                 $this->FALLBACK = $value;
-                if ($this->LOCALES) {
-                    $lex = $this->lexicon($this->LOCALES);
-                    foreach ($lex as $dt => $dd) {
-                        $ref = &$this->ref($this->PREFIX.$dt);
-                        $ref = $dd;
-                        unset($ref);
-                    }
+                if ($changed) {
+                    $this->language($this->LANGUAGE);
+                    $this->loadLocales();
                 }
             }
         }
         public array $FORMATS = [];
         public bool $HALT = true;
-        public bool $TEST;
         public array $HEADERS = [];
         public bool $HIGHLIGHT = false;
         public string $HOST = '';
         public string $IP = '';
         public CookieJarConfig $JAR;
+        /**
+         * list of enabled language codes ISO 639-1 (- ISO 3166-1)
+         */
         public string $LANGUAGE = '' {
             set(string $val) {
                 $val = $this->language($val);
-                if ($this->LOCALES) {
-                    $lex = $this->lexicon($this->LOCALES);
-                    foreach ($lex as $dt => $dd) {
-                        $ref = &$this->ref($this->PREFIX.$dt);
-                        $ref = $dd;
-                        unset($ref);
-                    }
-                }
+                $this->loadLocales();
                 $this->LANGUAGE = $val;
             }
         }
+        /**
+         * path to locales directory
+         */
         public ?string $LOCALES = null {
             set {
-                $lex = $this->lexicon($value, 0);
-                foreach ($lex as $dt => $dd) {
-                    $ref = &$this->ref($this->PREFIX.$dt);
-                    $ref = $dd;
-                    unset($ref);
-                }
                 $this->LOCALES = $value;
+                $this->loadLocales();
             }
         }
+        /**
+         * locales cache time
+         */
+        public int $LOCALES_TTL = 0;
         public int $LOCK = LOCK_EX;
         public string|array $LOGGABLE = '*';
         public string $LOGS = './';
@@ -813,6 +802,9 @@ namespace F3 {
                 }
             }
             if (\in_array($key, ['CACHE', 'ENCODING', 'FALLBACK', 'LANGUAGE', 'LOCALES', 'TZ'])) {
+                if (($key === 'LANGUAGE' || $key === 'LOCALES') && $ttl) {
+                    $this->LOCALES_TTL = $ttl;
+                }
                 // NB: this does not automatically return the updated value from property hook
                 return $this->{$key} = $val;
             }
@@ -1450,16 +1442,11 @@ namespace F3 {
         /**
          * Assign/auto-detect language
          */
-        public function language(
-            string $code,
-            ?string $lexiconPath = null,
-            ?int $ttl = 0,
-            ?string $fallback = null,
-        ): string {
-            if ($fallback)
-                $this->fallback = $fallback;
+        public function language(string $code): string
+        {
             $code = \preg_replace('/\h+|;q=[0-9.]+/', '', $code ?: '');
-            $code .= ($code ? ',' : '').$this->fallback;
+            $code .= ($code ? ',' : '').$this->FALLBACK;
+            $ll = $this->languages;
             $this->languages = [];
             foreach (\array_reverse(\explode(',', $code)) as $lang)
                 if (\preg_match('/^(\w{2})(?:-(\w{2}))?\b/i', $lang, $parts)) {
@@ -1472,15 +1459,19 @@ namespace F3 {
                     }
                 }
             $this->languages = \array_unique($this->languages);
+            $out = \implode(',', $this->languages);
+            if ($this->languages === $ll)
+                // no change
+                return $out;
             $locales = [];
             $windows = \preg_match('/^win/i', PHP_OS);
             // Work around PHP's Turkish locale bug
             foreach (\preg_grep('/^(?!tr)/i', $this->languages) as $locale) {
                 if ($windows) {
                     $parts = \explode('-', $locale);
-                    if (!\defined(ISO::class.'::LC_'.$parts[0]))
+                    if (!\defined($lc = ISO::class.'::LC_'.$parts[0]))
                         continue;
-                    $locale = \constant(ISO::class.'::LC_'.$parts[0]);
+                    $locale = \constant($lc);
                     if (isset($parts[1]) &&
                         \defined($cc = ISO::class.'::CC_'.\strtolower($parts[1])))
                         $locale .= '-'.\constant($cc);
@@ -1490,10 +1481,22 @@ namespace F3 {
                 $locales[] = $locale;
             }
             \setlocale(LC_ALL, $locales);
-            $out = \implode(',', $this->languages);
-            if ($lexiconPath)
-                $this->set('LOCALES', $lexiconPath, $ttl);
             return $out;
+        }
+
+        /**
+         * load locales into hive
+         */
+        public function loadLocales(?int $ttl = 0): void
+        {
+            if (!$this->LOCALES)
+                return;
+            $lex = $this->lexicon($this->LOCALES, $ttl);
+            foreach ($lex as $dt => $dd) {
+                $ref = &$this->ref($this->PREFIX.$dt);
+                $ref = $dd;
+                unset($ref);
+            }
         }
 
         /**
@@ -1501,6 +1504,7 @@ namespace F3 {
          */
         public function lexicon(string $path, ?int $ttl = 0): array
         {
+            $ttl = $ttl ?: $this->LOCALES_TTL;
             $languages = $this->languages ?: \explode(',', $this->FALLBACK);
             $cache = Cache::instance();
             if ($ttl && $cache->exists(
@@ -2562,7 +2566,7 @@ namespace F3 {
             // Create hive
             parent::__construct(data: $init);
             // auto-configure language
-            $this->LANGUAGE = $headers['Accept-Language'] ?? $this->fallback;
+            $this->LANGUAGE = $headers['Accept-Language'] ?? $this->FALLBACK;
             if (!\headers_sent() && \session_status() != PHP_SESSION_ACTIVE) {
                 $jarSettings = $jar->toCookieSettings();
                 \session_cache_limiter('');
@@ -2645,7 +2649,7 @@ namespace F3 {
             $this->GET = $request->getQueryParams();
             $this->COOKIE = $request->getCookieParams();
             $this->POST = $request->getParsedBody();
-            $this->language($headers['Accept-Language'] ?? $this->fallback);
+            $this->language($headers['Accept-Language'] ?? $this->FALLBACK);
             $this->BODY = $request->getBody();
         }
 
