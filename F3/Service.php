@@ -26,11 +26,11 @@ class Service
      * @param class-string<Class> $id
      * @return Class
      */
-    public function get(string $id, $args = []): object
+    public function get(string $id): object
     {
         if (Registry::exists($id))
             return Registry::get($id);
-        $out = $this->make($id, $args);
+        $out = $this->make($id);
         if (array_key_exists($id, $this->singletons)
             || \in_array(Prefab::class, $this->f3->traits($out))) {
             Registry::set($id, $out);

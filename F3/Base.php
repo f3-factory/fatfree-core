@@ -1096,7 +1096,7 @@ namespace F3 {
         /**
          * Convert snake_case string to CamelCase
          */
-        public function camelcase(string $str): string
+        public function camelCase(string $str): string
         {
             return \preg_replace_callback(
                 '/_(\pL)/u',
@@ -1108,7 +1108,7 @@ namespace F3 {
         /**
          * Convert CamelCase string to snake_case
          */
-        public function snakecase(string $str): string
+        public function snakeCase(string $str): string
         {
             return \strtolower(\preg_replace('/(?!^)\p{Lu}/u', '_\0', $str));
         }
@@ -2046,9 +2046,12 @@ namespace F3 {
         {
             if ($this->CONTAINER) {
                 $container = $this->CONTAINER;
-                if (\is_object($container) && \is_callable([$container, 'has'])
-                    && $container->has($class)) // PSR11
-                    return $container->get($class);
+                if ($container instanceof \Closure)
+                    return $container($class, $args);
+                elseif (\is_object($container) && $container->has($class)) // PSR11
+                    return $args
+                        ? $container->make($class, $args)
+                        : $container->get($class);
                 elseif (\is_callable($container))
                     return \call_user_func($container, $class, $args);
                 else

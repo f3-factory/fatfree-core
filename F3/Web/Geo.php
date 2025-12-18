@@ -79,7 +79,7 @@ class Geo
             $mtx->changeKey($data, 'lon', 'longitude');
             $mtx->changeKey($data, 'region', 'region_code');
             foreach ($data as $key => $val)
-                $out[$fw->snakecase($key)] = $val;
+                $out[$fw->snakeCase($key)] = $val;
             return $out;
         }
         return false;
