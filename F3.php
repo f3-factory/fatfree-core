@@ -21,11 +21,14 @@
  * @author 2009-2019 Bong Cosca
  */
 
-//! Legacy mode enabler
+/**
+ * Legacy mode enabler
+ * @mixin \F3\Base
+ */
 class F3
 {
     //! Framework instance
-    static \F3\Base $fw;
+    static private ?\F3\Base $fw = null;
 
     /**
      * Forward function calls to framework

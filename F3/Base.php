@@ -1853,8 +1853,11 @@ namespace F3 {
             $fw->HEADERS = $headers ?? [];
             foreach ($headers ?: [] as $key => $val)
                 $fw->SERVER['HTTP_'.\strtr(\strtoupper($key), '-', '_')] = $val;
-            if (isset($headers['Accept-Language']))
+            if (isset($headers['Accept-Language'])) {
+                if ($sandbox)
+                    $bak_loc = \setlocale(LC_ALL, 0);
                 $fw->LANGUAGE = $headers['Accept-Language'];
+            }
             $fw->VERB = $fw->SERVER['REQUEST_METHOD'] = $verb;
             $fw->PATH = $url['path'];
             $fw->URI = $fw->SERVER['REQUEST_URI'] = $this->BASE.$url['path'];
@@ -1885,9 +1888,10 @@ namespace F3 {
                         $e->getTrace(),
                     );
             }
-            if ($sandbox) {
+            if ($sandbox)
                 Registry::set($class, $reg_bak);
-            }
+            if (isset($bak_loc))
+                \setlocale(LC_ALL, $bak_loc);
             return $out;
         }
 
@@ -2506,8 +2510,8 @@ namespace F3 {
             elseif ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['_method']))
                 $_SERVER['REQUEST_METHOD'] = \strtoupper($_POST['_method']);
             $scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on' ||
-            isset($headers['X-Forwarded-Proto']) &&
-            $headers['X-Forwarded-Proto'] == 'https' ? 'https' : 'http';
+                isset($headers['X-Forwarded-Proto']) &&
+                $headers['X-Forwarded-Proto'] == 'https' ? 'https' : 'http';
             $_SERVER['DOCUMENT_ROOT'] = \realpath($_SERVER['DOCUMENT_ROOT']);
             $base = '';
             if (!$cli)
@@ -2652,7 +2656,8 @@ namespace F3 {
             $this->GET = $request->getQueryParams();
             $this->COOKIE = $request->getCookieParams();
             $this->POST = $request->getParsedBody();
-            $this->language($headers['Accept-Language'] ?? $this->FALLBACK);
+            if (!empty($headers['Accept-Language']))
+                $this->LANGUAGE = $headers['Accept-Language'];
             $this->BODY = $request->getBody();
         }
 

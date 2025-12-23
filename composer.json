@@ -10,6 +10,7 @@
     "ext-json": "*",
     "ext-hash": "*",
     "ext-ctype": "*",
+    "ext-session": "*",
     "ext-intl": "*"
   },
   "autoload": {
