@@ -567,7 +567,10 @@ namespace F3 {
         public string $LOGS = './';
         public bool $MB = false;
         public mixed $ONERROR = null;
-        public mixed $ONREROUTE = null;
+        /**
+         * @var string|array|null|\Closure(string $url, bool $permanent, bool $exit):void
+         */
+        public \Closure|string|array|null $ONREROUTE = null;
         public string $PACKAGE = self::PACKAGE;
         public array $PARAMS = [];
         public string $PATH = '';
@@ -1839,17 +1842,14 @@ namespace F3 {
             if (empty($parts[4]))
                 throw new \Exception(\sprintf(self::E_Pattern, $pattern));
             $url = \parse_url($parts[4]);
-            \parse_str($url['query'] ?? '', $this->GET);
             $fw = $this;
-            if ($sandbox) {
-                $fw = clone $this;
-                $reg_bak = Registry::get($class = Base::class);
-                Registry::set($class, $fw);
-            }
+            if ($sandbox)
+                Registry::set($class = Base::class, $fw = clone $this);
+            \parse_str($url['query'] ?? '', $fw->GET);
             if (\preg_match('/GET|HEAD/', $verb))
-                $fw->GET = \array_merge($this->GET, $args);
+                $fw->GET = \array_merge($fw->GET, $args);
             $fw->POST = $verb === 'POST' ? $args : [];
-            $fw->REQUEST = \array_merge($this->GET ?? [], $this->POST ?? []);
+            $fw->REQUEST = \array_merge($fw->GET ?? [], $fw->POST ?? []);
             $fw->HEADERS = $headers ?? [];
             foreach ($headers ?: [] as $key => $val)
                 $fw->SERVER['HTTP_'.\strtr(\strtoupper($key), '-', '_')] = $val;
@@ -1860,7 +1860,7 @@ namespace F3 {
             }
             $fw->VERB = $fw->SERVER['REQUEST_METHOD'] = $verb;
             $fw->PATH = $url['path'];
-            $fw->URI = $fw->SERVER['REQUEST_URI'] = $this->BASE.$url['path'];
+            $fw->URI = $fw->SERVER['REQUEST_URI'] = $fw->BASE.$url['path'];
             $fw->REALM = $fw->SCHEME.'://'.$fw->HOST.
                 (!\in_array($fw->PORT, [80, 443]) ? (':'.$fw->PORT) : '').$fw->URI;
             if ($fw->GET)
@@ -1877,19 +1877,22 @@ namespace F3 {
             try {
                 $out = $fw->run();
             } catch (\Throwable $e) {
-                $fw->EXCEPTION = $e;
+                $this->EXCEPTION = $e;
                 if ($throw)
                     throw $e;
                 else
-                    $out = $fw->error(
+                    $out = $this->error(
                         500,
                         $e->getMessage().' '.
                         '['.$e->getFile().':'.$e->getLine().']',
                         $e->getTrace(),
                     );
             }
-            if ($sandbox)
-                Registry::set($class, $reg_bak);
+            if ($sandbox) {
+                $this->RESPONSE = $fw->RESPONSE;
+                $this->RESPONSE_HEADERS = $fw->RESPONSE_HEADERS;
+                Registry::set($class, $this);
+            }
             if (isset($bak_loc))
                 \setlocale(LC_ALL, $bak_loc);
             return $out;
@@ -2670,7 +2673,7 @@ namespace F3 {
             ?callable $runHandler = null,
         ): ?ResponseInterface {
             $this->request($request);
-            // the output buffer is only needed when quiet is false,
+            // the output buffer is only needed when QUIET is false,
             // but it also aids as failsafe for headers, in case output leaks somewhere
             try {
                 \ob_start();
@@ -4330,6 +4333,9 @@ namespace F3\Http {
                         $this->RESPONSE = $isPsr ? $response : $body;
                     } catch (ResponseException $r) {
                         // handle response from error handler
+                        $out = \ob_get_clean();
+                        if (!empty($out) && !$this->RESPONSE)
+                            $this->RESPONSE = $out;
                         $isPsr = \is_object($this->RESPONSE)
                             && \is_a($this->RESPONSE, 'Psr\Http\Message\ResponseInterface');
                         if ($isPsr) {
