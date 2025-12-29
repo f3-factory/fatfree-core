@@ -2862,7 +2862,6 @@ namespace F3 {
                 'redis', 'memcached' => $this->ref->get($ndx),
                 'memcache' => memcache_get($this->ref, $ndx),
                 'wincache' => wincache_ucache_get($ndx),
-                'xcache' => xcache_get($ndx),
                 'folder' => $fw->read($parts[1].str_replace(['/', '\\'], '', $ndx)),
                 default => throw new \RuntimeException(
                     'Cache dsn not found: '.var_export($this->dsn, true),
@@ -2897,7 +2896,6 @@ namespace F3 {
                 'memcache' => memcache_set($this->ref, $ndx, $data, 0, $ttl),
                 'memcached' => $this->ref->set($ndx, $data, $ttl),
                 'wincache' => wincache_ucache_set($ndx, $data, $ttl),
-                'xcache' => xcache_set($ndx, $data, $ttl),
                 'folder' => $fw->write(
                     $parts[1].
                     str_replace(['/', '\\'], '', $ndx),
@@ -2930,7 +2928,6 @@ namespace F3 {
                 'memcache' => memcache_delete($this->ref, $ndx),
                 'memcached' => $this->ref->delete($ndx),
                 'wincache' => wincache_ucache_delete($ndx),
-                'xcache' => xcache_unset($ndx),
                 'folder' => @unlink($parts[1].$ndx),
                 default => false,
             };
@@ -2993,18 +2990,6 @@ namespace F3 {
                         if (preg_match($regex, $item['key_name']))
                             wincache_ucache_delete($item['key_name']);
                     return true;
-                case 'xcache':
-                    if ($suffix && !ini_get('xcache.admin.enable_auth')) {
-                        $cnt = xcache_count(XC_TYPE_VAR);
-                        for ($i = 0; $i < $cnt; ++$i) {
-                            $list = xcache_list(XC_TYPE_VAR, $i);
-                            foreach ($list['cache_list'] as $item)
-                                if (preg_match($regex, $item['name']))
-                                    xcache_unset($item['name']);
-                        }
-                    } else
-                        xcache_unset_by_prefix($this->prefix.'.');
-                    return true;
                 case 'folder':
                     if ($glob = @glob($parts[1].'*'))
                         foreach ($glob as $file)
@@ -3052,7 +3037,7 @@ namespace F3 {
                     }
                 if (empty($this->ref) && !preg_match('/^folder\h*=/', $dsn))
                     $dsn = ($grep = preg_grep(
-                        '/^(apc|wincache|xcache)/',
+                        '/^(apc|wincache)/',
                         array_map('strtolower', get_loaded_extensions()),
                     )) ?
                         // Auto-detect
