@@ -42,6 +42,8 @@ class Session extends Magic implements \SessionHandlerInterface
     // Session meta data
     protected array $_data = [];
 
+    public const string E_NO_CACHE = 'Cannot initialize cache-based session handler without active cache engine';
+
     /**
      *    Open session
      **/
@@ -172,6 +174,8 @@ class Session extends Magic implements \SessionHandlerInterface
     ) {
         $this->onSuspect = $onSuspect;
         $this->_cache = $cache ?: Cache::instance();
+        if (!$this->_cache->engine())
+            throw new \Exception(self::E_NO_CACHE);
         session_set_save_handler($this);
         register_shutdown_function('session_commit');
         $fw = Base::instance();
