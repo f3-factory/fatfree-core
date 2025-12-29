@@ -2844,7 +2844,9 @@ namespace F3 {
         //! Prefix for cache entries
         protected ?string $prefix = null;
 
-        //! MemCache or Redis object
+        /**
+         * @var \Memcached|\Redis|null
+         */
         protected ?object $ref = null;
 
         /**
@@ -2856,19 +2858,19 @@ namespace F3 {
             if (!$this->dsn)
                 return false;
             $ndx = $this->prefix.'.'.$key;
-            $parts = explode('=', $this->dsn, 2);
+            $parts = \explode('=', $this->dsn, 2);
             $raw = match ($parts[0]) {
-                'apc', 'apcu' => call_user_func($parts[0].'_fetch', $ndx),
+                'apcu' => \apcu_fetch($ndx),
                 'redis', 'memcached' => $this->ref->get($ndx),
-                'memcache' => memcache_get($this->ref, $ndx),
-                'folder' => $fw->read($parts[1].str_replace(['/', '\\'], '', $ndx)),
+                'memcache' => \memcache_get($this->ref, $ndx),
+                'folder' => $fw->read($parts[1].\str_replace(['/', '\\'], '', $ndx)),
                 default => throw new \RuntimeException(
-                    'Cache dsn not found: '.var_export($this->dsn, true),
+                    'Cache dsn not found: '.\var_export($this->dsn, true),
                 ),
             };
             if (!empty($raw)) {
                 [$val, $time, $ttl] = (array) $fw->unserialize($raw);
-                if ($ttl === 0 || $time + $ttl > microtime(true))
+                if ($ttl === 0 || $time + $ttl > \microtime(true))
                     return [$time, $ttl];
                 $val = null;
                 $this->clear($key);
@@ -2887,16 +2889,16 @@ namespace F3 {
             $ndx = $this->prefix.'.'.$key;
             if ($cached = $this->exists($key))
                 $ttl = $cached[1];
-            $data = $fw->serialize([$val, microtime(true), $ttl]);
-            $parts = explode('=', $this->dsn, 2);
+            $data = $fw->serialize([$val, \microtime(true), $ttl]);
+            $parts = \explode('=', $this->dsn, 2);
             return (bool) match ($parts[0]) {
-                'apc', 'apcu' => call_user_func($parts[0].'_store', $ndx, $data, $ttl),
+                'apcu' => \apcu_store($ndx, $data, $ttl),
                 'redis' => $this->ref->set($ndx, $data, $ttl ? ['ex' => $ttl] : []),
-                'memcache' => memcache_set($this->ref, $ndx, $data, 0, $ttl),
+                'memcache' => \memcache_set($this->ref, $ndx, $data, 0, $ttl),
                 'memcached' => $this->ref->set($ndx, $data, $ttl),
                 'folder' => $fw->write(
                     $parts[1].
-                    str_replace(['/', '\\'], '', $ndx),
+                    \str_replace(['/', '\\'], '', $ndx),
                     $data,
                 ),
                 default => false,
@@ -2919,13 +2921,13 @@ namespace F3 {
             if (!$this->dsn)
                 return false;
             $ndx = $this->prefix.'.'.$key;
-            $parts = explode('=', $this->dsn, 2);
+            $parts = \explode('=', $this->dsn, 2);
             return match ($parts[0]) {
-                'apc', 'apcu' => call_user_func($parts[0].'_delete', $ndx),
+                'apcu' => \apcu_delete($ndx),
                 'redis' => $this->ref->del($ndx),
-                'memcache' => memcache_delete($this->ref, $ndx),
+                'memcache' => \memcache_delete($this->ref, $ndx),
                 'memcached' => $this->ref->delete($ndx),
-                'folder' => @unlink($parts[1].$ndx),
+                'folder' => @\unlink($parts[1].$ndx),
                 default => false,
             };
         }
@@ -2937,24 +2939,20 @@ namespace F3 {
         {
             if (!$this->dsn)
                 return true;
-            $regex = '/'.preg_quote($this->prefix.'.', '/').'.*'.
-                preg_quote($suffix ?: '', '/').'/';
-            $parts = explode('=', $this->dsn, 2);
+            $regex = '/'.\preg_quote($this->prefix.'.', '/').'.*'.
+                \preg_quote($suffix ?: '', '/').'/';
+            $parts = \explode('=', $this->dsn, 2);
             switch ($parts[0]) {
-                case 'apc':
                 case 'apcu':
-                    $info = call_user_func(
-                        $parts[0].'_cache_info',
-                        $parts[0] == 'apcu' ? false : 'user',
-                    );
+                    $info = \apcu_cache_info();
                     if (!empty($info['cache_list'])) {
-                        $key = array_key_exists(
+                        $key = \array_key_exists(
                             'info',
                             $info['cache_list'][0],
                         ) ? 'info' : 'key';
                         foreach ($info['cache_list'] as $item)
-                            if (preg_match($regex, $item[$key]))
-                                call_user_func($parts[0].'_delete', $item[$key]);
+                            if (\preg_match($regex, $item[$key]))
+                                \apcu_delete($item[$key]);
                     }
                     return true;
                 case 'redis':
@@ -2963,29 +2961,29 @@ namespace F3 {
                         $this->ref->del($key);
                     return true;
                 case 'memcache':
-                    foreach (memcache_get_extended_stats($this->ref, 'slabs') as $slabs)
+                    foreach (\memcache_get_extended_stats($this->ref, 'slabs') as $slabs)
                         foreach (
-                            array_filter(array_keys($slabs), 'is_numeric')
+                            \array_filter(\array_keys($slabs), 'is_numeric')
                             as $id
                         )
                             foreach (
-                                memcache_get_extended_stats($this->ref, 'cachedump', $id) as $data
+                                \memcache_get_extended_stats($this->ref, 'cachedump', $id) as $data
                             )
-                                if (is_array($data))
-                                    foreach (array_keys($data) as $key)
-                                        if (preg_match($regex, $key))
-                                            memcache_delete($this->ref, $key);
+                                if (\is_array($data))
+                                    foreach (\array_keys($data) as $key)
+                                        if (\preg_match($regex, $key))
+                                            \memcache_delete($this->ref, $key);
                     return true;
                 case 'memcached':
                     foreach ($this->ref->getAllKeys() ?: [] as $key)
-                        if (preg_match($regex, $key))
+                        if (\preg_match($regex, $key))
                             $this->ref->delete($key);
                     return true;
                 case 'folder':
-                    if ($glob = @glob($parts[1].'*'))
+                    if ($glob = @\glob($parts[1].'*'))
                         foreach ($glob as $file)
-                            if (preg_match($regex, basename($file)))
-                                @unlink($file);
+                            if (\preg_match($regex, \basename($file)))
+                                @\unlink($file);
                     return true;
             }
             return false;
@@ -2997,50 +2995,55 @@ namespace F3 {
         public function load(bool|string $dsn, ?string $seed = null): string
         {
             $fw = Base::instance();
-            if ($dsn = trim($dsn)) {
-                if (preg_match('/^redis=(.+)/', $dsn, $parts) &&
-                    extension_loaded('redis')) {
+            if ($dsn = \trim($dsn)) {
+                if (\preg_match('/^redis=(.+)/', $dsn, $parts) &&
+                    \extension_loaded('redis')) {
                     [$host, $port, $db, $password] =
-                        explode(':', $parts[1]) + [1 => 6379, 2 => null, 3 => null];
-                    $this->ref = new \Redis;
+                        \explode(':', $parts[1]) + [1 => 6379, 2 => null, 3 => null];
+                    $this->ref = new \Redis();
                     if (!$this->ref->connect($host, $port, 2))
                         $this->ref = null;
                     if (!empty($password))
                         $this->ref->auth($password);
                     if (isset($db))
                         $this->ref->select($db);
-                } elseif (preg_match('/^memcache=(.+)/', $dsn, $parts) &&
-                    extension_loaded('memcache'))
+                } elseif (\preg_match('/^memcache=(.+)/', $dsn, $parts) &&
+                    \extension_loaded('memcache'))
                     foreach ($fw->split($parts[1]) as $server) {
-                        [$host, $port] = explode(':', $server) + [1 => 11211];
+                        [$host, $port] = \explode(':', $server) + [1 => 11211];
                         if (empty($this->ref))
-                            $this->ref = @memcache_connect($host, $port) ?: null;
+                            $this->ref = @\memcache_connect($host, $port) ?: null;
                         else
-                            memcache_add_server($this->ref, $host, $port);
+                            \memcache_add_server($this->ref, $host, $port);
                     }
-                elseif (preg_match('/^memcached=(.+)/', $dsn, $parts) &&
-                    extension_loaded('memcached'))
+                elseif (\preg_match('/^memcached=(.+)/', $dsn, $parts) &&
+                    \extension_loaded('memcached'))
                     foreach ($fw->split($parts[1]) as $server) {
-                        [$host, $port] = explode(':', $server) + [1 => 11211];
+                        [$host, $port] = \explode(':', $server) + [1 => 11211];
                         if (empty($this->ref))
                             $this->ref = new \Memcached();
                         $this->ref->addServer($host, $port);
                     }
-                if (empty($this->ref) && !preg_match('/^folder\h*=/', $dsn))
-                    $dsn = ($grep = preg_grep(
-                        '/^(apc)/',
-                        array_map('strtolower', get_loaded_extensions()),
-                    )) ?
-                        // Auto-detect
-                        current($grep) :
+                // fallback to engines without further config
+                if (empty($this->ref) && !\preg_match('/^folder\h*=/', $dsn))
+                    $dsn = \extension_loaded('apcu') ?
+                        'apcu' :
                         // Use filesystem as fallback
                         ('folder='.$fw->TEMP.'cache/');
-                if (preg_match('/^folder\h*=\h*(.+)/', $dsn, $parts) &&
-                    !is_dir($parts[1]))
-                    mkdir($parts[1], Base::MODE, true);
+                if (\preg_match('/^folder\h*=\h*(.+)/', $dsn, $parts) &&
+                    !\is_dir($parts[1]))
+                    \mkdir($parts[1], Base::MODE, true);
             }
             $this->prefix = $seed ?: $fw->SEED;
             return $this->dsn = $dsn;
+        }
+
+        /**
+         * returns active cache engine in use
+         */
+        public function engine(): false|string
+        {
+            return $this->dsn ? \explode('=', $this->dsn)[0] : false;
         }
 
         /**
