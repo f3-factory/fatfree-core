@@ -2861,7 +2861,6 @@ namespace F3 {
                 'apc', 'apcu' => call_user_func($parts[0].'_fetch', $ndx),
                 'redis', 'memcached' => $this->ref->get($ndx),
                 'memcache' => memcache_get($this->ref, $ndx),
-                'wincache' => wincache_ucache_get($ndx),
                 'folder' => $fw->read($parts[1].str_replace(['/', '\\'], '', $ndx)),
                 default => throw new \RuntimeException(
                     'Cache dsn not found: '.var_export($this->dsn, true),
@@ -2895,7 +2894,6 @@ namespace F3 {
                 'redis' => $this->ref->set($ndx, $data, $ttl ? ['ex' => $ttl] : []),
                 'memcache' => memcache_set($this->ref, $ndx, $data, 0, $ttl),
                 'memcached' => $this->ref->set($ndx, $data, $ttl),
-                'wincache' => wincache_ucache_set($ndx, $data, $ttl),
                 'folder' => $fw->write(
                     $parts[1].
                     str_replace(['/', '\\'], '', $ndx),
@@ -2927,7 +2925,6 @@ namespace F3 {
                 'redis' => $this->ref->del($ndx),
                 'memcache' => memcache_delete($this->ref, $ndx),
                 'memcached' => $this->ref->delete($ndx),
-                'wincache' => wincache_ucache_delete($ndx),
                 'folder' => @unlink($parts[1].$ndx),
                 default => false,
             };
@@ -2984,12 +2981,6 @@ namespace F3 {
                         if (preg_match($regex, $key))
                             $this->ref->delete($key);
                     return true;
-                case 'wincache':
-                    $info = wincache_ucache_info();
-                    foreach ($info['ucache_entries'] as $item)
-                        if (preg_match($regex, $item['key_name']))
-                            wincache_ucache_delete($item['key_name']);
-                    return true;
                 case 'folder':
                     if ($glob = @glob($parts[1].'*'))
                         foreach ($glob as $file)
@@ -3037,7 +3028,7 @@ namespace F3 {
                     }
                 if (empty($this->ref) && !preg_match('/^folder\h*=/', $dsn))
                     $dsn = ($grep = preg_grep(
-                        '/^(apc|wincache)/',
+                        '/^(apc)/',
                         array_map('strtolower', get_loaded_extensions()),
                     )) ?
                         // Auto-detect
