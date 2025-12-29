@@ -2879,7 +2879,7 @@ namespace F3 {
         /**
          * Store value in cache
          */
-        public function set(string $key, mixed $val, int $ttl = 0): mixed
+        public function set(string $key, mixed $val, int $ttl = 0): bool
         {
             $fw = Base::instance();
             if (!$this->dsn)
@@ -2889,7 +2889,7 @@ namespace F3 {
                 $ttl = $cached[1];
             $data = $fw->serialize([$val, microtime(true), $ttl]);
             $parts = explode('=', $this->dsn, 2);
-            return match ($parts[0]) {
+            return (bool) match ($parts[0]) {
                 'apc', 'apcu' => call_user_func($parts[0].'_store', $ndx, $data, $ttl),
                 'redis' => $this->ref->set($ndx, $data, $ttl ? ['ex' => $ttl] : []),
                 'memcache' => memcache_set($this->ref, $ndx, $data, 0, $ttl),
@@ -2977,7 +2977,7 @@ namespace F3 {
                                             memcache_delete($this->ref, $key);
                     return true;
                 case 'memcached':
-                    foreach ($this->ref->getallkeys() ?: [] as $key)
+                    foreach ($this->ref->getAllKeys() ?: [] as $key)
                         if (preg_match($regex, $key))
                             $this->ref->delete($key);
                     return true;
