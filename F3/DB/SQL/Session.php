@@ -22,83 +22,58 @@
 
 namespace F3\DB\SQL;
 
-use F3\Base;
 use F3\DB\SQL;
+use F3\SessionHandler;
 
 /**
  * SQL-managed session handler
  */
 class Session extends Mapper implements \SessionHandlerInterface
 {
-
-    // Session ID
-    protected ?string $sid = null;
-    // Anti-CSRF token
-    protected string $_csrf;
-    // User agent
-    protected mixed $_agent;
-    // IP,
-    protected string $_ip;
-    // Suspect callback
-    protected ?\Closure $onSuspect;
-
-    /**
-     *    Open session
-     **/
-    public function open(string $path, string $name): bool
-    {
-        return true;
+    use SessionHandler {
+        SessionHandler::close as private closeSession;
     }
 
     /**
-     *    Close session
-     **/
+     * Close session
+     */
     public function close(): bool
     {
         $this->reset();
-        $this->sid = null;
-        return true;
+        return $this->closeSession();
     }
 
     /**
-     *    Return session data in serialized format
-     **/
+     * Return session data in serialized format
+     */
     public function read(string $id): false|string
     {
         $this->load(['session_id=?', $this->sid = $id]);
         if ($this->dry())
             return '';
         if ($this->get('ip') != $this->_ip || $this->get('agent') != $this->_agent) {
-            $fw = Base::instance();
-            if (!isset($this->onSuspect) ||
-                $fw->call($this->onSuspect, [$this, $id]) === false) {
-                //NB: `session_destroy` can't be called at that stage (`session_start` not completed)
-                $this->destroy($id);
-                $this->close();
-                unset($fw->{'COOKIE.'.session_name()});
-                $fw->error(403);
-            }
+            $this->handleSuspiciousSession();
         }
         return $this->get('data');
     }
 
     /**
-     *    Write session data
-     **/
+     * Write session data
+     */
     public function write(string $id, string $data): bool
     {
         $this->set('session_id', $id);
         $this->set('data', $data);
         $this->set('ip', $this->_ip);
         $this->set('agent', $this->_agent);
-        $this->set('stamp', time());
+        $this->set('stamp', \time());
         $this->save();
         return true;
     }
 
     /**
-     *    Destroy session
-     **/
+     * Destroy session
+     */
     public function destroy(string $id): bool
     {
         $this->erase(['session_id=?', $id]);
@@ -106,54 +81,21 @@ class Session extends Mapper implements \SessionHandlerInterface
     }
 
     /**
-     *    Garbage collector
-     **/
+     * Garbage collector
+     */
     public function gc(int $max_lifetime): int|false
     {
         return (int) $this->erase(['stamp+?<?', $max_lifetime, time()]);
     }
 
     /**
-     *    Return session id (if session has started)
-     **/
-    public function sid(): ?string
-    {
-        return $this->sid;
-    }
-
-    /**
-     *    Return anti-CSRF token
-     **/
-    public function csrf(): string
-    {
-        return $this->_csrf;
-    }
-
-    /**
-     *    Return IP address
-     **/
-    public function ip(): string
-    {
-        return $this->_ip;
-    }
-
-    /**
-     *    Return Unix timestamp
-     **/
+     * Return Unix timestamp
+     */
     public function stamp(): false|string
     {
         if (!$this->sid)
-            session_start();
+            \session_start();
         return $this->dry() ? false : $this->get('stamp');
-    }
-
-    /**
-     *    Return HTTP user agent
-     * @return string
-     **/
-    public function agent(): string
-    {
-        return $this->_agent;
     }
 
     /**
@@ -162,7 +104,7 @@ class Session extends Mapper implements \SessionHandlerInterface
      * @param string $table
      * @param bool $force
      * @param callable|null $onSuspect
-     * @param string|null $key
+     * @param string|null $CsrfKeyName
      * @param string $type column type for data field
      */
     public function __construct(
@@ -170,7 +112,7 @@ class Session extends Mapper implements \SessionHandlerInterface
         string $table = 'sessions',
         bool $force = true,
         ?callable $onSuspect = null,
-        ?string $key = null,
+        ?string $CsrfKeyName = null,
         string $type = 'TEXT'
     ) {
         if ($force) {
@@ -199,23 +141,10 @@ class Session extends Mapper implements \SessionHandlerInterface
         }
         parent::__construct($db, $table);
         $this->onSuspect = $onSuspect;
-        session_set_save_handler($this);
-        register_shutdown_function('session_commit');
-        $fw = Base::instance();
-        $headers = $fw->HEADERS;
-        $this->_csrf = $fw->hash(
-            $fw->SEED.
-            extension_loaded('openssl') ?
-                implode(unpack('L', openssl_random_pseudo_bytes(4))) :
-                mt_rand(),
-        );
-        if ($key)
-            $fw->$key = $this->_csrf;
-        $this->_agent = $headers['User-Agent'] ?? '';
-        if (strlen($this->_agent) > 300) {
-            $this->_agent = substr($this->_agent, 0, 300);
+        $this->register($CsrfKeyName);
+        if (\strlen($this->_agent) > 300) {
+            $this->_agent = \substr($this->_agent, 0, 300);
         }
-        $this->_ip = $fw->IP;
     }
 
 }

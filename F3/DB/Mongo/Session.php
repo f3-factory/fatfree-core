@@ -21,31 +21,15 @@
 
 namespace F3\DB\Mongo;
 
-use F3\Base;
+use F3\SessionHandler;
 
 /**
  * MongoDB-managed session handler
  */
 class Session extends Mapper implements \SessionHandlerInterface
 {
-
-    // Session ID
-    protected ?string $sid = null;
-    // Anti-CSRF token
-    protected string $_csrf;
-    // User agent
-    protected mixed $_agent;
-    // IP,
-    protected string $_ip;
-    // Suspect callback
-    protected ?\Closure $onSuspect;
-
-    /**
-     * Open session
-     */
-    public function open(string $path, string $name): bool
-    {
-        return true;
+    use SessionHandler {
+        SessionHandler::close as private closeSession;
     }
 
     /**
@@ -54,8 +38,7 @@ class Session extends Mapper implements \SessionHandlerInterface
     public function close(): bool
     {
         $this->reset();
-        $this->sid = null;
-        return true;
+        return $this->closeSession();
     }
 
     /**
@@ -67,16 +50,7 @@ class Session extends Mapper implements \SessionHandlerInterface
         if ($this->dry())
             return '';
         if ($this->get('ip') != $this->_ip || $this->get('agent') != $this->_agent) {
-            $fw = Base::instance();
-            if (!isset($this->onSuspect) ||
-                $fw->call($this->onSuspect, [$this, $id]) === false) {
-                // NB: `session_destroy` can't be called at that stage;
-                // `session_start` not completed
-                $this->destroy($id);
-                $this->close();
-                unset($fw->{'COOKIE.'.session_name()});
-                $fw->error(403);
-            }
+            $this->handleSuspiciousSession();
         }
         return $this->get('data');
     }
@@ -113,30 +87,6 @@ class Session extends Mapper implements \SessionHandlerInterface
     }
 
     /**
-     * Return session id (if session has started)
-     */
-    public function sid(): ?string
-    {
-        return $this->sid;
-    }
-
-    /**
-     * Return anti-CSRF token
-     */
-    public function csrf(): string
-    {
-        return $this->_csrf;
-    }
-
-    /**
-     * Return IP address
-     */
-    public function ip(): string
-    {
-        return $this->_ip;
-    }
-
-    /**
      * Return Unix timestamp
      */
     public function stamp(): false|string
@@ -147,38 +97,17 @@ class Session extends Mapper implements \SessionHandlerInterface
     }
 
     /**
-     * Return HTTP user agent
-     */
-    public function agent(): string
-    {
-        return $this->_agent;
-    }
-
-    /**
      * Register session handler
      */
     public function __construct(
         \F3\DB\Mongo $db,
         string $table = 'sessions',
         ?callable $onSuspect = null,
-        ?string $key = null
+        ?string $CsrfKeyName = null
     ) {
         parent::__construct($db, $table);
         $this->onSuspect = $onSuspect;
-        session_set_save_handler($this);
-        register_shutdown_function('session_commit');
-        $fw = Base::instance();
-        $headers = $fw->HEADERS;
-        $this->_csrf = $fw->hash(
-            $fw->SEED.
-            extension_loaded('openssl') ?
-                implode(unpack('L', openssl_random_pseudo_bytes(4))) :
-                mt_rand(),
-        );
-        if ($key)
-            $fw->$key = $this->_csrf;
-        $this->_agent = $headers['User-Agent'] ?? '';
-        $this->_ip = $fw->IP;
+        $this->register($CsrfKeyName);
     }
 
 }
