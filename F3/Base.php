@@ -356,16 +356,9 @@ namespace F3 {
         {
             $parts = self::cut($key);
             $val = $this->ref($parts, false);
-            if (\is_string($val) && !\is_null($args)) {
-                return Base::instance()->format($val, ...(\is_array($args) ? $args : [$args]));
-            }
-            if (\is_null($val)) {
-                // TODO: move this to Base class?
-                // Attempt to retrieve from cache
-                if (Cache::instance()->exists(Base::instance()->hash($key).'.var', $data))
-                    return $data;
-            }
-            return $val;
+            return (\is_string($val) && !\is_null($args))
+                ? Base::instance()->format($val, ...(\is_array($args) ? $args : [$args]))
+                : $val;
         }
 
         /**
@@ -733,6 +726,21 @@ namespace F3 {
                 throw new \Exception(\sprintf(self::E_Hive, $this->stringify($key)));
             $out = &parent::ref($parts, $add, val: $val);
             return $out;
+        }
+
+        /**
+         * Retrieve contents of hive key, check cache if not found
+         * use $args to format string values directly
+         */
+        public function get(string $key, string|array|null $args = null): mixed
+        {
+            $val = parent::get($key, $args);
+            if (\is_null($val)) {
+                // Attempt to retrieve from cache
+                if (Cache::instance()->exists($this->hash($key).'.var', $data))
+                    return $data;
+            }
+            return $val;
         }
 
         /**
@@ -1262,9 +1270,8 @@ namespace F3 {
         /**
          * Return locale-aware formatted string
          */
-        public function format(): string
+        public function format(...$args): string
         {
-            $args = \func_get_args();
             $val = \array_shift($args);
             // Get formatting rules
             $conv = \localeconv();
@@ -1370,7 +1377,7 @@ namespace F3 {
                                                 $sgn = $positive_sign;
                                                 $pre = 'p';
                                             }
-                                            return \str_replace(
+                                            return \trim(\str_replace(
                                                 ['+', 'n', 'c'],
                                                 [
                                                     $sgn,
@@ -1387,7 +1394,7 @@ namespace F3 {
                                                     (${$pre.'_sign_posn'} % 5).
                                                     (${$pre.'_sep_by_space'} % 3)
                                                 )],
-                                            );
+                                            ));
                                         case 'percent':
                                             return \number_format(
                                                     $args[$pos] * 100,
@@ -1629,10 +1636,7 @@ namespace F3 {
         {
             if (!$headers)
                 $headers = $this->HEADERS;
-            return $headers['X-Operamini-Phone-UA']
-                ?? $headers['X-Skyfire-Phone']
-                ?? $headers['User-Agent']
-                ?? '';
+            return $headers['User-Agent'] ?? '';
         }
 
         /**
@@ -2203,7 +2207,7 @@ namespace F3 {
                                             $match['rval'],
                                         ",",
                                         '"',
-                                        "\\",
+                                        "",
                                     )),
                             );
                         } else {
@@ -2234,7 +2238,7 @@ namespace F3 {
                                     ),
                                     ",",
                                     '"',
-                                    "\\",
+                                    "",
                                 ),
                             );
                             \preg_match(
@@ -2250,7 +2254,7 @@ namespace F3 {
                                 $args = [$args];
                             if (isset($ttl))
                                 $args = \array_merge($args, [$ttl]);
-                            call_user_func_array(
+                            \call_user_func_array(
                                 [$this, 'set'],
                                 \array_merge(
                                     [
