@@ -22,6 +22,7 @@
 namespace F3\DB\Mongo;
 
 use F3\DB\Mongo;
+use MongoDB\Collection;
 
 /**
  * MongoDB mapper
@@ -32,7 +33,7 @@ class Mapper extends \F3\DB\Cursor
     // MongoDB wrapper
     protected Mongo $db;
     // Mongo collection
-    protected $collection;
+    protected Collection $collection;
     // Mongo document
     protected $document = [];
     // Mongo cursor
@@ -85,7 +86,7 @@ class Mapper extends \F3\DB\Cursor
     /**
      * Convert array to mapper object
      */
-    public function factory(array $row): static
+    public function factory(iterable $row): static
     {
         $mapper = clone($this);
         $mapper->reset();
@@ -138,6 +139,7 @@ class Mapper extends \F3\DB\Cursor
                 $result,
             )) || !$ttl || $cached[0] + $ttl < microtime(true)) {
             if ($options['group']) {
+                // TODO: refactor to aggregation pipeline
                 $grp = $this->collection->group(
                     $options['group']['keys'],
                     $options['group']['initial'],
@@ -147,11 +149,11 @@ class Mapper extends \F3\DB\Cursor
                         'finalize' => $options['group']['finalize'],
                     ],
                 );
-                $tmp = $this->db->selectcollection(
+                $tmp = $this->db->selectCollection(
                     $fw->HOST.'.'.$fw->BASE.'.'.
                     uniqid('', true).'.tmp',
                 );
-                $tmp->batchinsert($grp['retval'], ['w' => 1]);
+                $tmp->insertMany($grp['retval'], ['w' => 1]);
                 $filter = [];
                 $collection = $tmp;
             } else {
@@ -164,7 +166,7 @@ class Mapper extends \F3\DB\Cursor
                 'limit' => $options['limit'],
                 'skip' => $options['offset'],
             ]);
-            $result = $this->cursor->toarray();
+            $result = $this->cursor->toArray();
 
             if ($options['group'])
                 $tmp->drop();
@@ -219,7 +221,7 @@ class Mapper extends \F3\DB\Cursor
                 $result,
             )) || !$ttl ||
             $cached[0] + $ttl < microtime(true)) {
-            $result = $this->collection->count($filter ?: []);
+            $result = $this->collection->countDocuments($filter ?: []);
             if ($fw->CACHE && $ttl)
                 // Save to cache backend
                 $cache->set($hash, $result, $ttl);
@@ -253,8 +255,8 @@ class Mapper extends \F3\DB\Cursor
             ) === false)
             return $this->document;
 
-        $result = $this->collection->insertone($this->document);
-        $pkey = ['_id' => $result->getinsertedid()];
+        $result = $this->collection->insertOne($this->document);
+        $pkey = ['_id' => $result->getInsertedId()];
 
         if (isset($this->trigger['afterInsert']))
             \F3\Base::instance()->call(
@@ -268,7 +270,7 @@ class Mapper extends \F3\DB\Cursor
     /**
      * Update current record
      */
-    function update(): static
+    public function update(): static
     {
         $pkey = ['_id' => $this->document['_id']];
         if (isset($this->trigger['beforeUpdate']) &&
@@ -279,13 +281,13 @@ class Mapper extends \F3\DB\Cursor
             return $this->document;
         $upsert = ['upsert' => true];
 
-        $this->collection->replaceone($pkey, $this->document, $upsert);
+        $this->collection->replaceOne($pkey, $this->document, $upsert);
         if (isset($this->trigger['afterUpdate']))
             \F3\Base::instance()->call(
                 $this->trigger['afterUpdate'],
                 [$this, $pkey],
             );
-        return $this->document;
+        return $this;
     }
 
     /**
@@ -300,7 +302,7 @@ class Mapper extends \F3\DB\Cursor
                     $out += $mapper->erase();
                 return $out;
             }
-            return $this->collection->deletemany($filter);
+            return $this->collection->deleteMany($filter)->getDeletedCount();
         }
         $pkey = ['_id' => $this->document['_id']];
         if (isset($this->trigger['beforeErase']) &&
@@ -309,14 +311,14 @@ class Mapper extends \F3\DB\Cursor
                 [$this, $pkey],
             ) === false)
             return false;
-        $result = $this->collection->deleteone(['_id' => $this->document['_id']]);
+        $result = $this->collection->deleteOne(['_id' => $this->document['_id']]);
         parent::erase();
         if (isset($this->trigger['afterErase']))
             \F3\Base::instance()->call(
                 $this->trigger['afterErase'],
                 [$this, $pkey],
             );
-        return $result;
+        return $result->getDeletedCount();
     }
 
     /**
@@ -370,7 +372,7 @@ class Mapper extends \F3\DB\Cursor
     public function __construct(\F3\DB\Mongo $db, string $collection, ?array $fields = null)
     {
         $this->db = $db;
-        $this->collection = $db->selectcollection($collection);
+        $this->collection = $db->selectCollection($collection);
         $this->fields = $fields;
         $this->reset();
     }

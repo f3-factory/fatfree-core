@@ -27,6 +27,7 @@ use MongoDB\Database;
 
 /**
  * MongoDB wrapper
+ * @mixin Database
  */
 class Mongo
 {
@@ -78,8 +79,7 @@ class Mongo
                 if (!preg_match('/\.system\..+$/', $frame['ns']))
                     $this->log .= date(
                             'r',
-                            $this->legacy() ?
-                                $frame['ts']->sec : (round((string) $frame['ts']) / 1000),
+                            round(((string) $frame['ts']) / 1000),
                         ).
                         ' ('.sprintf('%.1f', $frame['millis']).'ms) '.
                         $frame['ns'].' ['.$frame['op'].'] '.
