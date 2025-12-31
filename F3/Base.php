@@ -2910,6 +2910,26 @@ namespace F3 {
         }
 
         /**
+         * cache return value of a callback, support cache tags
+         * @param string $key
+         * @param callable $func
+         * @param int|array{0: int, 1: string} $ttl
+         * @return mixed
+         */
+        public function remember(string $key, callable $func, int|array $ttl = 0): mixed
+        {
+            $ndx = $key;
+            if (\is_array($ttl)) {
+                $ndx.='.'.$ttl[1];
+                $ttl = $ttl[0];
+            }
+            if ($this->exists($ndx, $val))
+                return $val;
+            $this->set($ndx, $val = $func(), $ttl);
+            return $val;
+        }
+
+        /**
          * Retrieve value of cache entry
          */
         public function get(string $key): mixed
