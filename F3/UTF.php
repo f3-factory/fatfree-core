@@ -73,7 +73,6 @@ class UTF
     }
 
     /**
-     *
      * Returns part of haystack string from the first occurrence of
      * needle to the end of haystack (case-insensitive)
      */

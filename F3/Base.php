@@ -558,7 +558,10 @@ namespace F3 {
         public int $LOCK = LOCK_EX;
         public string|array $LOGGABLE = '*';
         public string $LOGS = './';
-        public bool $MB = false;
+        /**
+         * Mutex lock driver
+         */
+        public ?MutexHandler $MUTEX = null;
         public mixed $ONERROR = null;
         /**
          * @var string|array|null|\Closure(string $url, bool $permanent, bool $exit):void
@@ -2274,16 +2277,15 @@ namespace F3 {
         /**
          * Create mutex, invoke callback then drop ownership when done
          */
-        public function mutex(string $id, callable|string $func, mixed $args = null): mixed
+        public function mutex(string $id, callable|string $func, mixed $args = [], int $block = 300): mixed
         {
+            if ($this->MUTEX)
+                return $this->call([$this->MUTEX, 'mutex'], \func_get_args());
             if (!\is_dir($tmp = $this->TEMP))
                 \mkdir($tmp, self::MODE, true);
             // Use filesystem lock
-            if (\is_file(
-                    $lock = $tmp.
-                        $this->SEED.'.'.$this->hash($id).'.lock',
-                ) &&
-                \filemtime($lock) + \ini_get('max_execution_time') < \microtime(true))
+            if (\is_file($lock = $tmp.$this->SEED.'.'.$this->hash($id).'.lock') &&
+                \filemtime($lock) + ($block ?: \ini_get('max_execution_time')) < \microtime(true))
                 // Stale lock
                 @\unlink($lock);
             while (!($handle = @\fopen($lock, 'x')) && !\connection_aborted())
@@ -2836,8 +2838,16 @@ namespace F3 {
         /* throw response handler */
     }
 
+    interface MutexHandler
+    {
+        /**
+         * execute mutual exclusion lock operation
+         */
+        public function mutex(string $id, callable|string $func, array $args = [], int $block = 300): mixed;
+    }
+
     //! Cache engine
-    class Cache
+    class Cache implements MutexHandler
     {
 
         use Prefab;
@@ -2889,7 +2899,7 @@ namespace F3 {
         {
             $fw = Base::instance();
             if (!$this->dsn)
-                return true;
+                return false;
             $ndx = $this->prefix.'.'.$key;
             if ($cached = $this->exists($key))
                 $ttl = $cached[1];
@@ -2927,6 +2937,37 @@ namespace F3 {
                 return $val;
             $this->set($ndx, $val = $func(), $ttl);
             return $val;
+        }
+
+        /**
+         * execute mutual exclusion lock operation
+         */
+        public function mutex(string $id, callable|string $func, array $args = [], int $block = 300): mixed
+        {
+            $fw = \F3\Base::instance();
+            $lock = $fw->hash($id).'.'.$fw->SEED.'.lock';
+            \usleep(\mt_rand(0, 100));
+            $mark = \time();
+            if (!$this->dsn)
+                throw new \RuntimeException('Unable to obtain lock without enabled Cache');
+            while ($this->exists($lock, $val) !== FALSE) {
+                if ($mark + $block < \time())
+                    // stale lock
+                    $this->clear($lock);
+                \usleep(\mt_rand(0, 100) * 1000);
+            }
+            $mark = \time();
+            try {
+                while(!$this->set($lock, $id, $block)) {
+                    if ($mark + 10 < \time())
+                        throw new \RuntimeException('Unable to get lock in time');
+                    \usleep(\mt_rand(100, 100) * 1000);
+                }
+                $out = $fw->call($func, $args);
+            } finally {
+                $this->clear($lock);
+            }
+            return $out;
         }
 
         /**
