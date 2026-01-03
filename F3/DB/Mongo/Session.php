@@ -49,8 +49,14 @@ class Session extends Mapper implements \SessionHandlerInterface
         $this->load(['session_id' => $this->sid = $id]);
         if ($this->dry())
             return '';
-        if ($this->get('ip') != $this->_ip || $this->get('agent') != $this->_agent) {
+        $threadLevel = $this->getThreatLevel($this->get('ip'), $this->get('agent'));
+        if (($threadLevel >= $this->threatLevelThreshold))
             $this->handleSuspiciousSession();
+        else {
+            $this->set('ip', $this->_ip);
+            $this->set('agent', $this->_agent);
+            if ($this->onRead)
+                \F3\Base::instance()->call($this->onRead, [$this, $threadLevel]);
         }
         return $this->get('data');
     }
@@ -102,12 +108,9 @@ class Session extends Mapper implements \SessionHandlerInterface
     public function __construct(
         \F3\DB\Mongo $db,
         string $table = 'sessions',
-        ?callable $onSuspect = null,
-        ?string $CsrfKeyName = null
     ) {
         parent::__construct($db, $table);
-        $this->onSuspect = $onSuspect;
-        $this->register($CsrfKeyName);
+        $this->register();
     }
 
 }

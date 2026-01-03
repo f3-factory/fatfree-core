@@ -2303,7 +2303,7 @@ namespace F3 {
          */
         public function read(string $file, bool $lf = false): string|false
         {
-            if (!file_exists($file)) {
+            if (!\file_exists($file)) {
                 return false;
             }
             $out = \file_get_contents($file);
@@ -4495,7 +4495,7 @@ namespace F3\Http {
          */
         public function send_headers(): void
         {
-            if (PHP_SAPI == 'cli' || headers_sent())
+            if (PHP_SAPI == 'cli' || \headers_sent())
                 return;
             foreach ($this->RESPONSE_HEADERS as $hl)
                 \header($hl);

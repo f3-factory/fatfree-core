@@ -59,8 +59,14 @@ class Session extends Magic implements \SessionHandlerInterface
         if (!$data = $this->_cache->get($id.'.@'))
             return '';
         $this->_data = $data;
-        if ($data['ip'] != $this->_ip || $data['agent'] != $this->_agent) {
+        $threadLevel = $this->getThreatLevel($data['ip'], $data['agent']);
+        if (($threadLevel >= $this->threatLevelThreshold))
             $this->handleSuspiciousSession();
+        else {
+            $data['ip'] = $this->_ip;
+            $data['agent'] = $this->_agent;
+            if ($this->onRead)
+                \F3\Base::instance()->call($this->onRead, [$this, $threadLevel]);
         }
         return $data['data'];
     }
@@ -107,7 +113,7 @@ class Session extends Magic implements \SessionHandlerInterface
     public function stamp(): false|string
     {
         if (!$this->sid)
-            \session_start();
+            \F3\Base::instance()->session_start();
         return $this->_cache->exists($this->sid.'.@', $data) ?
             $data['stamp'] : false;
     }
@@ -115,16 +121,12 @@ class Session extends Magic implements \SessionHandlerInterface
     /**
      * Register session handler
      */
-    public function __construct(
-        ?callable $onSuspect = null,
-        ?string $CsrfKeyName = null,
-        ?Cache $cache = null,
-    ) {
-        $this->onSuspect = $onSuspect;
+    public function __construct(?Cache $cache = null)
+    {
         $this->_cache = $cache ?: Cache::instance();
         if (!$this->_cache->engine())
             throw new \Exception(self::E_NO_CACHE);
-        $this->register($CsrfKeyName);
+        $this->register();
     }
 
     /**

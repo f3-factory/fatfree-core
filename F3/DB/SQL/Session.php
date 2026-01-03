@@ -51,8 +51,14 @@ class Session extends Mapper implements \SessionHandlerInterface
         $this->load(['session_id=?', $this->sid = $id]);
         if ($this->dry())
             return '';
-        if ($this->get('ip') != $this->_ip || $this->get('agent') != $this->_agent) {
+        $threadLevel = $this->getThreatLevel($this->get('ip'), $this->get('agent'));
+        if (($threadLevel >= $this->threatLevelThreshold))
             $this->handleSuspiciousSession();
+        else {
+            $this->set('ip', $this->_ip);
+            $this->set('agent', $this->_agent);
+            if ($this->onRead)
+                \F3\Base::instance()->call($this->onRead, [$this, $threadLevel]);
         }
         return $this->get('data');
     }
@@ -85,7 +91,7 @@ class Session extends Mapper implements \SessionHandlerInterface
      */
     public function gc(int $max_lifetime): int|false
     {
-        return (int) $this->erase(['stamp+?<?', $max_lifetime, time()]);
+        return (int) $this->erase(['stamp+?<?', $max_lifetime, \time()]);
     }
 
     /**
@@ -94,7 +100,7 @@ class Session extends Mapper implements \SessionHandlerInterface
     public function stamp(): false|string
     {
         if (!$this->sid)
-            \session_start();
+            \F3\Base::instance()->session_start();
         return $this->dry() ? false : $this->get('stamp');
     }
 
@@ -103,22 +109,18 @@ class Session extends Mapper implements \SessionHandlerInterface
      * @param SQL $db
      * @param string $table
      * @param bool $force
-     * @param callable|null $onSuspect
-     * @param string|null $CsrfKeyName
-     * @param string $type column type for data field
+     * @param string $columnType column type for data field
      */
     public function __construct(
         SQL $db,
         string $table = 'sessions',
         bool $force = true,
-        ?callable $onSuspect = null,
-        ?string $CsrfKeyName = null,
-        string $type = 'TEXT'
+        string $columnType = 'TEXT'
     ) {
         if ($force) {
             $eol = "\n";
             $tab = "\t";
-            $sqlsrv = preg_match('/mssql|sqlsrv|sybase/', $db->driver());
+            $sqlsrv = \preg_match('/mssql|sqlsrv|sybase/', $db->driver());
             $db->exec(
                 ($sqlsrv ?
                     ('IF NOT EXISTS (SELECT * FROM sysobjects WHERE '.
@@ -130,7 +132,7 @@ class Session extends Mapper implements \SessionHandlerInterface
                 $db->quotekey($table, false).' ('.$eol.
                 ($sqlsrv ? $tab.$db->quotekey('id').' INT IDENTITY,'.$eol : '').
                 $tab.$db->quotekey('session_id').' VARCHAR(255),'.$eol.
-                $tab.$db->quotekey('data').' '.$type.','.$eol.
+                $tab.$db->quotekey('data').' '.$columnType.','.$eol.
                 $tab.$db->quotekey('ip').' VARCHAR(45),'.$eol.
                 $tab.$db->quotekey('agent').' VARCHAR(300),'.$eol.
                 $tab.$db->quotekey('stamp').' INTEGER,'.$eol.
@@ -140,8 +142,7 @@ class Session extends Mapper implements \SessionHandlerInterface
             );
         }
         parent::__construct($db, $table);
-        $this->onSuspect = $onSuspect;
-        $this->register($CsrfKeyName);
+        $this->register();
         if (\strlen($this->_agent) > 300) {
             $this->_agent = \substr($this->_agent, 0, 300);
         }
