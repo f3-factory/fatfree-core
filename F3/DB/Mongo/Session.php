@@ -98,7 +98,7 @@ class Session extends Mapper implements \SessionHandlerInterface
     public function stamp(): false|string
     {
         if (!$this->sid)
-            session_start();
+            \F3\Base::instance()->session_start();
         return $this->dry() ? false : $this->get('stamp');
     }
 
