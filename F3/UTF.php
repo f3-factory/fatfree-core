@@ -33,8 +33,8 @@ class UTF
      */
     public function strlen(string $str): int
     {
-        preg_match_all('/./us', $str, $parts);
-        return count($parts[0]);
+       \preg_match_all('/./us', $str, $parts);
+        return \count($parts[0]);
     }
 
     /**
@@ -42,8 +42,8 @@ class UTF
      */
     public function strrev(string $str): string
     {
-        preg_match_all('/./us', $str, $parts);
-        return implode('', array_reverse($parts[0]));
+        \preg_match_all('/./us', $str, $parts);
+        return \implode('', \array_reverse($parts[0]));
     }
 
     /**
@@ -63,9 +63,9 @@ class UTF
         int $ofs = 0,
         bool $case = false,
     ): false|int {
-        return preg_match(
+        return \preg_match(
             '/^(.{'.$ofs.'}.*?)'.
-            preg_quote($needle, '/').'/us'.($case ? 'i' : ''),
+            \preg_quote($needle, '/').'/us'.($case ? 'i' : ''),
             $stack,
             $match,
         ) ?
@@ -93,8 +93,8 @@ class UTF
     ): false|string {
         if (!$needle)
             return false;
-        preg_match(
-            '/^(.*?)'.preg_quote($needle, '/').'/us'.($case ? 'i' : ''),
+        \preg_match(
+            '/^(.*?)'.\preg_quote($needle, '/').'/us'.($case ? 'i' : ''),
             $stack,
             $match,
         );
@@ -114,7 +114,7 @@ class UTF
             $start = $this->strlen($str) + $start;
         if (!$len)
             $len = $this->strlen($str) - $start;
-        return preg_match('/^.{'.$start.'}(.{0,'.$len.'})/us', $str, $match) ?
+        return \preg_match('/^.{'.$start.'}(.{0,'.$len.'})/us', $str, $match) ?
             $match[1] : false;
     }
 
@@ -123,13 +123,13 @@ class UTF
      */
     public function substr_count(string $stack, string $needle): int
     {
-        preg_match_all(
-            '/'.preg_quote($needle, '/').'/us',
+        \preg_match_all(
+            '/'.\preg_quote($needle, '/').'/us',
             $stack,
             $matches,
             PREG_SET_ORDER,
         );
-        return count($matches);
+        return \count($matches);
     }
 
     /**
@@ -137,7 +137,7 @@ class UTF
      */
     public function ltrim(string $str): string
     {
-        return preg_replace('/^[\pZ\pC]+/u', '', $str);
+        return \preg_replace('/^[\pZ\pC]+/u', '', $str);
     }
 
     /**
@@ -145,7 +145,7 @@ class UTF
      */
     public function rtrim(string $str): string
     {
-        return preg_replace('/[\pZ\pC]+$/u', '', $str);
+        return \preg_replace('/[\pZ\pC]+$/u', '', $str);
     }
 
     /**
@@ -153,7 +153,7 @@ class UTF
      */
     public function trim(string $str): string
     {
-        return preg_replace('/^[\pZ\pC]+|[\pZ\pC]+$/u', '', $str);
+        return \preg_replace('/^[\pZ\pC]+|[\pZ\pC]+$/u', '', $str);
     }
 
     /**
@@ -161,7 +161,7 @@ class UTF
      */
     public function bom(): string
     {
-        return chr(0xef).chr(0xbb).chr(0xbf);
+        return \chr(0xef).\chr(0xbb).\chr(0xbf);
     }
 
     /**
@@ -169,8 +169,8 @@ class UTF
      */
     public function translate(string $str): string
     {
-        return html_entity_decode(
-            preg_replace('/\\\\u([[:xdigit:]]+)/i', '&#x\1;', $str),
+        return \html_entity_decode(
+            \preg_replace('/\\\\u([[:xdigit:]]+)/i', '&#x\1;', $str),
         );
     }
 
@@ -192,9 +192,9 @@ class UTF
                 '8O' => '\u1f632', // oops
             ] + Base::instance()->EMOJI;
         return $this->translate(
-            str_replace(
-                array_keys($map),
-                array_values($map),
+            \str_replace(
+                \array_keys($map),
+                \array_values($map),
                 $str,
             ),
         );
