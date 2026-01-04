@@ -2111,7 +2111,7 @@ namespace F3 {
                     $i = 0;
                     foreach ($ref->getParameters() as $p) {
                         $out[$pn = $p->getName()] =
-                            $args[$pn] ?? $service->resolveParam($p) ?? $args[$i++];
+                            $args[$pn] ?? $args[$i++] ?? $service->resolveParam($p);
                     }
                     $args = $out;
                 }
