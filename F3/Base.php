@@ -467,6 +467,7 @@ namespace F3 {
         public string $AGENT = '';
         public bool $AJAX = false;
         public ?string $ALIAS = null;
+        public bool $ABSOLUTE_ALIAS = true;
         public array $ALIASES = [];
         /** @var string|array{string, ?callable(string): string} */
         public string|array $AUTOLOAD = './';
@@ -637,8 +638,8 @@ namespace F3 {
         /**
          * Replace tokenized URL with available token values
          * @param $url array|string
-         * @param $addParams bool merge default PARAMS from hive into args
          * @param $args array
+         * @param $addParams bool merge default PARAMS from hive into args
          **/
         public function build(
             string|array $url,
@@ -1913,6 +1914,7 @@ namespace F3 {
             array|string $params = [],
             string|array|null $query = null,
             ?string $fragment = null,
+            bool $baseHandling = true,
         ): string {
             if (!\is_array($params))
                 $params = $this->parse($params);
@@ -1921,7 +1923,9 @@ namespace F3 {
             $url = $this->build($this->ALIASES[$name], $params);
             if (\is_array($query))
                 $query = \http_build_query($query);
-            return $url.($query ? ('?'.$query) : '').($fragment ? '#'.$fragment : '');
+            $out = ($this->ABSOLUTE_ALIAS && $baseHandling ? $this->BASE : '')
+                .$url.($query ? ('?'.$query) : '').($fragment ? '#'.$fragment : '');
+            return (!$this->ABSOLUTE_ALIAS && $baseHandling) ? ltrim($out, '/') : $out;
         }
 
         /**
@@ -4077,17 +4081,13 @@ namespace F3\Http {
             if (!$url)
                 $url = $this->REALM;
             if (\is_array($url))
-                $url = \call_user_func_array([$this, 'alias'], $url);
+                $url = \call_user_func_array([$this, 'alias'], [...$url, 'baseHandling' => false]);
             elseif (\preg_match(
-                    '/^@([^\/()?#]+)(?:\((.+?)\))*(\?[^#]+)*(#.+)*/',
+                    '/^@([^\/()?#]+)(?:\((.+?)\))*(?:\?([^#]+))*(?:#(.+))?/',
                     $url,
                     $parts,
                 ) && isset($this->ALIASES[$parts[1]]))
-                $url = $this->build(
-                        $this->ALIASES[$parts[1]],
-                        isset($parts[2]) ? $this->parse($parts[2]) : [],
-                    ).
-                    ($parts[3] ?? '').($parts[4] ?? '');
+                $url = $this->alias($parts[1], $parts[2] ?? [], $parts[3] ?? null, $parts[4] ?? null, false);
             else
                 $url = $this->build($url);
             if (($handler = $this->ONREROUTE) &&
