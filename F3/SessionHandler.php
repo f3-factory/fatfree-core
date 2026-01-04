@@ -89,7 +89,10 @@ trait SessionHandler {
     {
         $fw = Base::instance();
         if (!$this->onSuspect || $fw->call($this->onSuspect, [$this, $this->sid]) === false) {
-            //NB: `session_destroy` can't be called at that stage (`session_start` not completed)
+            // NB: `session_destroy` can't be called at that stage (`session_start` not completed)
+            // and will cause error "Cannot call session save handler in a recursive manner",
+            // hence do not use $f3->clear('SESSION') within this callback.
+            // this error could be omitted, though this SessionHandlers destroy method isn't called then
             $this->destroy($this->sid);
             $this->close();
             unset($fw->{'COOKIE.'.\session_name()});
@@ -154,7 +157,7 @@ trait SessionHandler {
         // RFC 7230, 3.2.4. §8, only consume printable ASCII charset
         $this->_agent = \preg_replace('/\s+/', ' ',
             \preg_replace('/[^ -~]/', '',
-                $fw->HEADERS['User-Agent'] ?? '')
+                $fw->HEADERS['User-Agent'] ?? ''),
         );
         $this->_ip = $fw->IP;
         $this->checkSessionId();

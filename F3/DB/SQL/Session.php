@@ -108,16 +108,16 @@ class Session extends Mapper implements \SessionHandlerInterface
      * Register session handler
      * @param SQL $db
      * @param string $table
-     * @param bool $force
+     * @param bool $forceInstall
      * @param string $columnType column type for data field
      */
     public function __construct(
         SQL $db,
         string $table = 'sessions',
-        bool $force = true,
+        bool $forceInstall = false,
         string $columnType = 'TEXT'
     ) {
-        if ($force) {
+        $install = function () use ($columnType, $table, $db) {
             $eol = "\n";
             $tab = "\t";
             $sqlsrv = \preg_match('/mssql|sqlsrv|sybase/', $db->driver());
@@ -140,8 +140,15 @@ class Session extends Mapper implements \SessionHandlerInterface
                 ($sqlsrv ? ',CONSTRAINT [UK_session_id] UNIQUE(session_id)' : '').
                 ');',
             );
+        };
+        if ($forceInstall)
+            $install();
+        try {
+            parent::__construct($db, $table);
+        } catch (\PDOException $e) {
+            $install();
+            parent::__construct($db, $table);
         }
-        parent::__construct($db, $table);
         $this->register();
         if (\strlen($this->_agent) > 300) {
             $this->_agent = \substr($this->_agent, 0, 300);
