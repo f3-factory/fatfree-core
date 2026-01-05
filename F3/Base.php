@@ -4242,6 +4242,7 @@ namespace F3\Http {
                     continue;
                 if (isset($route[$this->VERB]) && !$preflight) {
                     $response = $stream = null;
+                    $ob_started = false;
                     // capture response exceptions
                     try {
                         if ($this->REROUTE_TRAILING_SLASH &&
@@ -4315,7 +4316,7 @@ namespace F3\Http {
                             // get input data from requests PUT,PATCH and POST (as json) etc.
                             if (!$this->RAW && !$this->BODY)
                                 $this->BODY = \file_get_contents('php://input');
-                            \ob_start();
+                            $ob_started = \ob_start();
                             // Call route handler
                             $response = $this->callRoute($handler, [
                                 'f3' => $this,
@@ -4377,7 +4378,7 @@ namespace F3\Http {
                         $this->RESPONSE = $isPsr ? $response : $body;
                     } catch (ResponseException $r) {
                         // handle response from error handler
-                        $out = \ob_get_clean();
+                        $out = $ob_started ? \ob_get_clean() : null;
                         if (!empty($out) && !$this->RESPONSE)
                             $this->RESPONSE = $out;
                         $isPsr = \is_object($this->RESPONSE)
@@ -4390,7 +4391,7 @@ namespace F3\Http {
                             $body = $this->RESPONSE;
                         }
                     } catch (\Throwable $t) {
-                        $this->RESPONSE = \ob_get_clean();
+                        $this->RESPONSE = $ob_started ? \ob_get_clean() : null;
                         !$this->NONBLOCKING && throw $t;
                         // handle response from error handler
                         $response = $this->error(

@@ -152,7 +152,7 @@ class OpenID extends \F3\Magic
         if (empty($this->args['return_to']))
             $this->args['return_to'] = $root.$_SERVER['REQUEST_URI'];
         $this->args['mode'] = 'checkid_setup';
-        if ($this->url = $this->discover($proxy)) {
+        if ($this->url = $this->discover($proxy??'')) {
             if ($attr) {
                 $this->args['ns.ax'] = 'http://openid.net/srv/ax/1.0';
                 $this->args['ax.mode'] = 'fetch_request';
