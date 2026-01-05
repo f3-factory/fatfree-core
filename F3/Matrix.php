@@ -45,8 +45,8 @@ class Matrix
     public function select(array|string $fields, array|string $data): array
     {
         return array_intersect_key(
-            is_array($data) ? $data : \Base::instance()->get($data),
-            array_flip(is_array($fields) ? $fields : \Base::instance()->split($fields)),
+            is_array($data) ? $data : Base::instance()->get($data),
+            array_flip(is_array($fields) ? $fields : Base::instance()->split($fields)),
         );
     }
 
