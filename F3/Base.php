@@ -559,6 +559,7 @@ namespace F3 {
         public int $LOCK = LOCK_EX;
         public string|array $LOGGABLE = '*';
         public string $LOGS = './';
+        public array $MIDDLEWARES = [];
         /**
          * Mutex lock driver
          */
@@ -580,7 +581,7 @@ namespace F3 {
         public bool $RAW = false;
         public string $REALM = '';
         public bool $REROUTE_TRAILING_SLASH = true;
-        public string|object $RESPONSE = '';
+        public string|object|null $RESPONSE = null;
         public array $RESPONSE_HEADERS = [];
         public string $ROOT = '';
         public array $ROUTES = [];
@@ -2623,7 +2624,7 @@ namespace F3 {
          */
         public function request(ServerRequestInterface $request): void
         {
-            $this->RESPONSE = '';
+            $this->RESPONSE = null;
             // reuse current request instance instead of rebuilding it when used elsewhere
             $this->CONTAINER->set(ServerRequestInterface::class, $request);
             $this->SERVER = $request->getServerParams();
@@ -2634,9 +2635,8 @@ namespace F3 {
                     '/',
                 ) : '';
             $headers = [];
-            foreach ($request->getHeaders() as $name => $value) {
+            foreach ($request->getHeaders() as $name => $value)
                 $headers[\ucwords($name, '-')] = \implode(',', $value);
-            }
             $this->HEADERS = $headers;
             $this->AGENT = $this->agent($headers);
             $this->AJAX = $this->ajax($headers);
@@ -2645,11 +2645,11 @@ namespace F3 {
             $this->TIME = $this->SERVER['REQUEST_TIME_FLOAT'];
             $this->JAR->updateRequestTime($this->TIME);
             $this->JAR->domain = \str_contains($this->HOST, '.') &&
-            !\filter_var($this->HOST, FILTER_VALIDATE_IP) ? $this->HOST : '';
+                !\filter_var($this->HOST, FILTER_VALIDATE_IP) ? $this->HOST : '';
             $uri = $request->getUri();
             $this->PATH = $uri->getPath();
-            $scheme = isset($this->SERVER['HTTPS']) && $this->SERVER['HTTPS'] == 'on'
-            || isset($headers['X-Forwarded-Proto']) && $headers['X-Forwarded-Proto'] == 'https'
+            $scheme = (isset($this->SERVER['HTTPS']) && $this->SERVER['HTTPS'] == 'on')
+                || (isset($headers['X-Forwarded-Proto']) && $headers['X-Forwarded-Proto'] == 'https')
                 ? 'https' : 'http';
             $this->JAR->secure = $scheme == 'https';
             $port = 80;
@@ -3975,17 +3975,15 @@ namespace F3\Http {
         case HTTP_511 = 'Network Authentication Required';
     }
 
-    ;
-
+    enum RequestType: int {
+        case ANY = 0;
+        case SYNC = 1;
+        case AJAX = 2;
+        case CLI = 4;
+    }
 
     trait Router
     {
-        /** Request types */
-        const
-            REQ_SYNC = 1,
-            REQ_AJAX = 2,
-            REQ_CLI = 4;
-
         /**
          * Bind handler to route pattern
          */
@@ -3994,12 +3992,15 @@ namespace F3\Http {
             callable|array|string $handler,
             int $ttl = 0,
             int $kbps = 0,
+            array|string|null $tags = null,
         ): void {
             $types = ['sync', 'ajax', 'cli'];
             $alias = null;
+            if ($tags && !\is_array($tags))
+                $tags = [$tags];
             if (\is_array($pattern)) {
                 foreach ($pattern as $item)
-                    $this->route($item, $handler, $ttl, $kbps);
+                    $this->route($item, $handler, $ttl, $kbps, $tags);
                 return;
             }
             \preg_match(
@@ -4019,12 +4020,13 @@ namespace F3\Http {
             }
             if (empty($parts[3]))
                 throw new \Exception(\sprintf(self::E_Pattern, $pattern));
-            $type = empty($parts[5]) ? 0 : \constant('self::REQ_'.\strtoupper($parts[5]));
+            $type = empty($parts[5]) ? RequestType::ANY
+                : \constant(RequestType::class.'::'.\strtoupper($parts[5]));
             foreach ($this->split($parts[1]) as $verb) {
                 if (!\constant(Verb::class.'::'.$verb))
                     $this->error(501, $verb.' '.$this->URI);
-                $this->ROUTES[$parts[3]][$type][\strtoupper($verb)] =
-                    [is_string($handler) ? trim($handler) : $handler, $ttl, $kbps, $alias];
+                $this->ROUTES[$parts[3]][$type->value][\strtoupper($verb)] =
+                    [is_string($handler) ? trim($handler) : $handler, $ttl, $kbps, $alias, $tags];
             }
         }
 
@@ -4036,10 +4038,11 @@ namespace F3\Http {
             string|object $class,
             int $ttl = 0,
             int $kbps = 0,
+            array|string|null $tags = null,
         ): void {
             if (\is_array($url)) {
                 foreach ($url as $item)
-                    $this->map($item, $class, $ttl, $kbps);
+                    $this->map($item, $class, $ttl, $kbps, $tags);
                 return;
             }
             foreach (Verb::names() as $method)
@@ -4048,9 +4051,70 @@ namespace F3\Http {
                     \is_string($class)
                         ? $class.'->'.$this->PREMAP.\strtolower($method)
                         : [$class, $this->PREMAP.\strtolower($method)],
-                    $ttl,
-                    $kbps,
+                    $ttl, $kbps, $tags
                 );
+        }
+
+        /**
+         * register new middleware
+         * @param string|array $pattern URI pattern or tag name
+         * @param callable|string $handler
+         */
+        public function middleware(string|array $pattern, callable|string $handler): void
+        {
+            $types = ['sync', 'ajax', 'cli'];
+            if (\is_array($pattern)) {
+                foreach ($pattern as $item)
+                    $this->middleware($item, $handler);
+                return;
+            }
+            if (!\preg_match('/(?:([|\w]+)\h+(?!\[)(.+?)|(\w+))'
+                .'(?:\h+\[('.\implode('|', $types).')])?\h*$/u',
+                $pattern, $parts))
+                throw new \Exception('Invalid pattern or tag name');
+            [, $verbs, $pattern, $tag, $type] = $parts + [null,null,null,null,null];
+            $type = empty($type) ? RequestType::ANY
+                : \constant(RequestType::class.'::'.\strtoupper($type));
+            foreach ( $tag ? [0] : $this->split($verbs) as $key)
+                $this->MIDDLEWARES[$pattern ?: '#'.$tag][$type->value][$key] = [$handler];
+        }
+
+        /**
+         * returns the middleware handlers that match the current request
+         * @param ?array $tags route tags to consider
+         */
+        public function matchMiddlewares(?array $tags = null): array
+        {
+            $tagged = $handlers = [];
+            $req = \urldecode($this->PATH);
+            foreach ($this->MIDDLEWARES as $pattern => $routes) {
+                $tag = null;
+                $args = [];
+                if ($tags && \str_starts_with($pattern, '#')) {
+                    $tag = \substr($pattern,1);
+                    if (!\in_array($tag, $tags))
+                        continue;
+                } elseif (!$args = $this->mask($pattern, $req))
+                    continue;
+                \ksort($args);
+                $verb = $tag ? 0 : $this->VERB;
+                $route = $routes[($this->CLI
+                    ? RequestType::CLI
+                    : RequestType::tryFrom($this->AJAX + 1)
+                )->value] ?? $routes[RequestType::ANY->value] ?? null;
+                if (!$route || !isset($route[$verb]))
+                    continue;
+                [$handler] = $route[$verb];
+                if ($tag)
+                    $tagged[$tag] = [$handler, $args];
+                else
+                    $handlers[] = [$handler, $args];
+            }
+            // keep order of defined tags
+            foreach (\array_reverse($tags ?: []) as $tag)
+                if (isset($tagged[$tag]))
+                    $handlers[] = $tagged[$tag];
+            return $handlers;
         }
 
         /**
@@ -4058,16 +4122,12 @@ namespace F3\Http {
          */
         public function redirect(string|array $pattern, string $url, bool $permanent = true): void
         {
-            if (is_array($pattern)) {
+            if (\is_array($pattern)) {
                 foreach ($pattern as $item)
                     $this->redirect($item, $url, $permanent);
                 return;
             }
-            $this->route(
-                $pattern,
-                fn(Base $fw)
-                    => $fw->reroute($url, $permanent),
-            );
+            $this->route($pattern, fn(Base $fw) => $fw->reroute($url, $permanent));
         }
 
         /**
@@ -4203,75 +4263,72 @@ namespace F3\Http {
                 // No routes defined
                 throw new \Exception(self::E_Routes);
             // Match specific routes first
-            $paths = [];
-            foreach ($keys = \array_keys($this->ROUTES) as $key) {
-                $path = \preg_replace('/@\w+/', '*@', $key);
-                if (!\str_ends_with($path, '*'))
-                    $path .= '+';
-                $paths[] = $path;
-            }
-            $vals = \array_values($this->ROUTES);
-            \array_multisort($paths, SORT_DESC, $keys, $vals);
-            $this->ROUTES = \array_combine($keys, $vals);
+            $sortRoutes = static function ($values) {
+                $paths = [];
+                foreach ($keys = \array_keys($values) as $key) {
+                    $path = \preg_replace('/@\w+/', '*@', $key);
+                    if (!\str_ends_with($path, '*'))
+                        $path .= '+';
+                    $paths[] = $path;
+                }
+                $vals = \array_values($values);
+                \array_multisort($paths, SORT_DESC, $keys, $vals);
+                return \array_combine($keys, $vals);
+            };
+            $this->ROUTES = $sortRoutes($this->ROUTES);
+            $this->MIDDLEWARES = $sortRoutes($this->MIDDLEWARES);
             // Convert to BASE-relative URL
             $req = \urldecode($this->PATH);
-            $preflight = false;
-            if ($cors = (isset($this->HEADERS['Origin']) &&
-                $this->CORS['origin'])) {
-                $cors = $this->CORS;
-                $this->header('Access-Control-Allow-Origin: '.$cors['origin']);
-                $this->header(
-                    'Access-Control-Allow-Credentials: '.
-                    $this->export($cors['credentials']),
-                );
-                $preflight =
-                    isset($this->HEADERS['Access-Control-Request-Method']);
-            }
+            // detect CORS Preflight request and only react if configured
+            $preflight = isset($this->HEADERS['Origin']) && $this->VERB === 'OPTIONS'
+                && isset($this->HEADERS['Access-Control-Request-Method']);
             $allowed = [];
+            $route = null;
+            // get matching route, collect allowed methods
             foreach ($this->ROUTES as $pattern => $routes) {
                 if (!$args = $this->mask($pattern, $req))
                     continue;
-                \ksort($args);
-                $route = null;
-                $ptr = $this->CLI ? self::REQ_CLI : $this->AJAX + 1;
-                if (isset($routes[$ptr][$this->VERB]) ||
-                    ($preflight && isset($routes[$ptr])) ||
-                    isset($routes[$ptr = 0]))
-                    $route = $routes[$ptr];
-                if (!$route)
+                // match route request type
+                $routeMatch = $routes[($this->CLI
+                    ? RequestType::CLI
+                    : RequestType::tryFrom($this->AJAX + 1)
+                )->value] ?? $routes[RequestType::ANY->value] ?? null;
+                if (!$routeMatch)
                     continue;
-                if (isset($route[$this->VERB]) && !$preflight) {
-                    $response = $stream = null;
-                    $ob_started = false;
-                    // capture response exceptions
-                    try {
-                        if ($this->REROUTE_TRAILING_SLASH &&
-                            $this->VERB == 'GET' &&
-                            \preg_match('/.+\/$/', $this->PATH))
-                            $this->reroute(
-                                \substr($this->PATH, 0, -1).
-                                ($this->QUERY ? ('?'.$this->QUERY) : ''),
-                            );
-                        [$handler, $ttl, $kbps, $alias] = $route[$this->VERB];
-                        // Capture values of route pattern tokens
-                        $this->PARAMS = $args;
-                        // Save matching route
-                        $this->ALIAS = $alias;
-                        $this->PATTERN = $pattern;
-                        if ($cors && $cors['expose'])
-                            $this->header(
-                                'Access-Control-Expose-Headers: '.
-                                (\is_array($cors['expose']) ?
-                                    \implode(',', $cors['expose']) : $cors['expose']),
-                            );
+                // in CORS Preflight request we only collect possible methods
+                $allowed = \array_merge($allowed, \array_keys($routeMatch));
+                if ($preflight)
+                    continue;
+                if (isset($routeMatch[$this->VERB])) {
+                    // Save matching route
+                    $this->PATTERN = $pattern;
+                    $route = $routeMatch;
+                    // Capture values of route pattern tokens
+                    \ksort($args);
+                    $this->PARAMS = $args;
+                    break;
+                }
+            }
+            if ($route || $preflight) {
+                // process route
+                $response = $stream = $ttl = $handler = $tags = null;
+                $ob_started = false;
+                // capture response exceptions
+                try {
+                    if ($this->REROUTE_TRAILING_SLASH &&
+                        $this->VERB == 'GET' &&
+                        \preg_match('/.+\/$/', $this->PATH))
+                        $this->reroute(
+                            \substr($this->PATH, 0, -1).
+                            ($this->QUERY ? ('?'.$this->QUERY) : ''),
+                        );
+                    if (!$preflight) {
+                        [$handler, $ttl, $kbps, $this->ALIAS, $tags] = $route[$this->VERB];
                         if (\is_string($handler)) {
                             // Replace route pattern tokens in handler if any
                             $handler = \preg_replace_callback(
                                 '/({)?@(\w+\b)(?(1)})/',
-                                function ($id) use ($args) {
-                                    $pid = \count($id) > 2 ? 2 : 1;
-                                    return $args[$id[$pid]] ?? $id[0];
-                                },
+                                fn($id) => $this->PARAMS[$id[\count($id) > 2 ? 2 : 1]] ?? $id[0],
                                 $handler,
                             );
                             if (\preg_match('/(.+)\h*(?:->|::)/', $handler, $match) &&
@@ -4280,153 +4337,173 @@ namespace F3\Http {
                                 return null;
                             }
                         }
-                        // Process request
-                        $body = '';
-                        $isPsr = false;
-                        $now = \microtime(true);
-                        if (\preg_match('/GET|HEAD/', $this->VERB) && $ttl) {
-                            // Only GET and HEAD requests are cacheable
-                            $headers = $this->HEADERS;
-                            $cache = Cache::instance();
-                            $cached = $cache->exists(
-                                $hash = $this->hash(
-                                        $this->VERB.' '.
-                                        $this->URI,
-                                    ).'.url',
-                                $data,
-                            );
-                            if ($cached) {
-                                if (isset($headers['If-Modified-Since']) &&
-                                    \strtotime($headers['If-Modified-Since']) +
-                                    $ttl > $now) {
-                                    $this->status(304);
-                                    return null;
-                                }
-                                // Retrieve from cache backend
-                                [$headers, $body, $response] = $data;
-                                if (!$this->CLI)
-                                    \array_walk($headers, 'header');
-                                $this->expire((int) ($cached[0] + $ttl - $now));
-                            } else
-                                // Expire HTTP client-cached page
-                                $this->expire($ttl);
+                    }
+                    // Process request
+                    $body = '';
+                    $isPsr = false;
+                    $now = \microtime(true);
+                    if (\preg_match('/GET|HEAD/', $this->VERB) && $ttl) {
+                        // Only GET and HEAD requests are cacheable
+                        $headers = $this->HEADERS;
+                        $cache = Cache::instance();
+                        $cached = $cache->exists(
+                            $hash = $this->hash($this->VERB.' '.$this->URI).'.url',
+                            $data,
+                        );
+                        if ($cached) {
+                            if (isset($headers['If-Modified-Since']) &&
+                                \strtotime($headers['If-Modified-Since']) + $ttl > $now) {
+                                $this->status(304);
+                                return null;
+                            }
+                            // Retrieve from cache backend
+                            [$headers, $body, $response] = $data;
+                            if (!$this->CLI)
+                                \array_walk($headers, [$this, 'header']);
+                            $this->expire((int) ($cached[0] + $ttl - $now));
                         } else
-                            $this->expire(0);
-                        if (!\strlen($body)) {
-                            // get input data from requests PUT,PATCH and POST (as json) etc.
-                            if (!$this->RAW && !$this->BODY)
-                                $this->BODY = \file_get_contents('php://input');
-                            $ob_started = \ob_start();
-                            // Call route handler
-                            $response = $this->callRoute($handler, [
+                            // Expire HTTP client-cached page
+                            $this->expire($ttl);
+                    } else
+                        $this->expire(0);
+                    if (!\strlen($body)) {
+                        // get input data from requests PUT,PATCH and POST (as json) etc.
+                        if (!$this->RAW && !$this->BODY)
+                            $this->BODY = \file_get_contents('php://input');
+                        $ob_started = \ob_start();
+                        // response provider
+                        $passResponse = function(array $passed) {
+                            // assign response obj early to make it reusable in further handlers
+                            $psrResponse = \array_find($passed, fn($x) =>
+                                \is_object($x) && \is_a($x, 'Psr\Http\Message\ResponseInterface'));
+                            if ($psrResponse)
+                                $this->RESPONSE = $psrResponse;
+                        };
+                        // Call route handler
+                        $executor = function (...$passed) use ($allowed, $handler, $args, $preflight, $passResponse) {
+                            // assign response obj early to make it reusable in further handlers
+//                            $psrResponse = \array_find($passed, fn($x) =>
+//                                \is_object($x) && \is_a($x, 'Psr\Http\Message\ResponseInterface'));
+//                            if ($psrResponse)
+//                                $this->RESPONSE = $psrResponse;
+                            $passResponse($passed);
+                            $this->applyCORS($allowed);
+                            return $preflight ? null : $this->callRoute($handler, [
                                 'f3' => $this,
                                 'params' => $args,
                                 'args' => $args, // alias to params
                                 'handler' => $handler,
                             ], ['beforeRoute', 'afterRoute']);
-                            $body = \ob_get_clean();
-                            if ($isPsr = \is_object($response)
-                                && \is_a($response, 'Psr\Http\Message\ResponseInterface')) {
-                                if ($stream = $response->getBody())
-                                    $stream->rewind();
-                                // use psr object to service response
-                                if (!$this->CLI && !$this->NONBLOCKING) {
-                                    // only send headers here when response is NOT returned
-                                    // and processed elsewhere
-                                    $this->header(
-                                        \sprintf(
-                                            'HTTP/%s %d %s',
-                                            $response->getProtocolVersion(),
-                                            $response->getStatusCode(),
-                                            $response->getReasonPhrase(),
-                                        ),
-                                    );
-                                    foreach ($response->getHeaders() as $name => $values) {
-                                        $this->header($name.": ".\implode(", ", $values));
-                                    }
-                                }
-                            }
-                            if (isset($cache) && $this->CACHE && !\error_get_last()) {
-                                // prepare headers for cache item
-                                $headers = $this->RESPONSE_HEADERS;
-                                if ($isPsr) {
-                                    $body = $stream ? $stream->getContents() : '';
-                                    $headers = [
-                                        // status header is not returned by headers_list()
-                                        \sprintf(
-                                            'HTTP/%s %d %s',
-                                            $response->getProtocolVersion(),
-                                            $response->getStatusCode(),
-                                            $response->getReasonPhrase(),
-                                        ),
-                                        ...$headers,
-                                    ];
-                                }
-                                // Save to cache backend
-                                $cache->set($hash, [
-                                    // Remove cookies
-                                    \preg_grep(
-                                        '/Set-Cookie:/',
-                                        $headers,
-                                        PREG_GREP_INVERT,
-                                    ),
-                                    $body,
-                                    $isPsr ? null : $response,
-                                ], $ttl);
-                            }
-                        }
-                        $this->RESPONSE = $isPsr ? $response : $body;
-                    } catch (ResponseException $r) {
-                        // handle response from error handler
-                        $out = $ob_started ? \ob_get_clean() : null;
-                        if (!empty($out) && !$this->RESPONSE)
-                            $this->RESPONSE = $out;
-                        $isPsr = \is_object($this->RESPONSE)
-                            && \is_a($this->RESPONSE, 'Psr\Http\Message\ResponseInterface');
-                        if ($isPsr) {
-                            $response = $this->RESPONSE;
+                        };
+                        $mwHandlers = $this->matchMiddlewares($tags);
+                        foreach ($mwHandlers as $item)
+                            $executor = function (...$passed) use ($item, $executor, $passResponse) {
+                                $passResponse($passed);
+                                // $item[1] contains middleware route params
+                                return $this->callRoute($item[0], [$executor]);
+                            };
+                        $response = $executor();
+                        $body = \ob_get_clean();
+                        if ($isPsr = \is_object($response)
+                            && \is_a($response, 'Psr\Http\Message\ResponseInterface')) {
                             if ($stream = $response->getBody())
                                 $stream->rewind();
-                        } else {
-                            $body = $this->RESPONSE;
-                        }
-                    } catch (\Throwable $t) {
-                        $this->RESPONSE = $ob_started ? \ob_get_clean() : null;
-                        !$this->NONBLOCKING && throw $t;
-                        // handle response from error handler
-                        $response = $this->error(
-                            $t->getCode(),
-                            $t->getMessage(),
-                            $t->getTrace(),
-                            throw: false,
-                        );
-                    }
-                    if (!$this->QUIET) {
-                        if (!$this->NONBLOCKING)
-                            $this->send_headers();
-                        $stream?->rewind();
-                        if (isset($kbps) && $kbps > 0) {
-                            $ctr = $i = 0;
-                            if (!$stream)
-                                $max = \count($chunks = \str_split($body, 1024));
-                            while ($stream
-                                ? ($bytes = $stream->read(1024)) !== ''
-                                : $i < $max) {
-                                // Throttle output
-                                ++$ctr;
-                                if ($ctr / $kbps > ($elapsed = \microtime(true) - $now) &&
-                                    !\connection_aborted())
-                                    \usleep(\round(1e6 * ($ctr / $kbps - $elapsed)));
-                                echo $stream ? $bytes : $chunks[$i++];
+                            // use psr object to service response
+                            if (!$this->CLI && !$this->NONBLOCKING) {
+                                // only send headers here when response is NOT returned
+                                // and processed elsewhere
+                                $this->header(\sprintf(
+                                    'HTTP/%s %d %s',
+                                    $response->getProtocolVersion(),
+                                    $response->getStatusCode(),
+                                    $response->getReasonPhrase(),
+                                ));
+                                foreach ($response->getHeaders() as $name => $values)
+                                    $this->header($name.": ".\implode(", ", $values));
                             }
-                        } else
-                            echo $stream?->getContents() ?? $body;
+                        }
+                        if (isset($cache) && $this->CACHE && !\error_get_last()) {
+                            // prepare headers for cache item
+                            $headers = $this->RESPONSE_HEADERS;
+                            if ($isPsr) {
+                                $body = $stream ? $stream->getContents() : '';
+                                $headers = [
+                                    // status header is not returned by headers_list()
+                                    \sprintf(
+                                        'HTTP/%s %d %s',
+                                        $response->getProtocolVersion(),
+                                        $response->getStatusCode(),
+                                        $response->getReasonPhrase(),
+                                    ),
+                                    ...$headers,
+                                ];
+                            }
+                            // Save to cache backend
+                            $cache->set($hash, [
+                                // Remove cookies
+                                \preg_grep(
+                                    '/Set-Cookie:/',
+                                    $headers,
+                                    PREG_GREP_INVERT,
+                                ),
+                                $body, $isPsr ? null : $response,
+                            ], $ttl);
+                        }
                     }
-                    if ($response || $this->VERB != 'OPTIONS')
-                        return $response;
+                    $this->RESPONSE = $isPsr ? $response : $body;
+                } catch (ResponseException $r) {
+                    // handle response from error handler
+                    $out = $ob_started ? \ob_get_clean() : null;
+                    if (!empty($out) && !$this->RESPONSE)
+                        $this->RESPONSE = $out;
+                    $isPsr = \is_object($this->RESPONSE)
+                        && \is_a($this->RESPONSE, 'Psr\Http\Message\ResponseInterface');
+                    if ($isPsr) {
+                        $response = $this->RESPONSE;
+                        if ($stream = $response->getBody())
+                            $stream->rewind();
+                    } else {
+                        $body = $this->RESPONSE;
+                    }
+                } catch (\Throwable $t) {
+                    // capture output before error
+                    if ($ob_started && !empty($out = \ob_get_clean()))
+                        $this->RESPONSE = $out;
+                    !$this->NONBLOCKING && throw $t;
+                    // handle response from error handler
+                    $response = $this->error(
+                        $t->getCode(),
+                        $t->getMessage(),
+                        $t->getTrace(),
+                        throw: false,
+                    );
                 }
-                $allowed = \array_merge($allowed, \array_keys($route));
+                if (!$this->QUIET) {
+                    $stream?->rewind();
+                    if (!$this->NONBLOCKING)
+                        $this->send_headers();
+                    if (isset($kbps) && $kbps > 0) {
+                        $ctr = $i = 0;
+                        if (!$stream)
+                            $max = \count($chunks = \str_split($body, 1024));
+                        while ($stream
+                            ? ($bytes = $stream->read(1024)) !== ''
+                            : $i < $max) {
+                            // Throttle output
+                            ++$ctr;
+                            if ($ctr / $kbps > ($elapsed = \microtime(true) - $now) &&
+                                !\connection_aborted())
+                                \usleep(\round(1e6 * ($ctr / $kbps - $elapsed)));
+                            echo $stream ? $bytes : $chunks[$i++];
+                        }
+                    } else
+                        echo $stream?->getContents() ?? $body;
+                }
+                if ($response || $this->VERB != 'OPTIONS')
+                    return $response;
             }
+            else
+                $this->applyCORS($allowed);
             if (!$allowed) {
                 // URL doesn't match any route
                 return $this->error(404, throw: false);
@@ -4435,30 +4512,56 @@ namespace F3\Http {
                 if (!\preg_grep('/Allow:/', $this->RESPONSE_HEADERS))
                     // Unhandled HTTP method
                     $this->header('Allow: '.\implode(',', \array_unique($allowed)));
-                if ($cors) {
-                    if (!\preg_grep('/Access-Control-Allow-Methods:/', $this->RESPONSE_HEADERS))
-                        $this->header(
-                            'Access-Control-Allow-Methods: OPTIONS,'.
-                            \implode(',', $allowed),
-                        );
-                    if ($cors['headers'] &&
-                        !\preg_grep('/Access-Control-Allow-Headers:/', $this->RESPONSE_HEADERS))
-                        $this->header(
-                            'Access-Control-Allow-Headers: '.
-                            (\is_array($cors['headers']) ?
-                                \implode(',', $cors['headers']) :
-                                $cors['headers']),
-                        );
-                    if ($cors['ttl'] > 0)
-                        $this->header('Access-Control-Max-Age: '.$cors['ttl']);
-                }
+                if ($this->VERB === 'OPTIONS')
+                    $this->status(204);
                 if (!$this->NONBLOCKING)
-                    $this->send_headers();
-                if ($this->VERB != 'OPTIONS') {
+                    $this->send_headers(); // TODO: review send header conditions
+                if ($this->VERB != 'OPTIONS')
                     return $this->error(405, throw: false);
-                }
             }
             return false;
+        }
+
+        /**
+         * set CORS headers when applicable
+         * @param array $allowed allowed methods
+         */
+        protected function applyCORS(array $allowed = []): void
+        {
+            if ($this->CLI && !$this->NONBLOCKING)
+                // no headers available in this mode
+                return;
+            if (isset($this->HEADERS['Origin']) && $this->CORS['origin']) {
+                $cors = $this->CORS;
+                $this->header('Access-Control-Allow-Origin: '.$cors['origin']);
+                $this->header(
+                    'Access-Control-Allow-Credentials: '.
+                    $this->export($cors['credentials']),
+                );
+                $preflight = isset($this->HEADERS['Origin']) && $this->VERB === 'OPTIONS'
+                    && isset($this->HEADERS['Access-Control-Request-Method']);
+                if (!$preflight && $cors['expose'])
+                    $this->header(
+                        'Access-Control-Expose-Headers: '.
+                        (\is_array($cors['expose']) ?
+                            \implode(',', $cors['expose']) : $cors['expose']),
+                    );
+                if (!\preg_grep('/Access-Control-Allow-Methods:/', $this->RESPONSE_HEADERS))
+                    $this->header(
+                        'Access-Control-Allow-Methods: OPTIONS,'.
+                        \implode(',', $allowed),
+                    );
+                if ($cors['headers'] &&
+                    !\preg_grep('/Access-Control-Allow-Headers:/', $this->RESPONSE_HEADERS))
+                    $this->header(
+                        'Access-Control-Allow-Headers: '.
+                        (\is_array($cors['headers']) ?
+                            \implode(',', $cors['headers']) :
+                            $cors['headers']),
+                    );
+                if ($cors['ttl'] > 0)
+                    $this->header('Access-Control-Max-Age: '.$cors['ttl']);
+            }
         }
 
         /**
