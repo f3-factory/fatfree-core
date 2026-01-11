@@ -2185,7 +2185,7 @@ namespace F3 {
                         if ($match['section']) {
                             $sec = $match['section'];
                             if (\preg_match(
-                                    '/^(?!(?:global|config|route|map|redirect)s\b)'.
+                                    '/^(?!(?:global|config|route|middleware|map|redirect)s\b)'.
                                     '(.*?)\s*:/i',
                                     $sec,
                                     $msec,
@@ -2193,7 +2193,7 @@ namespace F3 {
                                 !$this->exists($msec[1]))
                                 $this->set($msec[1], null);
                             \preg_match(
-                                '/^(config|route|map|redirect)s\b/i',
+                                '/^(config|route|middleware|map|redirect)s\b/i',
                                 $sec,
                                 $cmd,
                             );
@@ -3999,29 +3999,35 @@ namespace F3\Http {
                     $this->route($item, $handler, $ttl, $kbps, $tags);
                 return;
             }
+            // @see https://regex101.com/r/NhWfLb/1
             \preg_match(
-                '/([|\w]+)\h+(?:@?(.+?)\h*:\h*)?(@(\w+)|\H+)'.
-                '(?:\h+\[('.\implode('|', $types).')])?/u',
+                '/(?<verb>[|\w]+)\h+' .
+                '(?:@?(?<alias>\w+)\h*)?' .
+                '(?<tags>(?:#\w+\h*)+)*\h*:?\h*(?<path>\H*)' .
+                '(?:\h+\[(?<type>'.\implode('|', $types).')])?/u',
                 $pattern,
                 $parts,
             );
-            if (isset($parts[2]) && $parts[2]) {
-                if (!\preg_match('/^\w+$/', $parts[2]))
-                    throw new \Exception(\sprintf(self::E_Alias, $parts[2]));
-                $this->ALIASES[$alias = $parts[2]] = $parts[3];
-            } elseif (!empty($parts[4])) {
-                if (empty($this->ALIASES[$parts[4]]))
-                    throw new \Exception(\sprintf(self::E_Named, $parts[4]));
-                $parts[3] = $this->ALIASES[$alias = $parts[4]];
+            if ($parts['alias'] && $parts['path']) {
+                if (!\preg_match('/^\w+$/', $parts['alias']))
+                    throw new \Exception(\sprintf(self::E_Alias, $parts['alias']));
+                $this->ALIASES[$alias = $parts['alias']] = $parts['path'];
+            } elseif ($parts['alias'] && empty($parts['path'])) {
+                if (empty($this->ALIASES[$parts['alias']]))
+                    throw new \Exception(\sprintf(self::E_Named, $parts['alias']));
+                $parts['path'] = $this->ALIASES[$alias = $parts['alias']];
             }
-            if (empty($parts[3]))
+            if (empty($parts['path']))
                 throw new \Exception(\sprintf(self::E_Pattern, $pattern));
-            $type = empty($parts[5]) ? RequestType::ANY
-                : \constant(RequestType::class.'::'.\strtoupper($parts[5]));
-            foreach ($this->split($parts[1]) as $verb) {
+            if (!empty($parts['tags'])
+                && preg_match_all('/#(\w+)/', $parts['tags'], $tm))
+                $tags = $tm[1];
+            $type = empty($parts['type']) ? RequestType::ANY
+                : \constant(RequestType::class.'::'.\strtoupper($parts['type']));
+            foreach ($this->split($parts['verb']) as $verb) {
                 if (!\constant(Verb::class.'::'.$verb))
                     $this->error(501, $verb.' '.$this->URI);
-                $this->ROUTES[$parts[3]][$type->value][\strtoupper($verb)] =
+                $this->ROUTES[$parts['path']][$type->value][\strtoupper($verb)] =
                     [is_string($handler) ? trim($handler) : $handler, $ttl, $kbps, $alias, $tags];
             }
         }
