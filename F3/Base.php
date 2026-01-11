@@ -2186,15 +2186,14 @@ namespace F3 {
                             $sec = $match['section'];
                             if (\preg_match(
                                     '/^(?!(?:global|config|route|map|redirect)s\b)'.
-                                    '(.*?)\s*[:>]/i',
+                                    '(.*?)\s*:/i',
                                     $sec,
                                     $msec,
                                 ) &&
                                 !$this->exists($msec[1]))
                                 $this->set($msec[1], null);
                             \preg_match(
-                                '/^(config|route|map|redirect)s\b|'.
-                                '^(.+?)\s*>\s*(.*)/i',
+                                '/^(config|route|map|redirect)s\b/i',
                                 $sec,
                                 $cmd,
                             );
@@ -2243,10 +2242,7 @@ namespace F3 {
                                         '/(?<!\\\\)(")(.*?)\1/',
                                         "\\1\x00\\2\\1",
                                         \trim($rval),
-                                    ),
-                                    ",",
-                                    '"',
-                                    "",
+                                    ), ",", '"', "",
                                 ),
                             );
                             \preg_match(
@@ -4382,10 +4378,6 @@ namespace F3\Http {
                         // Call route handler
                         $executor = function (...$passed) use ($allowed, $handler, $args, $preflight, $passResponse) {
                             // assign response obj early to make it reusable in further handlers
-//                            $psrResponse = \array_find($passed, fn($x) =>
-//                                \is_object($x) && \is_a($x, 'Psr\Http\Message\ResponseInterface'));
-//                            if ($psrResponse)
-//                                $this->RESPONSE = $psrResponse;
                             $passResponse($passed);
                             $this->applyCORS($allowed);
                             return $preflight ? null : $this->callRoute($handler, [
