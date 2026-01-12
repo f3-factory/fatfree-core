@@ -4406,7 +4406,7 @@ namespace F3\Http {
                             && \is_a($response, 'Psr\Http\Message\ResponseInterface')) {
                             if ($stream = $response->getBody())
                                 $stream->rewind();
-                            // use psr object to service response
+                            // use psr object to serve response
                             if (!$this->CLI && !$this->NONBLOCKING) {
                                 // only send headers here when response is NOT returned
                                 // and processed elsewhere
