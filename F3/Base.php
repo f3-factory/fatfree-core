@@ -2727,7 +2727,7 @@ namespace F3 {
                 ? $this->RESPONSE
                 : $this
                     ->make(StreamFactoryInterface::class)
-                    ->createStream($this->RESPONSE);
+                    ->createStream($this->RESPONSE ?? '');
             return $this
                 ->make(ResponseFactoryInterface::class)
                 ->createResponse($rs ?: 500, $reason)
