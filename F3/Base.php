@@ -580,7 +580,6 @@ namespace F3 {
         public bool $QUIET = false;
         public bool $RAW = false;
         public string $REALM = '';
-        public bool $REROUTE_TRAILING_SLASH = true;
         public string|object|null $RESPONSE = null;
         public array $RESPONSE_HEADERS = [];
         public string $ROOT = '';
@@ -590,6 +589,7 @@ namespace F3 {
         public string $SERIALIZER = 'php';
         public string $TEMP = 'tmp/';
         public float $TIME = 0;
+        public bool $TRAILING_SLASH = false;
         public string $TZ {
             get => $this->TZ ?? \date_default_timezone_get();
             set {
@@ -1925,7 +1925,8 @@ namespace F3 {
             if (\is_array($query))
                 $query = \http_build_query($query);
             $out = ($this->ABSOLUTE_ALIAS && $baseHandling ? $this->BASE : '')
-                .$url.($query ? ('?'.$query) : '').($fragment ? '#'.$fragment : '');
+                .$url.($this->TRAILING_SLASH && $url != '/' ? '/' : '').
+                ($query ? ('?'.$query) : '').($fragment ? '#'.$fragment : '');
             return (!$this->ABSOLUTE_ALIAS && $baseHandling) ? ltrim($out, '/') : $out;
         }
 
@@ -4317,13 +4318,20 @@ namespace F3\Http {
                 $ob_started = false;
                 // capture response exceptions
                 try {
-                    if ($this->REROUTE_TRAILING_SLASH &&
-                        $this->VERB == 'GET' &&
-                        \preg_match('/.+\/$/', $this->PATH))
-                        $this->reroute(
-                            \substr($this->PATH, 0, -1).
-                            ($this->QUERY ? ('?'.$this->QUERY) : ''),
-                        );
+                    if ($this->VERB == 'GET') {
+                        // auto-reroute according to trailing slash mode
+                        if (!$this->TRAILING_SLASH &&
+                            \preg_match('/.+\/$/', $this->PATH))
+                            $this->reroute(
+                                \substr($this->PATH, 0, -1).
+                                ($this->QUERY ? ('?'.$this->QUERY) : ''),
+                            );
+                        elseif ($this->TRAILING_SLASH &&
+                            !\str_ends_with($this->PATH, '/'))
+                            $this->reroute($this->PATH.'/'.
+                                ($this->QUERY ? ('?'.$this->QUERY) : ''),
+                            );
+                    }
                     if (!$preflight) {
                         [$handler, $ttl, $kbps, $this->ALIAS, $tags] = $route[$this->VERB];
                         if (\is_string($handler)) {
@@ -4344,6 +4352,7 @@ namespace F3\Http {
                     $body = '';
                     $isPsr = false;
                     $now = \microtime(true);
+                    // check cached routes
                     if (\preg_match('/GET|HEAD/', $this->VERB) && $ttl) {
                         // Only GET and HEAD requests are cacheable
                         $headers = $this->HEADERS;
@@ -4381,7 +4390,7 @@ namespace F3\Http {
                             if ($psrResponse)
                                 $this->RESPONSE = $psrResponse;
                         };
-                        // Call route handler
+                        // route handler
                         $executor = function (...$passed) use ($allowed, $handler, $args, $preflight, $passResponse) {
                             // assign response obj early to make it reusable in further handlers
                             $passResponse($passed);
@@ -4400,6 +4409,7 @@ namespace F3\Http {
                                 // $item[1] contains middleware route params
                                 return $this->callRoute($item[0], [$executor]);
                             };
+                        // call handler stack
                         $response = $executor();
                         $body = \ob_get_clean();
                         if ($isPsr = \is_object($response)
