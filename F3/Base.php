@@ -3126,7 +3126,6 @@ namespace F3 {
     //! View handler
     class View
     {
-
         use Prefab;
 
         //! Temporary hive
@@ -3153,9 +3152,8 @@ namespace F3 {
          */
         public function esc(mixed $arg): string|Hive|array
         {
-            return $this->fw->recursive(
-                $arg,
-                fn($val) => is_string($val) ? $this->fw->encode($val) : $val,
+            return $this->fw->recursive($arg, fn($val) =>
+                \is_string($val) ? $this->fw->encode($val) : $val,
             );
         }
 
@@ -3164,9 +3162,8 @@ namespace F3 {
          */
         public function raw(mixed $arg): string|array
         {
-            return $this->fw->recursive(
-                $arg,
-                fn($val) => is_string($val) ? $this->fw->decode($val) : $val,
+            return $this->fw->recursive($arg, fn($val) =>
+                \is_string($val) ? $this->fw->decode($val) : $val,
             );
         }
 
@@ -3177,33 +3174,33 @@ namespace F3 {
         {
             $fw = $this->fw;
             $implicit = false;
-            if (is_null($hive)) {
+            if (\is_null($hive)) {
                 $implicit = true;
                 $hive = $fw->hive();
             }
             if ($this->level < 1 || $implicit) {
-                if (!$fw->CLI && $mime && !headers_sent() &&
-                    !preg_grep('/^Content-Type:/', headers_list()))
+                if (!$fw->CLI && $mime && !\headers_sent() &&
+                    !preg_grep('/^Content-Type:/', \headers_list()))
                     $fw->header(
                         'Content-Type: '.$mime.'; '.
                         'charset='.$fw->ENCODING,
                     );
                 if ($fw->ESCAPE && (!$mime ||
-                        preg_match('/^(text\/html|(application|text)\/(.+\+)?xml)$/i', $mime)))
+                        \preg_match('/^(text\/html|(application|text)\/(.+\+)?xml)$/i', $mime)))
                     $hive = $this->esc($hive);
                 if (isset($hive['ALIASES']))
                     $hive['ALIASES'] = $fw->build($hive['ALIASES']);
             }
-            $this->temp =
-                is_object($hive) && method_exists($hive, 'toArray') ? $hive->toArray() : $hive;
+            $this->temp = \is_object($hive) && \method_exists($hive, 'toArray')
+                ? $hive->toArray() : $hive;
             unset($fw, $hive, $implicit, $mime);
-            extract($this->temp);
+            \extract($this->temp);
             $this->temp = null;
             ++$this->level;
-            ob_start();
+            \ob_start();
             require($this->file);
             --$this->level;
-            return ob_get_clean();
+            return \ob_get_clean();
         }
 
         /**
@@ -3219,9 +3216,9 @@ namespace F3 {
             foreach ($this->fw->split($this->fw->UI) as $dir) {
                 if ($cache->exists($hash = $this->fw->hash($dir.$file), $data))
                     return $data;
-                if (is_file($this->file = $this->fw->fixslashes($dir.$file))) {
-                    if (isset($this->fw->COOKIE[session_name()]) &&
-                        !headers_sent() && session_status() != PHP_SESSION_ACTIVE)
+                if (\is_file($this->file = $this->fw->fixslashes($dir.$file))) {
+                    if (isset($this->fw->COOKIE[\session_name()]) &&
+                        !\headers_sent() && \session_status() != PHP_SESSION_ACTIVE)
                         $this->fw->session_start();
                     $this->fw->sync('SESSION');
                     $data = $this->sandbox($hive, $mime);
@@ -3232,7 +3229,7 @@ namespace F3 {
                     return $data;
                 }
             }
-            throw new \Exception(sprintf(Base::E_Open, $file));
+            throw new \Exception(\sprintf(Base::E_Open, $file));
         }
 
         /**
@@ -3276,10 +3273,10 @@ namespace F3 {
          */
         public function c(mixed $val): string
         {
-            $locale = setlocale(LC_NUMERIC, 0);
-            setlocale(LC_NUMERIC, 'C');
+            $locale = \setlocale(LC_NUMERIC, 0);
+            \setlocale(LC_NUMERIC, 'C');
             $out = (string) (float) $val;
-            $locale = setlocale(LC_NUMERIC, $locale);
+            $locale = \setlocale(LC_NUMERIC, $locale);
             return $out;
         }
 
@@ -3288,17 +3285,17 @@ namespace F3 {
          */
         public function token(string $str): string
         {
-            $str = trim(preg_replace('/\{\{(.+?)}}/s', '\1', $this->fw->compile($str)));
-            if (preg_match(
+            $str = \trim(\preg_replace('/\{\{(.+?)}}/s', '\1', $this->fw->compile($str)));
+            if (\preg_match(
                 '/^(.+)(?<!\|)\|((?:\h*\w+\h*[,;]?)+)$/s',
                 $str,
                 $parts,
             )) {
-                $str = trim($parts[1]);
-                foreach ($this->fw->split(trim($parts[2], "\xC2\xA0")) as $func)
+                $str = \trim($parts[1]);
+                foreach ($this->fw->split(\trim($parts[2], "\xC2\xA0")) as $func)
                     $str = ((empty($this->filter[$cmd = $func]) &&
-                            function_exists($cmd)) ||
-                        is_string($cmd = $this->filter($func)))
+                            \function_exists($cmd)) ||
+                        \is_string($cmd = $this->filter($func)))
                         ? $cmd.'('.$str.')'
                         : Base::class.'::instance()->'.
                         'call($this->filter(\''.$func.'\'),['.$str.'])';
@@ -3313,8 +3310,8 @@ namespace F3 {
         public function filter(?string $key = null, callable|string|null $func = null): mixed
         {
             if (!$key)
-                return array_keys($this->filter);
-            $key = strtolower($key);
+                return \array_keys($this->filter);
+            $key = \strtolower($key);
             if (!$func)
                 return $this->filter[$key];
             $this->filter[$key] = $func;
@@ -3326,7 +3323,7 @@ namespace F3 {
          */
         protected function build($node): string
         {
-            return preg_replace_callback(
+            return \preg_replace_callback(
                 '/\{~(.+?)~}|\{\*(.+?)\*}|\{-(.+?)-}|'.
                 '\{\{(.+?)}}((\r?\n)*)/s',
                 function ($expr) {
@@ -3337,7 +3334,7 @@ namespace F3 {
                     elseif ($expr[3])
                         $str = $expr[3];
                     else {
-                        $str = '<?= ('.trim($this->token($expr[4])).')'.
+                        $str = '<?= ('.\trim($this->token($expr[4])).')'.
                             ($this->interpolation
                                 ? (!empty($expr[6]) ? '."'.$expr[6].'"' : '')
                                 : ''
@@ -3373,12 +3370,12 @@ namespace F3 {
             if ($ttl && $cache->exists($hash, $data))
                 return $data;
             if ($persist) {
-                if (!is_dir($tmp = $fw->TEMP))
-                    mkdir($tmp, Base::MODE, true);
-                if (!is_file($this->file = ($tmp.$fw->SEED.'.'.$hash.'.php')))
+                if (!\is_dir($tmp = $fw->TEMP))
+                    \mkdir($tmp, Base::MODE, true);
+                if (!\is_file($this->file = ($tmp.$fw->SEED.'.'.$hash.'.php')))
                     $fw->write($this->file, $this->build($node));
-                if (isset($this->fw->COOKIE[session_name()]) &&
-                    !headers_sent() && session_status() != PHP_SESSION_ACTIVE)
+                if (isset($this->fw->COOKIE[\session_name()]) &&
+                    !\headers_sent() && \session_status() != PHP_SESSION_ACTIVE)
                     $this->fw->session_start();
                 $fw->sync('SESSION');
                 $data = $this->sandbox($hive);
@@ -3387,11 +3384,11 @@ namespace F3 {
                     $hive = $fw->hive();
                 if ($fw->ESCAPE)
                     $hive = $this->esc($hive);
-                extract($hive);
+                \extract($hive);
                 unset($hive);
-                ob_start();
+                \ob_start();
                 eval(' ?>'.$this->build($node).'<?php ');
-                $data = ob_get_clean();
+                $data = \ob_get_clean();
             }
             if ($ttl)
                 $cache->set($hash, $data, $ttl);
@@ -3406,7 +3403,7 @@ namespace F3 {
         public function parse(string $text): array|string
         {
             // Remove PHP code and comments
-            return preg_replace(
+            return \preg_replace(
                 '/\h*<\?(?!xml)(?:php|\s*=)?.+?\?>\h*|'.
                 '\{\*.+?\*}/is',
                 '',
@@ -3425,14 +3422,14 @@ namespace F3 {
         ): string {
             $fw = $this->fw;
             $cache = Cache::instance();
-            if (!is_dir($tmp = $fw->TEMP))
-                mkdir($tmp, Base::MODE, true);
+            if (!\is_dir($tmp = $fw->TEMP))
+                \mkdir($tmp, Base::MODE, true);
             foreach ($fw->split($fw->UI) as $dir) {
                 if ($cache->exists($hash = $fw->hash($dir.$file), $data))
                     return $data;
-                if (is_file($view = $fw->fixslashes($dir.$file))) {
-                    if (!is_file($this->file = ($tmp.$fw->SEED.'.'.$fw->hash($view).'.php'))
-                        || filemtime($this->file) < filemtime($view)
+                if (\is_file($view = $fw->fixslashes($dir.$file))) {
+                    if (!\is_file($this->file = ($tmp.$fw->SEED.'.'.$fw->hash($view).'.php'))
+                        || \filemtime($this->file) < \filemtime($view)
                     ) {
                         $contents = $fw->read($view);
                         foreach ($this->trigger['beforeRender'] ?? [] as $func)
@@ -3440,8 +3437,8 @@ namespace F3 {
                         $text = $this->parse($contents);
                         $fw->write($this->file, $this->build($text));
                     }
-                    if (isset($this->fw->COOKIE[session_name()]) &&
-                        !headers_sent() && session_status() != PHP_SESSION_ACTIVE)
+                    if (isset($this->fw->COOKIE[\session_name()]) &&
+                        !\headers_sent() && \session_status() != PHP_SESSION_ACTIVE)
                         $this->fw->session_start();
                     $fw->sync('SESSION');
                     $data = $this->sandbox($hive, $mime);
@@ -3452,7 +3449,7 @@ namespace F3 {
                     return $data;
                 }
             }
-            throw new \Exception(sprintf(Base::E_Open, $file));
+            throw new \Exception(\sprintf(Base::E_Open, $file));
         }
 
         /**
@@ -3876,7 +3873,7 @@ namespace F3 {
          */
         public static function reset(): void
         {
-            foreach (array_keys(self::$table) as $key)
+            foreach (\array_keys(self::$table) as $key)
                 self::clear($key);
         }
 
@@ -4021,7 +4018,7 @@ namespace F3\Http {
             if (empty($parts['path']))
                 throw new \Exception(\sprintf(self::E_Pattern, $pattern));
             if (!empty($parts['tags'])
-                && preg_match_all('/#(\w+)/', $parts['tags'], $tm))
+                && \preg_match_all('/#(\w+)/', $parts['tags'], $tm))
                 $tags = $tm[1];
             $type = empty($parts['type']) ? RequestType::ANY
                 : \constant(RequestType::class.'::'.\strtoupper($parts['type']));
@@ -4029,7 +4026,7 @@ namespace F3\Http {
                 if (!\constant(Verb::class.'::'.$verb))
                     $this->error(501, $verb.' '.$this->URI);
                 $this->ROUTES[$parts['path']][$type->value][\strtoupper($verb)] =
-                    [is_string($handler) ? trim($handler) : $handler, $ttl, $kbps, $alias, $tags];
+                    [\is_string($handler) ? \trim($handler) : $handler, $ttl, $kbps, $alias, $tags];
             }
         }
 

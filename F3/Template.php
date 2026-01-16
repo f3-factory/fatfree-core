@@ -2,7 +2,7 @@
 
 /**
  *
- * Copyright (c) 2025 F3::Factory, All rights reserved.
+ * Copyright (c) 2026 F3::Factory, All rights reserved.
  *
  * This file is part of the Fat-Free Framework (https://fatfreeframework.com).
  *
@@ -29,7 +29,7 @@ class Template extends Preview
     protected const string E_Method = 'Call to undefined method %s()';
 
     // Template tags
-    protected string $tags;
+    protected string $tags = '';
 
     // Custom tag handlers
     protected array $custom = [];
@@ -42,7 +42,7 @@ class Template extends Preview
         $out = '';
         foreach ($node['@attrib'] as $key => $val)
             $out .= '$'.$key.'='.
-                (preg_match('/\{\{(.+?)}}/', $val ?: '') ?
+                (\preg_match('/\{\{(.+?)}}/', $val ?: '') ?
                     $this->token($val) :
                     Base::instance()->stringify($val)).'; ';
         return '<?php '.$out.'?>';
@@ -56,18 +56,18 @@ class Template extends Preview
         $attrib = $node['@attrib'];
         $hive = isset($attrib['with']) &&
         ($attrib['with'] = $this->token($attrib['with'])) &&
-        preg_match_all(
+        \preg_match_all(
             '/(\w+)\h*=\h*(.+?)(?=,|$)/',
             $attrib['with'],
             $pairs,
             PREG_SET_ORDER,
         ) ?
-            ('['.implode(
+            ('['.\implode(
                     ',',
-                    array_map(function ($pair) {
+                    \array_map(function ($pair) {
                         return '\''.$pair[1].'\'=>'.
-                            (preg_match('/^\'.*\'$/', $pair[2]) ||
-                            preg_match('/\$/', $pair[2]) ?
+                            (\preg_match('/^\'.*\'$/', $pair[2]) ||
+                            \preg_match('/\$/', $pair[2]) ?
                                 $pair[2] : Base::instance()->stringify(
                                     Base::instance()->cast($pair[2]),
                                 ));
@@ -79,7 +79,7 @@ class Template extends Preview
             '<?php '.(isset($attrib['if']) ?
                 ('if ('.$this->token($attrib['if']).') ') : '').
             ('echo $this->render('.
-                (preg_match('/^\{\{(.+?)}}$/', $attrib['href']) ?
+                (\preg_match('/^\{\{(.+?)}}$/', $attrib['href']) ?
                     $this->token($attrib['href']) :
                     Base::instance()->stringify($attrib['href'])).','.
                 'NULL,'.$hive.','.$ttl.'); ?>');
@@ -184,7 +184,7 @@ class Template extends Preview
         $attrib = $node['@attrib'];
         unset($node['@attrib']);
         foreach ($node as $pos => $block)
-            if (is_string($block) && !preg_replace('/\s+/', '', $block))
+            if (\is_string($block) && !\preg_replace('/\s+/', '', $block))
                 unset($node[$pos]);
         return
             '<?php switch ('.$this->token($attrib['expr']).'): ?>'.
@@ -200,7 +200,7 @@ class Template extends Preview
         $attrib = $node['@attrib'];
         unset($node['@attrib']);
         return
-            '<?php case '.(preg_match('/\{\{(.+?)}}/', $attrib['value']) ?
+            '<?php case '.(\preg_match('/\{\{(.+?)}}/', $attrib['value']) ?
                 $this->token($attrib['value']) :
                 Base::instance()->stringify($attrib['value'])).': ?>'.
             $this->build($node).
@@ -221,16 +221,16 @@ class Template extends Preview
     }
 
     /**
-     *    Assemble markup
+     * Assemble markup
      * @param $node array|string
-     **/
+     */
     public function build($node): string
     {
-        if (is_string($node))
+        if (\is_string($node))
             return parent::build($node);
         $out = '';
         foreach ($node as $key => $val)
-            $out .= is_int($key) ? $this->build($val) : $this->{'_'.$key}($val);
+            $out .= \is_int($key) ? $this->build($val) : $this->{'_'.$key}($val);
         return $out;
     }
 
@@ -262,39 +262,39 @@ class Template extends Preview
     {
         $text = parent::parse($text);
         // Build tree structure
-        for ($ptr = 0, $w = 5, $len = strlen($text), $tree = [], $tmp = ''; $ptr < $len;)
-            if (preg_match(
+        for ($ptr = 0, $w = 5, $len = \strlen($text), $tree = [], $tmp = ''; $ptr < $len;)
+            if (\preg_match(
                 '/^(.{0,'.$w.'}?)<(\/?)(?:F3:)?'.
                 '('.$this->tags.')\b((?:\s+[\w.:@!\-]+'.
                 '(?:\h*=\h*(?:".*?"|\'.*?\'))?|'.
                 '\h*\{\{.+?}})*)\s*(\/?)>/is',
-                substr($text, $ptr),
+                \substr($text, $ptr),
                 $match,
             )) {
-                if (strlen($tmp) || isset($match[1]))
+                if (\strlen($tmp) || isset($match[1]))
                     $tree[] = $tmp.$match[1];
                 // Element node
                 if ($match[2]) {
                     // Find matching start tag
                     $stack = [];
-                    for ($i = count($tree) - 1; $i >= 0; --$i) {
+                    for ($i = \count($tree) - 1; $i >= 0; --$i) {
                         $item = $tree[$i];
-                        if (is_array($item) &&
-                            array_key_exists($k = strtolower($match[3]), $item) &&
+                        if (\is_array($item) &&
+                            \array_key_exists($k = \strtolower($match[3]), $item) &&
                             !isset($item[$k][0])) {
                             // Start tag found
-                            $tree[$i][$k] += array_reverse($stack);
-                            $tree = array_slice($tree, 0, $i + 1);
+                            $tree[$i][$k] += \array_reverse($stack);
+                            $tree = \array_slice($tree, 0, $i + 1);
                             break;
                         } else $stack[] = $item;
                     }
                 } else {
                     // Start tag
-                    $node =& $tree[][strtolower($match[3])];
+                    $node =& $tree[][\strtolower($match[3])];
                     $node = [];
                     if ($match[4]) {
                         // Process attributes
-                        preg_match_all(
+                        \preg_match_all(
                             '/(?:(\{\{.+?}})|([^\s\/"\'=]+))'.
                             '\h*(?:=\h*(?:"(.*?)"|\'(.*?)\'))?/s',
                             $match[4],
@@ -313,16 +313,16 @@ class Template extends Preview
                     }
                 }
                 $tmp = '';
-                $ptr += strlen($match[0]);
+                $ptr += \strlen($match[0]);
                 $w = 5;
             } else {
                 // Text node
-                $tmp .= substr($text, $ptr, $w);
+                $tmp .= \substr($text, $ptr, $w);
                 $ptr += $w;
                 if ($w < 50)
                     ++$w;
             }
-        if (strlen($tmp))
+        if (\strlen($tmp))
             // Append trailing text
             $tree[] = $tmp;
         // Break references
@@ -332,12 +332,11 @@ class Template extends Preview
 
     public function __construct()
     {
-        $ref = new \ReflectionClass(get_called_class());
-        $this->tags = '';
+        $ref = new \ReflectionClass(\get_called_class());
         foreach ($ref->getMethods() as $method)
-            if (preg_match('/^_(?=[[:alpha:]])/', $method->name))
-                $this->tags .= (strlen($this->tags) ? '|' : '').
-                    substr($method->name, 1);
+            if (\preg_match('/^_(?=[[:alpha:]])/', $method->name))
+                $this->tags .= (\strlen($this->tags) ? '|' : '').
+                    \substr($method->name, 1);
         parent::__construct();
     }
 
