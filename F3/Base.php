@@ -3193,14 +3193,15 @@ namespace F3 {
             }
             $this->temp = \is_object($hive) && \method_exists($hive, 'toArray')
                 ? $hive->toArray() : $hive;
-            unset($fw, $hive, $implicit, $mime);
-            \extract($this->temp);
-            $this->temp = null;
-            ++$this->level;
-            \ob_start();
-            require($this->file);
-            --$this->level;
-            return \ob_get_clean();
+            $sandbox = function() {
+                \extract($this->temp);
+                ++$this->level;
+                \ob_start();
+                require($this->file);
+                --$this->level;
+                return \ob_get_clean();
+            };
+            return $sandbox();
         }
 
         /**
@@ -3380,15 +3381,18 @@ namespace F3 {
                 $fw->sync('SESSION');
                 $data = $this->sandbox($hive);
             } else {
-                if (!$hive)
+                if ($hive === null)
                     $hive = $fw->hive();
                 if ($fw->ESCAPE)
                     $hive = $this->esc($hive);
-                \extract($hive);
-                unset($hive);
-                \ob_start();
-                eval(' ?>'.$this->build($node).'<?php ');
-                $data = \ob_get_clean();
+                $sandbox = function ($___hive) {
+                    \extract($___hive);
+                    unset($___hive);
+                    \ob_start();
+                    eval(' ?>'.$this->build(\func_get_args()[1]).'<?php ');
+                    return \ob_get_clean();
+                };
+                $data = $sandbox($hive, $node);
             }
             if ($ttl)
                 $cache->set($hash, $data, $ttl);
