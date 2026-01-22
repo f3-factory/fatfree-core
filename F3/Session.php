@@ -85,7 +85,7 @@ class Session extends Magic implements \SessionHandlerInterface
                 'agent' => $this->_agent,
                 'stamp' => \time(),
             ],
-            $fw->JAR->expire,
+            $fw->JAR->lifetime,
         );
         return true;
     }
@@ -101,6 +101,7 @@ class Session extends Magic implements \SessionHandlerInterface
 
     /**
      * Garbage collector
+     * Sessions that have not updated for the last max_lifetime seconds will be removed.
      */
     public function gc(int $max_lifetime): int|false
     {
@@ -108,8 +109,8 @@ class Session extends Magic implements \SessionHandlerInterface
     }
 
     /**
-     *    Return Unix timestamp
-     **/
+     * Return Unix timestamp
+     */
     public function stamp(): false|string
     {
         if (!$this->sid)

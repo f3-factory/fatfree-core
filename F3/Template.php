@@ -249,10 +249,10 @@ class Template extends Preview
     public function __call(string $func, array $args): string|false
     {
         if ($func[0] == '_')
-            return call_user_func_array($this->custom[$func], $args);
-        if (method_exists($this, $func))
-            return call_user_func_array([$this, $func], $args);
-        throw new \Exception(sprintf(self::E_Method, $func));
+            return \call_user_func_array($this->custom[$func], $args);
+        if (\method_exists($this, $func))
+            return \call_user_func_array([$this, $func], $args);
+        throw new \Exception(\sprintf(self::E_Method, $func));
     }
 
     /**

@@ -2752,7 +2752,7 @@ namespace F3 {
             $this->updateCookieParams();
         }
 
-        public int $expire = 0 {
+        public int $expire = 0 { // TODO: make this TTL
             set {
                 if ($value === $this->expire)
                     return;
@@ -2908,7 +2908,7 @@ namespace F3 {
             $parts = \explode('=', $this->dsn, 2);
             return (bool) match ($parts[0]) {
                 'apcu' => \apcu_store($ndx, $data, $ttl),
-                'redis' => $this->ref->set($ndx, $data, $ttl ? ['ex' => $ttl] : []),
+                'redis' => $this->ref->set($ndx, $data, $ttl ?: null),
                 'memcache' => \memcache_set($this->ref, $ndx, $data, 0, $ttl),
                 'memcached' => $this->ref->set($ndx, $data, $ttl),
                 'folder' => $fw->write(
@@ -3001,7 +3001,7 @@ namespace F3 {
         /**
          * Clear contents of cache backend
          */
-        public function reset(?string $suffix = null): bool
+        public function reset(?string $suffix = null, ?int $max_lifetime = null): bool
         {
             if (!$this->dsn)
                 return true;
@@ -3017,14 +3017,24 @@ namespace F3 {
                             $info['cache_list'][0],
                         ) ? 'info' : 'key';
                         foreach ($info['cache_list'] as $item)
-                            if (\preg_match($regex, $item[$key]))
+                            if (\preg_match($regex, $item[$key])
+                                && (!$max_lifetime ||
+                                    ($item['ttl'] && $item['mtime'] + $max_lifetime < \time())))
                                 \apcu_delete($item[$key]);
                     }
                     return true;
                 case 'redis':
-                    $keys = $this->ref->keys($this->prefix.'.*'.$suffix);
-                    foreach ($keys as $key)
-                        $this->ref->del($key);
+                    $iterator = null;
+                    while (true) {
+                        $keys = $this->ref->scan($iterator, $this->prefix.'.*'.$suffix);
+                        foreach ($keys ?: [] as $key)
+                            if (!$max_lifetime ||
+                                (($ttl = $this->ref->ttl($key)) > 0 && $ttl > $max_lifetime)) {
+                                $this->ref->del($key);
+                            }
+                        if (!($iterator > 0))
+                            break;
+                    }
                     return true;
                 case 'memcache':
                     foreach (\memcache_get_extended_stats($this->ref, 'slabs') as $slabs)
@@ -3034,22 +3044,34 @@ namespace F3 {
                         )
                             foreach (
                                 \memcache_get_extended_stats($this->ref, 'cachedump', $id) as $data
-                            )
-                                if (\is_array($data))
-                                    foreach (\array_keys($data) as $key)
-                                        if (\preg_match($regex, $key))
-                                            \memcache_delete($this->ref, $key);
+                            ) {
+                                if (!\is_array($data))
+                                    continue;
+                                foreach ($data as $key => $item) {
+                                    if (\preg_match($regex, $key) &&
+                                        (!$max_lifetime || ($item[1] > 0 &&
+                                            ((int) $item[1] + $max_lifetime) < \time())))
+                                        \memcache_delete($this->ref, $key);
+                                }
+                            }
                     return true;
                 case 'memcached':
                     foreach ($this->ref->getAllKeys() ?: [] as $key)
-                        if (\preg_match($regex, $key))
+                        if (\preg_match($regex, $key)) {
+                            if (!$max_lifetime || (
+                                ($item = $this->exists(\substr($key,\strlen($this->prefix)+1))) &&
+                                ($item[1] > 0 && ((int) $item[0] + $max_lifetime) < \time())
+                            ))
                             $this->ref->delete($key);
+                        }
                     return true;
                 case 'folder':
-                    if ($glob = @\glob($parts[1].'*'))
+                    if ($glob = \glob($parts[1].'*'))
                         foreach ($glob as $file)
-                            if (\preg_match($regex, \basename($file)))
+                            if (\preg_match($regex, \basename($file)) &&
+                                (!$max_lifetime || (\filemtime($file) + $max_lifetime < \time()))) {
                                 @\unlink($file);
+                            }
                     return true;
             }
             return false;
