@@ -87,10 +87,7 @@ namespace F3 {
             return \array_keys(
                 $uninitialized ? \get_class_vars($obj::class)
                     : \Closure::bind(fn($a)
-                    => \get_object_vars($a), null, null)
-                (
-                    $obj,
-                ),
+                        => \get_object_vars($a), null, null)($obj)
             );
         }
 
@@ -200,7 +197,7 @@ namespace F3 {
                     }
                 }
                 if ($rootKey) {
-                    // eager initialize for nested depth access
+                    // eagerly initialize for nested depth access
                     $this->{$parts[0]} = $src;
                     $src =& $this->{$parts[0]};
                     $rootKey = null;
@@ -216,6 +213,7 @@ namespace F3 {
         {
             $vars = static::public($this);
             $src = [...$vars, ...\array_keys($this->_hive_data)];
+            $out = [];
             foreach ($src as $key) {
                 $out[$key] = $this->get($key);
             }
@@ -230,7 +228,7 @@ namespace F3 {
             $parts = self::cut($key);
             if (\array_key_exists($parts[0], $this->_hive_data)) {
                 // fluent data
-                eval('unset('.self::compile('@this->_hive_data.'.$key, false).');');
+                eval('unset('.$this->compile('@this->_hive_data.'.$key, false).');');
             } elseif (\property_exists($this, $parts[0])) {
                 $null = false;
                 if (isset($parts[1])) {
@@ -242,7 +240,7 @@ namespace F3 {
                         $null = !(($ref = $this->ref($tmp)) instanceof \stdClass);
                     }
                     if (!$null)
-                        eval('unset('.self::compile('@this->'.$key, false).');');
+                        eval('unset('.$this->compile('@this->'.$key, false).');');
                 }
                 if ($null || !isset($parts[1])) {
                     // for properties, set a default or other reasonable value
@@ -278,7 +276,7 @@ namespace F3 {
          * @param $evaluate bool compile expressions as well or only convert variable access
          * @return string
          */
-        public static function compile(string $str, bool $evaluate = true): string
+        public function compile(string $str, bool $evaluate = true): string
         {
             return (!$evaluate)
                 ? \preg_replace_callback(
@@ -292,7 +290,7 @@ namespace F3 {
                                     $val = $sub[2] ?? $sub[1];
                                     if (\ctype_digit($val))
                                         $val = (int) $val;
-                                    return '['.self::export($val).']';
+                                    return '['.$this->export($val).']';
                                 },
                                 $expr[2],
                             );
@@ -314,13 +312,13 @@ namespace F3 {
                                             $sub[1] = (int) $sub[1];
                                         $out = '['.
                                             (isset($sub[3])
-                                                ? self::compile($sub[3])
-                                                : self::export($sub[1])
+                                                ? $this->compile($sub[3])
+                                                : $this->export($sub[1])
                                             ).']';
                                     } else
                                         $out = \function_exists($sub[1])
                                             ? $sub[0]
-                                            : ('['.self::export($sub[1]).']'.$sub[2]);
+                                            : ('['.$this->export($sub[1]).']'.$sub[2]);
                                     return $out;
                                 },
                                 $expr[2],
@@ -334,7 +332,7 @@ namespace F3 {
         /**
          * Return string representation of expression
          */
-        public static function export(mixed $expr): string
+        public function export(mixed $expr): string
         {
             return \var_export($expr, true);
         }
