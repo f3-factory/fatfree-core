@@ -2444,7 +2444,7 @@ namespace F3 {
         /**
          * Bootstrap
          */
-        public function __construct()
+        public function __construct(bool $checkStartupErrors = false)
         {
             // Managed directives
             \ini_set('default_charset', $charset = 'UTF-8');
@@ -2598,7 +2598,7 @@ namespace F3 {
                 // NB: syncing by reference is disabled by default
                 $this->_hive_data[$global] = $GLOBALS['_'.$global] ?? [];
             }
-            if ($check && $error = \error_get_last())
+            if ($check && $checkStartupErrors && $error = \error_get_last())
                 // Error detected
                 $this->error(
                     500,
@@ -3239,15 +3239,14 @@ namespace F3 {
     //! Lightweight template engine
     class Preview extends View
     {
-
         //! token filter
         protected array $filter = [
             'c' => '$this->c',
             'esc' => '$this->esc',
             'raw' => '$this->raw',
-            'export' => Base::class.'::instance()->export',
-            'alias' => Base::class.'::instance()->alias',
-            'format' => Base::class.'::instance()->format',
+            'export' => '$this->fw->export',
+            'alias' => '$this->fw->alias',
+            'format' => '$this->fw->format',
         ];
 
         //! newline interpolation
@@ -3894,7 +3893,6 @@ namespace F3\Http {
      */
     enum Verb
     {
-
         case GET;
         case HEAD;
         case POST;
