@@ -778,7 +778,6 @@ namespace F3 {
                     return parent::set($key, $val);
                 } elseif ($expr[1] === 'COOKIE') {
                     $parts = self::cut($key);
-                    $jar = $this->JAR->toArray();
                     if ($this->NONBLOCKING) {
                         $header = 'Set-Cookie: %s=%s; '.
                             'expires=%s; Max-Age=%d; path=%s; domain=%s; '.
@@ -788,8 +787,8 @@ namespace F3 {
                         $args = [
                             \rawurlencode($parts[1]),
                             \rawurlencode($val ?: ''),
-                            \gmdate('D, d M Y H:i:s T', $jar['expire'] ?? 1),
-                            $jar['lifetime'],
+                            \gmdate('D, d M Y H:i:s T', $this->JAR->lifetime + $time),
+                            $this->JAR->lifetime,
                             $this->JAR->path,
                             $this->JAR->domain,
                             $this->JAR->samesite,
@@ -803,7 +802,8 @@ namespace F3 {
                         }
                         $this->header(\sprintf($header, ...$args), false);
                     } else {
-                        unset($jar['lifetime'], $jar['expire']);
+                        $jar = $this->JAR->toArray();
+                        unset($jar['lifetime']);
                         if ($ttl)
                             $jar['expires'] = $time + $ttl;
                         if (parent::exists($key))
@@ -843,12 +843,10 @@ namespace F3 {
             elseif ($parts[0] == 'COOKIE') {
                 $jar = $this->JAR->toArray();
                 unset($jar['lifetime']);
-                $jar['expire'] = 1;
-                $jar['expires'] = $jar['expire'];
-                unset($jar['expire']);
+                $jar['expires'] = 1;
                 foreach (isset($parts[1]) ? [$parts[1]] : \array_keys($this->COOKIE) as $cKey) {
                     if ($this->NONBLOCKING) {
-                        // cannot use setcookie, because headers are not send in cli mode
+                        // cannot use setcookie because headers are not sent in cli mode
                         $this->header_remove(\sprintf('Set-Cookie: %s=', \rawurlencode($cKey)));
                         $this->header(
                             \sprintf(
@@ -2538,8 +2536,7 @@ namespace F3 {
                 (isset($uri['query']) ? '?'.$uri['query'] : '').
                 (isset($uri['fragment']) ? '#'.$uri['fragment'] : '');
             $path = \preg_replace('/^'.\preg_quote($base, '/').'/', '', $uri['path']);
-            $jar = new CookieJarConfig($_SERVER['REQUEST_TIME_FLOAT'], [
-                'expire' => 0,
+            $jar = new CookieJarConfig([
                 'lifetime' => 0,
                 'path' => $base ?: '/',
                 'domain' => \str_contains($_SERVER['SERVER_NAME'], '.') &&
@@ -2584,7 +2581,7 @@ namespace F3 {
             // auto-configure language
             $this->LANGUAGE = $headers['Accept-Language'] ?? $this->FALLBACK;
             if (!\headers_sent() && \session_status() != PHP_SESSION_ACTIVE) {
-                $jarSettings = $jar->toCookieSettings();
+                $jarSettings = $jar->toArray();
                 \session_cache_limiter('');
                 \session_set_cookie_params($jarSettings);
             }
@@ -2638,7 +2635,6 @@ namespace F3 {
             $this->HOST = \rtrim($headers['X-Forwarded-Host'] ?? $this->SERVER['SERVER_NAME'], '.');
             $this->IP = $this->ip();
             $this->TIME = $this->SERVER['REQUEST_TIME_FLOAT'];
-            $this->JAR->updateRequestTime($this->TIME);
             $this->JAR->domain = \str_contains($this->HOST, '.') &&
                 !\filter_var($this->HOST, FILTER_VALIDATE_IP) ? $this->HOST : '';
             $uri = $request->getUri();
@@ -2741,7 +2737,6 @@ namespace F3 {
         private bool $initialized = false;
 
         public function __construct(
-            private float $requestTime,
             array $data,
         ) {
             foreach ($data as $key => $value)
@@ -2750,27 +2745,20 @@ namespace F3 {
             $this->updateCookieParams();
         }
 
-        public int $expire = 0 { // TODO: make this TTL
-            set {
-                if ($value === $this->expire)
-                    return;
-                $time = \ceil($this->requestTime);
-                $this->expire = $value;
-                $this->lifetime = \max(0, $value - $time);
-                $this->updateCookieParams();
-            }
-        }
-        public int $lifetime = 0 {
+        /**
+         * lifetime (TTL) in seconds
+         */
+        public int|string $lifetime = 0 {
             set {
                 if ($value === $this->lifetime)
                     return;
-                $time = \ceil($this->requestTime);
+                if (\is_string($value))
+                    $value = \strtotime($value) - \time();
                 $this->lifetime = $value;
-                $this->expire = $value == 0 ? 0 :
-                    (\is_int($value) ? $time + $value : \strtotime($value));
                 $this->updateCookieParams();
             }
         }
+
         public string $path = '/' {
             set {
                 $this->path = $value;
@@ -2802,33 +2790,18 @@ namespace F3 {
             }
         }
 
-        public function updateRequestTime(float $requestTime): void
-        {
-            $this->requestTime = $requestTime;
-            $time = \ceil($this->requestTime);
-            $this->expire = $this->lifetime == 0
-                ? 0 : $time + $this->lifetime;
-        }
-
         public function updateCookieParams(): void
         {
             if ($this->initialized && !\headers_sent() && \session_status() != PHP_SESSION_ACTIVE)
-                \session_set_cookie_params($this->toCookieSettings());
+                \session_set_cookie_params($this->toArray());
         }
 
         public function toArray(): array
         {
             $out = [];
-            foreach (['expire', 'lifetime', 'path', 'domain', 'secure', 'httponly', 'samesite'] as $key)
+            foreach (['lifetime', 'path', 'domain', 'secure', 'httponly', 'samesite'] as $key)
                 $out[$key] = $this->$key;
             return $out;
-        }
-
-        public function toCookieSettings(): array
-        {
-            $jar = $this->toArray();
-            unset($jar['expire']);
-            return $jar;
         }
     }
 
