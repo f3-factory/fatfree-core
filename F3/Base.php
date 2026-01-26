@@ -2883,7 +2883,7 @@ namespace F3 {
             return (bool) match ($parts[0]) {
                 'apcu' => \apcu_store($ndx, $data, $ttl),
                 'redis' => $this->ref->set($ndx, $data, $ttl ?: null),
-                'memcache' => \memcache_set($this->ref, $ndx, $data, 0, $ttl),
+                'memcache' => \memcache_set($this->ref, $ndx, $data, 0,$ttl ? \time() + $ttl : 0),
                 'memcached' => $this->ref->set($ndx, $data, $ttl),
                 'folder' => $fw->write(
                     $parts[1].
