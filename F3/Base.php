@@ -1659,7 +1659,7 @@ namespace F3 {
             $headers = $this->HEADERS;
             return $headers['Client-IP'] ?? (isset($headers['X-Forwarded-For'])
                 ? \explode(',', $headers['X-Forwarded-For'])[0]
-                : ($_SERVER['REMOTE_ADDR'] ?? '')
+                : ($this->SERVER['REMOTE_ADDR'] ?? '')
             );
         }
 
@@ -1705,7 +1705,7 @@ namespace F3 {
                         ).')';
                 $src = $this->fixslashes(
                         \str_replace(
-                            $_SERVER['DOCUMENT_ROOT'].
+                            $this->SERVER['DOCUMENT_ROOT'].
                             '/',
                             '',
                             $frame['file'],
@@ -2473,22 +2473,24 @@ namespace F3 {
                     }
                 },
             );
-            if (!isset($_SERVER['SERVER_NAME']) || $_SERVER['SERVER_NAME'] === '')
-                $_SERVER['SERVER_NAME'] = \gethostname();
+            // don't alter global server var
+            $server = $_SERVER;
+            if (!isset($server['SERVER_NAME']) || $server['SERVER_NAME'] === '')
+                $server['SERVER_NAME'] = \gethostname();
             $headers = [];
             if ($cli = (PHP_SAPI == 'cli')) {
                 // Emulate HTTP request
-                $_SERVER['REQUEST_METHOD'] = 'GET';
-                if (!isset($_SERVER['argv'][1])) {
-                    ++$_SERVER['argc'];
-                    $_SERVER['argv'][1] = '/';
+                $server['REQUEST_METHOD'] = 'GET';
+                if (!isset($server['argv'][1])) {
+                    ++$server['argc'];
+                    $server['argv'][1] = '/';
                 }
                 $req = $query = '';
-                if (\str_starts_with($_SERVER['argv'][1], '/')) {
-                    $req = $_SERVER['argv'][1];
+                if (\str_starts_with($server['argv'][1], '/')) {
+                    $req = $server['argv'][1];
                     $query = \parse_url($req, PHP_URL_QUERY);
                 } else {
-                    foreach ($_SERVER['argv'] as $i => $arg) {
+                    foreach ($server['argv'] as $i => $arg) {
                         if (!$i) continue;
                         if (\preg_match('/^-(-)?(\w+)(?:=(.*))?$/', $arg, $m)) {
                             foreach ($m[1] ? [$m[2]] : \str_split($m[2]) as $k)
@@ -2503,45 +2505,45 @@ namespace F3 {
                     if ($query)
                         $req .= '?'.$query;
                 }
-                $_SERVER['REQUEST_URI'] = $req;
+                $server['REQUEST_URI'] = $req;
                 \parse_str($query ?: '', $GLOBALS['_GET']);
             } else foreach (\getallheaders() as $key => $val) {
                 $tmp = \strtoupper(\strtr($key, '-', '_'));
                 $key = \ucwords(\strtolower($key), '-');
                 $headers[$key] = $val;
-                if (isset($_SERVER['HTTP_'.$tmp]))
-                    $headers[$key] = $_SERVER['HTTP_'.$tmp];
+                if (isset($server['HTTP_'.$tmp]))
+                    $headers[$key] = $server['HTTP_'.$tmp];
             }
             if (isset($headers['X-Http-Method-Override']))
-                $_SERVER['REQUEST_METHOD'] = $headers['X-Http-Method-Override'];
-            elseif ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['_method']))
-                $_SERVER['REQUEST_METHOD'] = \strtoupper($_POST['_method']);
-            $scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on' ||
+                $server['REQUEST_METHOD'] = $headers['X-Http-Method-Override'];
+            elseif ($server['REQUEST_METHOD'] == 'POST' && isset($_POST['_method']))
+                $server['REQUEST_METHOD'] = \strtoupper($_POST['_method']);
+            $scheme = isset($server['HTTPS']) && $server['HTTPS'] == 'on' ||
                 isset($headers['X-Forwarded-Proto']) &&
                 $headers['X-Forwarded-Proto'] == 'https' ? 'https' : 'http';
-            $_SERVER['DOCUMENT_ROOT'] = \realpath($_SERVER['DOCUMENT_ROOT']);
+            $server['DOCUMENT_ROOT'] = \realpath($server['DOCUMENT_ROOT']);
             $base = '';
             if (!$cli)
                 $base = \rtrim(
                     $this->fixslashes(
-                        \dirname($_SERVER['SCRIPT_NAME']),
+                        \dirname($server['SCRIPT_NAME']),
                     ),
                     '/',
                 );
             $uri = \parse_url(
-                (\preg_match('/^\w+:\/\//', $_SERVER['REQUEST_URI']) ? '' :
-                    $scheme.'://'.$_SERVER['SERVER_NAME']).$_SERVER['REQUEST_URI'],
+                (\preg_match('/^\w+:\/\//', $server['REQUEST_URI']) ? '' :
+                    $scheme.'://'.$server['SERVER_NAME']).$server['REQUEST_URI'],
             );
-            $_SERVER['REQUEST_URI'] = $uri['path'].
+            $server['REQUEST_URI'] = $uri['path'].
                 (isset($uri['query']) ? '?'.$uri['query'] : '').
                 (isset($uri['fragment']) ? '#'.$uri['fragment'] : '');
             $path = \preg_replace('/^'.\preg_quote($base, '/').'/', '', $uri['path']);
             $jar = new CookieJarConfig([
                 'lifetime' => 0,
                 'path' => $base ?: '/',
-                'domain' => \str_contains($_SERVER['SERVER_NAME'], '.') &&
-                !\filter_var($_SERVER['SERVER_NAME'], FILTER_VALIDATE_IP) ?
-                    $_SERVER['SERVER_NAME'] : '',
+                'domain' => \str_contains($server['SERVER_NAME'], '.') &&
+                !\filter_var($server['SERVER_NAME'], FILTER_VALIDATE_IP) ?
+                    $server['SERVER_NAME'] : '',
                 'secure' => ($scheme == 'https'),
                 'httponly' => true,
                 'samesite' => 'Lax',
@@ -2549,8 +2551,8 @@ namespace F3 {
             $port = 80;
             if (!empty($headers['X-Forwarded-Port']))
                 $port = $headers['X-Forwarded-Port'];
-            elseif (!empty($_SERVER['SERVER_PORT']))
-                $port = $_SERVER['SERVER_PORT'];
+            elseif (!empty($server['SERVER_PORT']))
+                $port = $server['SERVER_PORT'];
             // Default configuration
             $init = [
                 'AGENT' => $this->agent($headers),
@@ -2559,22 +2561,22 @@ namespace F3 {
                 'CLI' => $cli,
                 'ENCODING' => $charset,
                 'HEADERS' => $headers,
-                'HOST' => $_SERVER['SERVER_NAME'],
+                'HOST' => $server['SERVER_NAME'],
                 'IP' => $this->ip(),
                 'JAR' => $jar,
                 'PATH' => $path,
                 'PORT' => $port,
                 'QUERY' => $uri['query'] ?? '',
-                'REALM' => $scheme.'://'.$_SERVER['SERVER_NAME'].
+                'REALM' => $scheme.'://'.$server['SERVER_NAME'].
                     (!\in_array($port, [80, 443]) ? (':'.$port) : '').
-                    $_SERVER['REQUEST_URI'],
-                'ROOT' => $_SERVER['DOCUMENT_ROOT'],
+                    $server['REQUEST_URI'],
+                'ROOT' => $server['DOCUMENT_ROOT'],
                 'SCHEME' => $scheme,
-                'SEED' => $this->hash($_SERVER['SERVER_NAME'].$base),
+                'SEED' => $this->hash($server['SERVER_NAME'].$base),
                 'SERIALIZER' => 'php',
-                'TIME' => $_SERVER['REQUEST_TIME_FLOAT'],
-                'URI' => $_SERVER['REQUEST_URI'],
-                'VERB' => $_SERVER['REQUEST_METHOD'],
+                'TIME' => $server['REQUEST_TIME_FLOAT'],
+                'URI' => $server['REQUEST_URI'],
+                'VERB' => $server['REQUEST_METHOD'],
             ];
             // Create hive
             parent::__construct(data: $init);
@@ -2596,7 +2598,8 @@ namespace F3 {
             // Sync PHP globals with corresponding hive keys
             foreach (\explode('|', Base::GLOBALS) as $global) {
                 // NB: syncing by reference is disabled by default
-                $this->_hive_data[$global] = $GLOBALS['_'.$global] ?? [];
+                $this->_hive_data[$global] = $global === 'SERVER' ? $server
+                    : $GLOBALS['_'.$global] ?? [];
             }
             if ($check && $checkStartupErrors && $error = \error_get_last())
                 // Error detected
