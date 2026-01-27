@@ -1705,7 +1705,7 @@ namespace F3 {
                         ).')';
                 $src = $this->fixslashes(
                         \str_replace(
-                            $this->SERVER['DOCUMENT_ROOT'].
+                            $this->ROOT.
                             '/',
                             '',
                             $frame['file'],
@@ -4219,7 +4219,7 @@ namespace F3\Http {
         ): mixed {
             // Grab the real handler behind the string representation
             if (!\is_callable($func) && !\is_callable($func = $this->grab($func, $args))) {
-                // No route handler found
+                // No handler found
                 $allowed = [];
                 if (\is_array($func))
                     $allowed = \array_intersect(
@@ -4231,15 +4231,15 @@ namespace F3\Http {
                 return false;
             }
             $obj = \is_array($func);
-            // Execute pre-route hook if any
+            // Execute pre-handler hook if any
             if ($obj & \in_array($hook = 'beforeRoute', $hooks) &&
                 \method_exists($func[0], $hook) &&
                 $this->call([$func[0], $hook], $args) === false)
                 return false;
-            // Execute route handler
+            // Execute handler
             if (($out = $this->call($func, $args)) === false)
                 return false;
-            // Execute post-route hook if any
+            // Execute post-handler hook if any
             if ($obj & \in_array($hook = 'afterRoute', $hooks) &&
                 \method_exists($func[0], $hook) &&
                 $this->call([$func[0], $hook], $args) === false)
