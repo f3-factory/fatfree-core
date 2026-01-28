@@ -1825,8 +1825,7 @@ namespace F3 {
             bool $sandbox = false,
             bool $throw = false,
         ): mixed {
-            if (!$args)
-                $args = [];
+            $args ??= [];
             $types = ['sync', 'ajax', 'cli'];
             \preg_match(
                 '/([|\w]+)\h+(?:@(\w+)(?:(\(.+?)\))*|(\H+))'.
@@ -1959,8 +1958,8 @@ namespace F3 {
         {
             $reflection = ($class instanceof \ReflectionClass)
                 ? $class : new \ReflectionClass($class);
-            if ($reflection->getParentClass()) {
-                $traits = $this->traits($reflection->getParentClass(), $traits);
+            if ($parent = $reflection->getParentClass()) {
+                $traits = $this->traits($parent, $traits);
             }
             foreach ($reflection->getTraits() as $trait_key => $trait) {
                 $traits[$trait_key] = $trait->getName();

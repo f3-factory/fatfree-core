@@ -22,6 +22,7 @@ class Service
 
     /**
      * Retrieve object instance, create if not existing
+     * cache singletons
      * @template Class
      * @param class-string<Class> $id
      * @return Class
