@@ -3083,7 +3083,7 @@ namespace F3 {
                     foreach ($fw->split($parts[1]) as $server) {
                         [$host, $port] = \explode(':', $server) + [1 => 11211];
                         if (empty($this->ref))
-                            $this->ref = @\memcache_connect($host, $port) ?: null;
+                            $this->ref = \memcache_connect($host, $port) ?: null;
                         else
                             \memcache_add_server($this->ref, $host, $port);
                     }

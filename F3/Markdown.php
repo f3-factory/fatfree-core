@@ -2,7 +2,7 @@
 
 /**
  *
- * Copyright (c) 2025 F3::Factory, All rights reserved.
+ * Copyright (c) 2026 F3::Factory, All rights reserved.
  *
  * This file is part of the Fat-Free Framework (https://fatfreeframework.com).
  *
@@ -31,7 +31,12 @@ class Markdown
     // Parsing rules
     protected array $blocks = [];
     // Special characters
-    protected $special;
+    protected array $special = [
+        '...' => '&hellip;',
+        '(tm)' => '&trade;',
+        '(r)' => '&reg;',
+        '(c)' => '&copy;',
+    ];
 
     /**
      * Process blockquote
@@ -355,15 +360,11 @@ class Markdown
     {
         return preg_replace_callback(
             '/!(?:\[(.+?)])?\h*\(<?(.*?)>?(?:\h*"(.*?)"\h*)?\)/',
-            function ($expr) {
-                return '<img src="'.$expr[2].'"'.
-                    (empty($expr[1]) ?
-                        '' :
-                        (' alt="'.$this->esc($expr[1]).'"')).
-                    (empty($expr[3]) ?
-                        '' :
-                        (' title="'.$this->esc($expr[3]).'"')).' />';
-            },
+            fn($expr) => '<img src="'.$expr[2].'"'.
+                (empty($expr[1]) ?
+                    '' : (' alt="'.$this->esc($expr[1]).'"')).
+                (empty($expr[3]) ?
+                    '' : (' title="'.$this->esc($expr[3]).'"')).' />',
             $str,
         );
     }
@@ -375,13 +376,10 @@ class Markdown
     {
         return preg_replace_callback(
             '/(?<!\\\\)\[(.+?)(?!\\\\)]\h*\(<?(.*?)>?(?:\h*"(.*?)"\h*)?\)/',
-            function ($expr) {
-                return '<a href="'.$this->esc($expr[2]).'"'.
-                    (empty($expr[3]) ?
-                        '' :
-                        (' title="'.$this->esc($expr[3]).'"')).
-                    '>'.$this->scan($expr[1]).'</a>';
-            },
+            fn($expr) => '<a href="'.$this->esc($expr[2]).'"'.
+                (empty($expr[3]) ?
+                    '' : (' title="'.$this->esc($expr[3]).'"')).
+                '>'.$this->scan($expr[1]).'</a>',
             $str,
         );
     }
@@ -411,10 +409,7 @@ class Markdown
     {
         return preg_replace_callback(
             '/`` (.+?) ``|(?<!\\\\)`(.+?)(?!\\\\)`/',
-            function ($expr) {
-                return '<code>'.
-                    $this->esc(empty($expr[1]) ? $expr[2] : $expr[1]).'</code>';
-            },
+            fn($expr) => '<code>'.$this->esc(empty($expr[1]) ? $expr[2] : $expr[1]).'</code>',
             $str,
         );
     }
@@ -424,13 +419,6 @@ class Markdown
      */
     public function esc(string $str): string
     {
-        if (!$this->special)
-            $this->special = [
-                '...' => '&hellip;',
-                '(tm)' => '&trade;',
-                '(r)' => '&reg;',
-                '(c)' => '&copy;',
-            ];
         foreach ($this->special as $key => $val)
             $str = preg_replace('/'.preg_quote($key, '/').'/i', $val, $str);
         return htmlspecialchars(

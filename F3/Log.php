@@ -2,7 +2,7 @@
 
 /**
  *
- * Copyright (c) 2025 F3::Factory, All rights reserved.
+ * Copyright (c) 2026 F3::Factory, All rights reserved.
  *
  * This file is part of the Fat-Free Framework (https://fatfreeframework.com).
  *
@@ -22,7 +22,7 @@
 namespace F3;
 
 /**
- * Custom logger
+ * File-based logger
  */
 class Log
 {
