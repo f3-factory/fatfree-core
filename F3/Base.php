@@ -2513,10 +2513,6 @@ namespace F3 {
                 if (isset($server['HTTP_'.$tmp]))
                     $headers[$key] = $server['HTTP_'.$tmp];
             }
-            if (isset($headers['X-Http-Method-Override']))
-                $server['REQUEST_METHOD'] = $headers['X-Http-Method-Override'];
-            elseif ($server['REQUEST_METHOD'] == 'POST' && isset($_POST['_method']))
-                $server['REQUEST_METHOD'] = \strtoupper($_POST['_method']);
             $scheme = isset($server['HTTPS']) && $server['HTTPS'] == 'on' ||
                 isset($headers['X-Forwarded-Proto']) &&
                 $headers['X-Forwarded-Proto'] == 'https' ? 'https' : 'http';
