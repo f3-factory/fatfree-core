@@ -2557,7 +2557,6 @@ namespace F3 {
                 'ENCODING' => $charset,
                 'HEADERS' => $headers,
                 'HOST' => $server['SERVER_NAME'],
-                'IP' => $this->ip(),
                 'JAR' => $jar,
                 'PATH' => $path,
                 'PORT' => $port,
@@ -2596,6 +2595,7 @@ namespace F3 {
                 $this->_hive_data[$global] = $global === 'SERVER' ? $server
                     : $GLOBALS['_'.$global] ?? [];
             }
+            $this->IP = $this->ip();
             if ($check && $checkStartupErrors && $error = \error_get_last())
                 // Error detected
                 $this->error(
