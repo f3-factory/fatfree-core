@@ -1970,15 +1970,15 @@ namespace F3 {
 
         /**
          * Loop until callback returns TRUE (for long polling)
+         * @return mixed returns callback result or null on timeout
          */
         public function until(callable|string $func, ?array $args = null, int $timeout = 60): mixed
         {
-            if (!$args)
-                $args = [];
+            $args ??= [];
             $time = \time();
             $max = \ini_get('max_execution_time');
-            $limit = \max(0, ($max ? \min($timeout, $max) : $timeout) - 1);
-            $out = '';
+            $limit = \max(0, ($max ? \min($timeout, $max - 1) : $timeout));
+            $out = null;
             // Turn output buffering on
             \ob_start();
             // Not for the weak of heart
@@ -1993,14 +1993,14 @@ namespace F3 {
                 !\headers_sent() &&
                 (\session_status() == PHP_SESSION_ACTIVE || $this->session_start()) &&
                 // CAUTION: Callback will kill host if it never becomes truthy!
-                !$out = $this->call($func, $args)
+                !($out = $this->call($func, $args))
             ) {
                 if (!$this->CLI)
                     \session_commit();
                 // Hush down
                 \sleep(1);
             }
-            \ob_flush();
+            \ob_end_flush();
             \flush();
             return $out;
         }
