@@ -485,7 +485,7 @@ namespace F3 {
             'expose' => false,
             'ttl' => 0,
         ];
-        /** @var object|\Psr\Container\ContainerInterface|Service|null  */
+        /** @var object|\Psr\Container\ContainerInterface|Service|null */
         public ?object $CONTAINER = null;
         public int $DEBUG = 2;
         public array $DIACRITICS = [];
@@ -1378,24 +1378,26 @@ namespace F3 {
                                                 $sgn = $positive_sign;
                                                 $pre = 'p';
                                             }
-                                            return \trim(\str_replace(
-                                                ['+', 'n', 'c'],
-                                                [
-                                                    $sgn,
-                                                    \number_format(
-                                                        \abs($args[$pos]),
-                                                        $frac_digits,
-                                                        $decimal_point,
-                                                        $thousands_sep,
-                                                    ),
-                                                    $int ? $int_curr_symbol : $currency_symbol,
-                                                ],
-                                                $fmt[(int) (
-                                                    (${$pre.'_cs_precedes'} % 2).
-                                                    (${$pre.'_sign_posn'} % 5).
-                                                    (${$pre.'_sep_by_space'} % 3)
-                                                )],
-                                            ));
+                                            return \trim(
+                                                \str_replace(
+                                                    ['+', 'n', 'c'],
+                                                    [
+                                                        $sgn,
+                                                        \number_format(
+                                                            \abs($args[$pos]),
+                                                            $frac_digits,
+                                                            $decimal_point,
+                                                            $thousands_sep,
+                                                        ),
+                                                        $int ? $int_curr_symbol : $currency_symbol,
+                                                    ],
+                                                    $fmt[(int) (
+                                                        (${$pre.'_cs_precedes'} % 2).
+                                                        (${$pre.'_sign_posn'} % 5).
+                                                        (${$pre.'_sep_by_space'} % 3)
+                                                    )],
+                                                ),
+                                            );
                                         case 'percent':
                                             return \number_format(
                                                     $args[$pos] * 100,
@@ -1874,7 +1876,7 @@ namespace F3 {
             if (!\preg_match('/GET|HEAD/', $verb))
                 $fw->BODY = $body ?: \http_build_query($args);
             $fw->AJAX = (isset($parts[5]) &&
-                \preg_match('/ajax/i', $parts[5])) || ($headers && $this->ajax($headers));
+                    \preg_match('/ajax/i', $parts[5])) || ($headers && $this->ajax($headers));
             $fw->CLI = isset($parts[5]) &&
                 \preg_match('/cli/i', $parts[5]);
             $fw->TIME = $fw->SERVER['REQUEST_TIME_FLOAT'] = \microtime(true);
@@ -2009,20 +2011,25 @@ namespace F3 {
          * Disconnect HTTP client;
          * Set FcgidOutputBufferSize to zero if server uses mod_fcgid;
          * Disable mod_deflate when rendering text/html output
-         * @deprecated
          */
-        function abort()
+        public function abort(): void
         {
-            if (!\headers_sent() && \session_status() != PHP_SESSION_ACTIVE)
-                $this->session_start();
-            $out = '';
-            while (\ob_get_level())
-                $out = \ob_get_clean().$out;
-            if (!\headers_sent()) {
-                \header('Content-Length: '.\strlen($out));
-                \header('Connection: close');
+            if ($this->NONBLOCKING) {
+                throw new \Exception('Abort in non-blocking mode not possible.');
             }
-            \session_commit();
+            $out = '';
+            \ignore_user_abort(true);
+            while (\ob_get_level()) {
+                $out = \ob_get_clean().$out;
+            }
+            if (!\headers_sent()) {
+                $this->header('Content-Length: '.\strlen($out));
+                $this->header('Connection: close');
+            }
+            if (\session_status() == PHP_SESSION_ACTIVE) {
+                \session_commit();
+            }
+            $this->send_headers();
             echo $out;
             \flush();
             if (\function_exists('fastcgi_finish_request'))
@@ -2238,7 +2245,10 @@ namespace F3 {
                                         '/(?<!\\\\)(")(.*?)\1/',
                                         "\\1\x00\\2\\1",
                                         \trim($rval),
-                                    ), ",", '"', "",
+                                    ),
+                                    ",",
+                                    '"',
+                                    "",
                                 ),
                             );
                             \preg_match(
@@ -2274,8 +2284,12 @@ namespace F3 {
         /**
          * Create mutex, invoke callback then drop ownership when done
          */
-        public function mutex(string $id, callable|string $func, mixed $args = [], int $block = 300): mixed
-        {
+        public function mutex(
+            string $id,
+            callable|string $func,
+            mixed $args = [],
+            int $block = 300
+        ): mixed {
             if ($this->MUTEX)
                 return $this->call([$this->MUTEX, 'mutex'], \func_get_args());
             if (!\is_dir($tmp = $this->TEMP))
