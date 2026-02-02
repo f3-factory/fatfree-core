@@ -27,8 +27,18 @@ namespace F3;
 class Log
 {
 
-    /** File name */
-    protected string $file;
+    /**
+     * @param string $file filepath within LOGS dir
+     */
+    public function __construct(
+        protected string $file,
+        protected bool $splitMultiline = true
+    ) {
+        $fw = Base::instance();
+        if (!\is_dir($dir = $fw->LOGS))
+            \mkdir($dir, Base::MODE, true);
+        $this->file = $dir.$file;
+    }
 
     /**
      * Write specified text to log file
@@ -44,7 +54,8 @@ class Log
                 )) ? (' ('.$fwd.')') : '')
                 .']')
             : '';
-        foreach (\preg_split('/\r?\n|\r/', \trim($text)) as $line)
+        $text = \trim($text);
+        foreach ($this->splitMultiline ? \preg_split('/\r?\n|\r/', $text) : [$text] as $line)
             $fw->write(
                 $this->file,
                 \date($dateFormat).$ip.' '.\trim($line).PHP_EOL,
@@ -58,17 +69,6 @@ class Log
     public function erase(): void
     {
         @\unlink($this->file);
-    }
-
-    /**
-     * @param string $file filepath within LOGS dir
-     */
-    public function __construct(string $file)
-    {
-        $fw = Base::instance();
-        if (!\is_dir($dir = $fw->LOGS))
-            \mkdir($dir, Base::MODE, true);
-        $this->file = $dir.$file;
     }
 
 }
