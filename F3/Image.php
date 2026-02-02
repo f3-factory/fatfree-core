@@ -57,18 +57,23 @@ class Image
     protected int $count = 0;
 
     /**
-     * Convert RGB hex triad to array
+     * Convert RGB hex (triad or quart with alpha) to array
      */
     public function rgb(int|string $color): array
     {
         if (is_string($color))
             $color = hexdec($color);
-        $hex = str_pad(dechex($color), $color < 4096 ? 3 : 6, '0', STR_PAD_LEFT);
-        if (($len = strlen($hex)) > 6)
+        $hex = str_pad(
+            string: dechex($color),
+            length: $color < 4096 ? 3 : ($color <= 16777215 ? 6 : 8),
+            pad_string: '0',
+            pad_type: STR_PAD_LEFT);
+        if (($len = strlen($hex)) > 8)
             throw new \Exception(sprintf(self::E_Color, '0x'.$hex));
-        $color = str_split($hex, $len / 3);
+        $aplha = strlen($hex) > 6;
+        $color = str_split($hex, $len / ($aplha ? 4 : 3));
         foreach ($color as &$hue) {
-            $hue = hexdec(str_repeat($hue, 6 / $len));
+            $hue = hexdec(str_repeat($hue, ($aplha ? 8 : 6) / $len));
             unset($hue);
         }
         return $color;
@@ -116,6 +121,15 @@ class Image
     public function smooth(int $level): static
     {
         imagefilter($this->data, IMG_FILTER_SMOOTH, $level);
+        return $this->save();
+    }
+
+    /**
+     * Adjust smoothness
+     */
+    public function scatter(int $subLevel, int $addLevel): static
+    {
+        imagefilter($this->data, IMG_FILTER_SCATTER, min($subLevel, $addLevel), $addLevel);
         return $this->save();
     }
 
@@ -346,10 +360,11 @@ class Image
     /**
      * Apply an image overlay
      */
-    public function overlay(Image $img, int|array|null $align = null, int $alpha = 100): static
+    public function overlayImage(Image $img, int|array|null $align = null, int $alpha = 100): static
     {
-        if (is_null($align))
+        if (is_null($align)) {
             $align = self::POS_Right | self::POS_Bottom;
+        }
         if (is_array($align)) {
             [$posx, $posy] = $align;
             $align = 0;
@@ -360,40 +375,130 @@ class Image
         $imgh = $this->height();
         $ovrw = imagesx($ovr);
         $ovrh = imagesy($ovr);
-        if ($align & self::POS_Left)
-            $posx = 0;
-        if ($align & self::POS_Center)
-            $posx = round(($imgw - $ovrw) / 2);
-        if ($align & self::POS_Right)
-            $posx = $imgw - $ovrw;
-        if ($align & self::POS_Top)
-            $posy = 0;
-        if ($align & self::POS_Middle)
-            $posy = round(($imgh - $ovrh) / 2);
-        if ($align & self::POS_Bottom)
-            $posy = $imgh - $ovrh;
-        if (empty($posx))
-            $posx = 0;
-        if (empty($posy))
-            $posy = 0;
+        $posx = match (true) {
+            (bool) ($align & self::POS_Left) => 0,
+            (bool) ($align & self::POS_Center) => round(($imgw - $ovrw) / 2),
+            (bool) ($align & self::POS_Right) => $imgw - $ovrw,
+            default => empty($posx) ? 0 : $posx,
+        };
+        $posy = match (true) {
+            (bool) ($align & self::POS_Top) => 0,
+            (bool) ($align & self::POS_Middle) => round(($imgh - $ovrh) / 2),
+            (bool) ($align & self::POS_Bottom) => $imgh - $ovrh,
+            default => empty($posy) ? 0 : $posy,
+        };
         if ($alpha == 100)
             imagecopy($this->data, $ovr, $posx, $posy, 0, 0, $ovrw, $ovrh);
         else {
             $cut = imagecreatetruecolor($ovrw, $ovrh);
             imagecopy($cut, $this->data, 0, 0, $posx, $posy, $ovrw, $ovrh);
             imagecopy($cut, $ovr, 0, 0, 0, 0, $ovrw, $ovrh);
-            imagecopymerge(
-                $this->data,
-                $cut,
-                $posx,
-                $posy,
-                0,
-                0,
-                $ovrw,
-                $ovrh,
-                $alpha,
-            );
+            imagecopymerge($this->data, $cut, $posx, $posy, 0, 0, $ovrw, $ovrh, $alpha);
         }
+        return $this->save();
+    }
+
+    /**
+     * Apply a text overlay
+     * @param $string string
+     * @param $fontPath string
+     * @param $fontSize int
+     * @param $align int|null
+     * @param $color string
+     * @param $shadow string
+     **@return object
+     */
+    function overlayText(
+        string $string,
+        string $font = 'arial',
+        float $fontSize = 13,
+        float $lineHeightRatio = 1.2,
+        int|array|null $align = null,
+        int|string|array $color = 0xFFFFFF,
+        int|string|array|null $shadow = null,
+        array $shadowArgs = [1, 1, 0]
+    ) {
+        if (is_null($align)) {
+            $align = self::POS_Right | self::POS_Bottom;
+        }
+        if (is_array($align)) {
+            [$posx, $posy] = $align;
+            $align = 0;
+        }
+        $imgw = $this->width();
+        $imgh = $this->height();
+        $fw = Base::instance();
+        $filePath=null;
+        foreach ($fw->split($fw->UI.';./') as $dir) {
+            if (is_file($filePath = realpath($dir.$font)))
+                break;
+        }
+        if (!$filePath)
+            throw new \Exception(self::E_Font);
+        $pos_string = imageftbbox($fontSize, 0, $filePath, $string, $opt = [
+            'linespacing' => $lineHeightRatio,
+        ]);
+        $width = abs($pos_string[4] - $pos_string[0]);
+        $height = abs($pos_string[5] - $pos_string[1]);
+        $posx = (int) match (true) {
+            (bool) ($align & self::POS_Left) => 0,
+            (bool) ($align & self::POS_Center) => \round(($imgw - $width) / 2),
+            (bool) ($align & self::POS_Right) => $imgw - $width,
+            default => empty($posx) ? 0 : $posx,
+        };
+        $posy = (int) match (true) {
+            (bool) ($align & self::POS_Top) => $fontSize,
+            (bool) ($align & self::POS_Middle) => \round(($imgh - $height) / 2),
+            (bool) ($align & self::POS_Bottom) => $imgh - $height,
+            default => (empty($posy) ? 0 : $posy) + $fontSize,
+        };
+        $fw = Base::instance();
+        if ($shadow) {
+            if (!\is_array($shadow)) {
+                $shadow = preg_match('/[,;|]/', $shadow)
+                    ? $fw->split($shadow) : $this->rgb($shadow);
+            }
+            $tmp = imagecreatetruecolor($imgw, $imgh);
+            imagesavealpha($tmp, true);
+            imagefill($tmp, 0, 0, IMG_COLOR_TRANSPARENT);
+            \imagettftext(
+                $tmp,
+                $fontSize,
+                0,
+                $posx + $shadowArgs[0],
+                $posy + $shadowArgs[1],
+                \imagecolorallocatealpha(
+                    image: $this->data,
+                    red: $shadow[0],
+                    green: $shadow[1],
+                    blue: $shadow[2],
+                    alpha: min($shadow[3] ?? 0, 127)),
+                $filePath,
+                $string,
+                $opt
+            );
+            imagecopy($this->data, $tmp, 0, 0, 0, 0, $imgw, $imgh);
+        }
+        if (!\is_array($color)) {
+            $color = preg_match('/[,;|]/', $color)
+                ? $fw->split($color) : $this->rgb($color);
+        }
+        \imagettftext(
+            $this->data,
+            $fontSize,
+            0,
+            $posx,
+            $posy,
+            \imagecolorallocatealpha(
+                image: $this->data,
+                red: $color[0],
+                green: $color[1],
+                blue: $color[2],
+                alpha: min($color[3] ?? 0, 127)),
+            $filePath,
+            $string,
+            $opt
+        );
         return $this->save();
     }
 
@@ -635,7 +740,7 @@ class Image
         $fw = Base::instance();
         if ($this->flag && is_file(
                 $file = ($path = $fw->TEMP.
-                        $fw->SEED.'.'.$fw->hash($this->file).'-').$state.'.png',
+                    $fw->SEED.'.'.$fw->hash($this->file).'-').$state.'.png',
             )) {
             $this->data = imagecreatefromstring($fw->read($file));
             imagesavealpha($this->data, true);
@@ -697,7 +802,7 @@ class Image
      */
     public function __destruct()
     {
-        if ($this->file) {
+        if ($this->flag && $this->file) {
             $fw = Base::instance();
             $path = $fw->TEMP.$fw->SEED.'.'.$fw->hash($this->file);
             if ($glob = glob($path.'*.png', GLOB_NOSORT))

@@ -444,8 +444,7 @@ class Web
                         $body = gzuncompress($body);
                         break;
                 }
-        } else {
-            $tmp = error_get_last();
+        } elseif (($tmp = error_get_last()) !== null) {
             $err = $tmp['message'];
         }
         return [
