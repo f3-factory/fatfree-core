@@ -149,6 +149,25 @@ class Mapper extends \DB\Cursor {
 	}
 
 	/**
+	*	Validate filter expression to prevent code injection
+	*	@return void
+	*	@param $filter string
+	**/
+	protected function validateFilter($filter) {
+		$blocked = [
+			'system', 'exec', 'passthru', 'shell_exec', 'popen', 'proc_open',
+			'file_put_contents', 'file_get_contents', 'fopen', 'fwrite',
+			'eval', 'assert', 'create_function', 'include', 'require',
+			'unlink', 'base64_decode'
+		];
+		$f = strtolower($filter);
+		foreach ($blocked as $fn) {
+			if (strpos($f, $fn) !== FALSE)
+				throw new \Exception('Invalid filter expression');
+		}
+	}
+
+	/**
 	*	Return records that match criteria
 	*	@return static[]|FALSE
 	*	@param $filter array
@@ -187,6 +206,9 @@ class Mapper extends \DB\Cursor {
 			if ($filter) {
 				if (!is_array($filter))
 					return FALSE;
+				// Validate filter to prevent code injection
+				if (isset($filter[0]))
+					$this->validateFilter($filter[0]);
 				// Normalize equality operator
 				$expr=preg_replace('/(?<=[^<>!=])=(?!=)/','==',$filter[0]);
 				// Prepare query arguments
