@@ -425,9 +425,12 @@ class Web extends Prefab {
 			stream_context_create(['http'=>$options]));
 		if (PHP_VERSION_ID >= 80500)
 			$headers=http_get_last_response_headers() ?: [];
-		else
-			$headers=isset($http_response_header)?
-				$http_response_header:[];
+		else {
+			$locals=get_defined_vars();
+			$headers=isset($locals['http_response_header']) &&
+				is_array($locals['http_response_header'])?
+				$locals['http_response_header']:[];
+		}
 		$err='';
 		if (is_string($body)) {
 			$match=NULL;
