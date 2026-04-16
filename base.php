@@ -974,8 +974,15 @@ final class Base extends Prefab implements ArrayAccess {
 						// skip inaccessible properties #350
 						if (!$it && !isset($arg->$key))
 							continue;
-						$arg->$key=$this->recursive(
-							$val,$func,array_merge($stack,[$arg]));
+						$value = $this->recursive(
+							$val, $func, array_merge($stack, [$arg])
+						);
+
+						if ($arg instanceof \ArrayObject) {
+							$arg[$key] = $value;
+						} else {
+							$arg->$key = $value;
+						}
 					}
 				}
 				return $arg;
