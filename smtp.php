@@ -113,7 +113,7 @@ class SMTP extends Magic {
 	*	@return string
 	**/
 	function log() {
-		return str_replace("\n",PHP_EOL,$this->log);
+		return $this->log ? str_replace("\n",PHP_EOL, $this->log) : '';
 	}
 
 	/**

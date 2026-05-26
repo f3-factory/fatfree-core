@@ -2,8 +2,8 @@ CHANGELOG
 
 3.9.2 (02.12.2025)
 ---
-feat, Audit: Added bot/AI detection, #401
-fix: php 8.5 compatibility
+*	feat, Audit: Added bot/AI detection, #401
+*	fix: php 8.5 compatibility
 
 3.9.1 (09.08.2025)
 ---
