@@ -375,8 +375,11 @@ class Web extends Prefab {
 				return strlen($line);
 			}
 		);
-		curl_setopt($curl,CURLOPT_SSL_VERIFYHOST,2);
-		curl_setopt($curl,CURLOPT_SSL_VERIFYPEER,FALSE);
+        curl_setopt($curl,CURLOPT_SSL_VERIFYHOST,2);
+        curl_setopt($curl,CURLOPT_SSL_VERIFYPEER,TRUE);
+        if (isset($options['before_exec'])) {
+            call_user_func_array($options['before_exec'], [$curl,$headers]);
+        }
 		ob_start();
 		curl_exec($curl);
 		$err=curl_error($curl);
