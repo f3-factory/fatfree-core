@@ -1,5 +1,14 @@
 CHANGELOG
 
+3.9.3 (22.07.2026)
+---
+*	fix: proper enum detection in db schema, #410, #409
+*	fix: Web->curl, allow TLS cert verification configuration, #412
+*	fix: match headers case-insensitive, #414
+*	fix: smtp deprecation notice str_replace
+*	fix: PHP 8.2 deprecation: avoid dynamic properties on ArrayObject in recursive()
+*	fix: PHP 8.5 deprecation raised by $http_response_header,
+
 3.9.2 (02.12.2025)
 ---
 *	feat, Audit: Added bot/AI detection, #401

@@ -2,7 +2,7 @@
 
 /*
 
-	Copyright (c) 2009-2023 F3::Factory/Bong Cosca, All rights reserved.
+	Copyright (c) 2009-2026 F3::Factory/Bong Cosca, All rights reserved.
 
 	This file is part of the Fat-Free Framework (http://fatfreeframework.com).
 
@@ -119,7 +119,7 @@ final class Base extends Prefab implements ArrayAccess {
 	//@{ Framework details
 	const
 		PACKAGE='Fat-Free Framework',
-		VERSION='3.9.2-Release';
+		VERSION='3.9.3-Release';
 	//@}
 
 	//@{ HTTP status codes (RFC 2616)
