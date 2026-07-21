@@ -398,6 +398,7 @@ class SQL {
 		if (is_string($fields))
 			$fields=\Base::instance()->split($fields);
 		$conv=[
+            '^enum|^set'=>\PDO::PARAM_STR,
 			'int\b|integer'=>\PDO::PARAM_INT,
 			'bool'=>\PDO::PARAM_BOOL,
 			'blob|bytea|image|binary'=>\PDO::PARAM_LOB,
