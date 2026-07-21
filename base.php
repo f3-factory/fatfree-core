@@ -3040,7 +3040,7 @@ class View extends Prefab {
 		}
 		if ($this->level<1 || $implicit) {
 			if (!$fw->CLI && $mime && !headers_sent() &&
-				!preg_grep ('/^Content-Type:/',headers_list()))
+				!preg_grep ('/^Content-Type:/i',headers_list()))
 				header('Content-Type: '.$mime.'; '.
 					'charset='.$fw->ENCODING);
 			if ($fw->ESCAPE && (!$mime ||
