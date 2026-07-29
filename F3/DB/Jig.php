@@ -142,7 +142,7 @@ namespace F3\DB {
         private function __clone() {}
 
         /**
-         *    save file on destruction
+         * save file on destruction
          */
         public function __destruct()
         {
