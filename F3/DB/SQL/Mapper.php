@@ -758,7 +758,6 @@ class Mapper extends Cursor
     }
 
     /**
-     *
      * Assign alias for table
      */
     public function alias(string $alias): static
