@@ -469,7 +469,7 @@ final class Base extends Prefab implements ArrayAccess {
 						setcookie($parts[1],'',['expires'=>0]+$jar);
 					if ($ttl)
 						$jar['expires']=$time+$ttl;
-					setcookie($parts[1],$val?:'',$jar);
+					setcookie($parts[1],$val??'',$jar);
 				} else {
 					unset($jar['samesite']);
 					if (isset($_COOKIE[$parts[1]]))
@@ -477,7 +477,7 @@ final class Base extends Prefab implements ArrayAccess {
 							array_merge([$parts[1],''],['expire'=>0]+$jar));
 					if ($ttl)
 						$jar['expire']=$time+$ttl;
-					call_user_func_array('setcookie',[$parts[1],$val?:'']+$jar);
+					call_user_func_array('setcookie',[$parts[1],$val??'']+$jar);
 				}
 				$_COOKIE[$parts[1]]=$val;
 				return $val;
@@ -802,7 +802,7 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function split($str,$noempty=TRUE) {
 		return array_map('trim',
-			preg_split('/[,;|]/',$str?:'',0,$noempty?PREG_SPLIT_NO_EMPTY:0));
+			preg_split('/[,;|]/',$str??'',0,$noempty?PREG_SPLIT_NO_EMPTY:0));
 	}
 
 	/**
