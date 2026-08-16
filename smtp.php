@@ -214,11 +214,12 @@ class SMTP extends Magic {
 			$this->dialog('STARTTLS',$log,$mock);
 			if (!$mock) {
 				$method=STREAM_CRYPTO_METHOD_TLS_CLIENT;
-				if (defined('STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT')) {
+				if (defined('STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT'))
 					$method|=STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT;
-					$method|=STREAM_CRYPTO_METHOD_TLSv1_1_CLIENT;
+				if (!stream_socket_enable_crypto($socket,TRUE,$method)) {
+					fclose($socket);
+					return FALSE;
 				}
-				stream_socket_enable_crypto($socket,TRUE,$method);
 			}
 			$reply=$this->dialog('EHLO '.$fw->HOST,$log,$mock);
 		}
@@ -267,15 +268,16 @@ class SMTP extends Magic {
 			}
 			unset($val);
 		}
-		$from=isset($headers['Sender'])?$headers['Sender']:strstr($headers['From'],'<');
+		$from=str_replace(["\r","\n"],'',
+			isset($headers['Sender'])?$headers['Sender']:strstr($headers['From'],'<'));
 		unset($headers['Sender']);
 		// Start message dialog
 		$this->dialog('MAIL FROM: '.$from,$log,$mock);
 		foreach ($fw->split($headers['To'].
 			(isset($headers['Cc'])?(';'.$headers['Cc']):'').
-			(isset($headers['Bcc'])?(';'.$headers['Bcc']):'')) as $dst) {
-			$this->dialog('RCPT TO: '.strstr($dst,'<'),$log,$mock);
-		}
+			(isset($headers['Bcc'])?(';'.$headers['Bcc']):'')) as $dst)
+			$this->dialog('RCPT TO: '.
+				str_replace(["\r","\n"],'',strstr($dst,'<')),$log,$mock);
 		$this->dialog('DATA',$log,$mock);
 		if ($this->attachments) {
 			// Replace Content-Type
@@ -357,6 +359,8 @@ class SMTP extends Magic {
 		$this->port=$port;
 		$this->user=$user;
 		$this->pw=$pw;
+		if (!$ctx && $this->scheme)
+			$ctx=['ssl'=>['verify_peer'=>TRUE,'verify_peer_name'=>TRUE]];
 		$this->context=stream_context_create($ctx);
 	}
 
