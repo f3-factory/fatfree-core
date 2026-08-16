@@ -56,6 +56,8 @@ class SQL {
 	*	@return bool
 	**/
 	function begin() {
+		if ($this->trans)
+			return FALSE;
 		$out=$this->pdo->begintransaction();
 		$this->trans=TRUE;
 		return $out;
