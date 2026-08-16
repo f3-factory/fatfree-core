@@ -589,7 +589,7 @@ class Web extends Prefab {
 		if (is_string($new))
 			$new=[$new];
 		foreach ($new as $hdr) {
-			$old=preg_grep('/'.preg_quote(strstr($hdr,':',TRUE),'/').':.+/',
+			$old=preg_grep('/'.preg_quote(strstr($hdr,':',TRUE),'/').':.+/i',
 				$old,PREG_GREP_INVERT);
 			array_push($old,$hdr);
 		}
@@ -613,7 +613,7 @@ class Web extends Prefab {
 				($url[0]!='/'?($fw->BASE.'/'):'').$url;
 			$parts=parse_url($url);
 		}
-		elseif (!preg_match('/https?/',$parts['scheme']))
+		elseif (!preg_match('/^https?$/i',$parts['scheme']))
 			return FALSE;
 		if (!is_array($options))
 			$options=[];
@@ -847,8 +847,15 @@ class Web extends Prefab {
 			return FALSE;
 		// Suppress errors caused by invalid XML structures
 		libxml_use_internal_errors(TRUE);
-		$xml=simplexml_load_string($data['body'],
-			NULL,LIBXML_NOBLANKS|LIBXML_NOERROR);
+		if (PHP_VERSION_ID<80000) {
+			$prev=libxml_disable_entity_loader(TRUE);
+			$xml=simplexml_load_string($data['body'],
+				NULL,LIBXML_NOBLANKS|LIBXML_NOERROR);
+			libxml_disable_entity_loader($prev);
+		}
+		else
+			$xml=simplexml_load_string($data['body'],
+				NULL,LIBXML_NOBLANKS|LIBXML_NOERROR);
 		if (!is_object($xml))
 			return FALSE;
 		$out=[];
