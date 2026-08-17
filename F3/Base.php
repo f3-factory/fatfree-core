@@ -449,6 +449,7 @@ namespace F3 {
             E_Open = 'Unable to open %s',
             E_Routes = 'No routes specified',
             E_Class = 'Invalid class %s',
+            E_Callable = 'Method not callable: %s',
             E_Method = 'Invalid method %s',
             E_Hive = 'Invalid hive key %s';
         //endregion
@@ -2037,11 +2038,14 @@ namespace F3 {
         }
 
         /**
-         * Grab the callable behind a string or array callable expression
+         * Grab the callable behind a string- or array-callable expression
          */
         public function grab(string|array $func, ?array $args = null): string|array
         {
             if (\is_array($func)) {
+                if (\is_object($func[0]) && \is_string($func[1]) && !\is_callable($func)) {
+                    throw new \Exception(\sprintf(self::E_Callable, $func[0]::class.'->'.$func[1]));
+                }
                 $func[0] = $this->make($func[0], $args ?? []);
                 return $func;
             }
