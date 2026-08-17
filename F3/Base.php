@@ -3186,6 +3186,8 @@ namespace F3 {
             if (\is_null($hive)) {
                 $implicit = true;
                 $hive = $fw->hive();
+            } elseif ($hive instanceof Hive) {
+                $hive = $hive->toArray();
             }
             if ($this->level < 1 || $implicit) {
                 if (!$fw->CLI && $mime && !\headers_sent() &&
