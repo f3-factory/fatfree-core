@@ -1394,12 +1394,15 @@ final class Base extends Prefab implements ArrayAccess {
 	**/
 	function ip() {
 		$headers=$this->hive['HEADERS'];
-		return isset($headers['Client-IP'])?
-			$headers['Client-IP']:
-			(isset($headers['X-Forwarded-For'])?
-				explode(',',$headers['X-Forwarded-For'])[0]:
-				(isset($_SERVER['REMOTE_ADDR'])?
-					$_SERVER['REMOTE_ADDR']:''));
+		$remote=isset($_SERVER['REMOTE_ADDR'])?$_SERVER['REMOTE_ADDR']:'';
+		$trusted=$this->hive['TRUSTED']??[];
+		if ($remote && $trusted && in_array($remote,$trusted)) {
+			if (isset($headers['Client-IP']))
+				return $headers['Client-IP'];
+			if (isset($headers['X-Forwarded-For']))
+				return explode(',',$headers['X-Forwarded-For'])[0];
+		}
+		return $remote;
 	}
 
 	/**
@@ -2651,6 +2654,7 @@ final class Base extends Prefab implements ArrayAccess {
 			'SERIALIZER'=>extension_loaded($ext='igbinary')?$ext:'php',
 			'TEMP'=>'tmp/',
 			'TIME'=>&$_SERVER['REQUEST_TIME_FLOAT'],
+			'TRUSTED'=>[],
 			'TZ'=>@date_default_timezone_get(),
 			'UI'=>'./',
 			'UNLOAD'=>NULL,
