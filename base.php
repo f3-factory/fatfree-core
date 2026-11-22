@@ -316,28 +316,27 @@ final class Base extends Prefab implements ArrayAccess {
 	*	@param $evaluate bool compile expressions as well or only convert variable access
 	**/
 	function compile($str, $evaluate=TRUE) {
-		return (!$evaluate)
-			? preg_replace_callback(
-				'/^@(\w+)((?:\..+|\[(?:(?:[^\[\]]*|(?R))*)\])*)/',
-				function($expr) {
-					$str='$'.$expr[1];
-					if (isset($expr[2]))
-						$str.=preg_replace_callback(
-							'/\.([^.\[\]]+)|\[((?:[^\[\]\'"]*|(?R))*)\]/',
-							function($sub) {
-								$val=isset($sub[2]) ? $sub[2] : $sub[1];
-								if (ctype_digit($val))
-									$val=(int)$val;
-								$out='['.$this->export($val).']';
-								return $out;
-							},
-							$expr[2]
-						);
-					return $str;
-				},
-				$str
-			)
-			: preg_replace_callback(
+		if (!$evaluate) {
+			if (!preg_match('/^@(\w+(?:(?:\->|::)\w+)*)(.*)$/s',$str,$expr))
+				return $str;
+			// Split key like get/set do and export every segment as literal
+			$str='$'.$expr[1];
+			$obj=FALSE;
+			foreach ($this->cut(ltrim($expr[2],'.')) as $part) {
+				if ($part=='->') {
+					$obj=TRUE;
+					continue;
+				}
+				if (ctype_digit($part))
+					$part=(int)$part;
+				$str.=$obj?
+					('->{'.$this->export($part).'}'):
+					('['.$this->export($part).']');
+				$obj=FALSE;
+			}
+			return $str;
+		}
+		return preg_replace_callback(
 			'/(?<!\w)@(\w+(?:(?:\->|::)\w+)?)'.
 			'((?:\.\w+|\[(?:(?:[^\[\]]*|(?R))*)\]|(?:\->|::)\w+|\()*)/',
 			function($expr) {
