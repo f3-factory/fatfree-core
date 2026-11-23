@@ -126,29 +126,38 @@ class Auth {
 	*	@param $pw string
 	**/
 	protected function _ldap($id,$pw) {
-		$port=(int)($this->args['port']?:389);
-		$filter=$this->args['filter']=$this->args['filter']?:"uid=".$id;
-		$this->args['attr']=$this->args['attr']?:["uid"];
-		array_walk($this->args['attr'],
-		function($attr)use(&$filter,$id) {
-			$filter=str_ireplace($attr."=*",$attr."=".$id,$filter);});
-		$dc=@ldap_connect($this->args['dc'],$port);
-		if ($dc &&
-			ldap_set_option($dc,LDAP_OPT_PROTOCOL_VERSION,3) &&
-			ldap_set_option($dc,LDAP_OPT_REFERRALS,0) &&
-			ldap_bind($dc,$this->args['rdn'],$this->args['pw']) &&
-			($result=ldap_search($dc,$this->args['base_dn'],
-				$filter,$this->args['attr'])) &&
-			ldap_count_entries($dc,$result) &&
-			($info=ldap_get_entries($dc,$result)) &&
-			$info['count']==1 &&
+		// An empty password results in an unauthenticated bind,
+		// which many directory servers accept (RFC 4513, 5.1.2)
+		if ((string)$id==='' || (string)$pw==='')
+			return FALSE;
+		$dc=$this->args['dc'];
+		if (strpos($dc,'://')===FALSE)
+			$dc='ldap://'.$dc;
+		$port=(int)(empty($this->args['port'])?389:$this->args['port']);
+		$attr=empty($this->args['attr'])?['uid']:$this->args['attr'];
+		$value=ldap_escape($id,'',LDAP_ESCAPE_FILTER);
+		$filter=empty($this->args['filter'])?
+			('uid='.$value):$this->args['filter'];
+		foreach ($attr as $key)
+			$filter=str_ireplace($key.'=*',$key.'='.$value,$filter);
+		$dc=@ldap_connect($dc.':'.$port);
+		if (!$dc ||
+			!ldap_set_option($dc,LDAP_OPT_PROTOCOL_VERSION,3) ||
+			!ldap_set_option($dc,LDAP_OPT_REFERRALS,0) ||
+			!@ldap_bind($dc,$this->args['rdn'],$this->args['pw']) ||
+			!($result=@ldap_search($dc,$this->args['base_dn'],
+				$filter,$attr)))
+			throw new \Exception(self::E_LDAP);
+		$info=ldap_get_entries($dc,$result);
+		// A failed user bind means invalid credentials, not a connection failure
+		$success=$info['count']==1 &&
 			@ldap_bind($dc,$info[0]['dn'],$pw) &&
-			@ldap_close($dc)) {
-			return in_array($id,(array_map(function($value){return $value[0];},
+			in_array($id,array_map(function($value){return $value[0];},
+				// Entry attribute names are returned in lowercase
 				array_intersect_key($info[0],
-					array_flip($this->args['attr'])))),TRUE);
-		}
-        throw new \Exception(self::E_LDAP);
+					array_flip(array_map('strtolower',$attr)))),TRUE);
+		@ldap_unbind($dc);
+		return $success;
 	}
 
 	/**
@@ -224,7 +233,8 @@ class Auth {
 			$hdr=$_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
 		if (!empty($hdr))
 			list($_SERVER['PHP_AUTH_USER'],$_SERVER['PHP_AUTH_PW'])=
-				explode(':',base64_decode(substr($hdr,6)));
+				// The password may contain colons, the user id must not
+				explode(':',base64_decode(substr($hdr,6)),2)+[1=>''];
 		if (isset($_SERVER['PHP_AUTH_USER'],$_SERVER['PHP_AUTH_PW']) &&
 			$this->login(
 				$_SERVER['PHP_AUTH_USER'],
